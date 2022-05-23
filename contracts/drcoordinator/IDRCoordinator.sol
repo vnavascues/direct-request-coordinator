@@ -8,7 +8,8 @@ interface IDRCoordinator {
         address _oracle,
         bytes32 _specId,
         address _callbackAddr,
-        uint256 _callbackGasLimit,
+        uint48 _callbackGasLimit,
+        uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external returns (bytes32);
 }

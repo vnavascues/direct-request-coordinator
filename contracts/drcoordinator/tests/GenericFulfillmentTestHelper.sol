@@ -28,15 +28,6 @@ contract GenericFulfillmentTestHelper is FulfillChainlinkExternalRequestCompatib
         _addChainlinkExternalRequest(_oracle, _requestId);
     }
 
-    function cancelChainlinkExternalRequest(
-        bytes32 _requestId,
-        uint256 _payment,
-        bytes4 _callbackFunc,
-        uint256 _expiration
-    ) external {
-        _cancelChainlinkRequest(_requestId, _payment, _callbackFunc, _expiration);
-    }
-
     /* ========== GENERIC FULFILLMENT CALLBACK FUNCTIONS ========== */
 
     // Function signature: 0x32146504

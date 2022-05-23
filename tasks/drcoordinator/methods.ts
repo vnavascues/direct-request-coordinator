@@ -479,7 +479,7 @@ export async function removeSpecs(
   }
 }
 
-export async function setCodeOnEntryContractAddresses(hre: HardhatRuntimeEnvironment, specs: Spec[]): Promise<void> {
+export async function setCodeOnSpecContractAddresses(hre: HardhatRuntimeEnvironment, specs: Spec[]): Promise<void> {
   const configurations = specs.map((spec: Spec) => spec.configuration);
 
   let contractAddresses: string[] = [];
@@ -670,7 +670,7 @@ export async function setupDRCoordinatorBeforeTask(
   if (taskArguments.mode === TaskExecutionMode.DRYRUN) {
     if (taskName === TaskName.IMPORT_FILE) {
       logger.info("setting code in specs contract addresses ...");
-      await setCodeOnEntryContractAddresses(hre, specs as Spec[]);
+      await setCodeOnSpecContractAddresses(hre, specs as Spec[]);
     }
   }
 

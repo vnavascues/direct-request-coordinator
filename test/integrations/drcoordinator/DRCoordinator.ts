@@ -110,7 +110,7 @@ describe.only("DRCoordinator", () => {
     const drCoordinatorConsumer1THFactory = await ethers.getContractFactory("DRCoordinatorConsumer1TestHelper");
     const drCoordinatorConsumer1TH = (await drCoordinatorConsumer1THFactory
       .connect(signers.deployer)
-      .deploy()) as DRCoordinatorConsumer1TestHelper;
+      .deploy(linkToken.address)) as DRCoordinatorConsumer1TestHelper;
     await drCoordinatorConsumer1TH.deployTransaction.wait();
     context.drCoordinatorConsumer1TH = drCoordinatorConsumer1TH;
   });

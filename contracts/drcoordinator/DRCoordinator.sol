@@ -219,12 +219,14 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         _requireLinkBalance(LINK.balanceOf(msg.sender), maxPayment);
 
         // Extend Chainlink Request
-        _req.addUint("minConfirmations", spec.minConfirmations);
-        _req.addUint("gasLimit", spec.gasLimit);
+        _req.addUint("minConfirmations", uint256(spec.minConfirmations));
+        _req.addUint("gasLimit", uint256(spec.gasLimit));
 
         // Send Operator request
-        bytes32 requestId = sendOperatorRequestTo(_oracle, _req, spec.payment);
-
+        console.log("*** DRCoordiantor - before request");
+        console.logUint(spec.payment);
+        bytes32 requestId = sendOperatorRequestTo(_oracle, _req, uint256(spec.payment));
+        console.log("*** DRCoordiantor - after  request");
         // Store fulfill config by request ID
         FulfillConfig memory fulfillConfig;
         fulfillConfig.msgSender = msg.sender;
@@ -235,8 +237,9 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
         fulfillConfig.feeType = spec.feeType;
         s_requestIdToFulfillConfig[requestId] = fulfillConfig;
-
+        console.log("*** DRCoordiantor - set requestIdToFulfillConfig");
         if (_callbackAddr != msg.sender) {
+            console.log("*** DRCoordiantor - is not callbackAddr");
             // Set a new pending request on the callbackAddr (fulfillment contract)
             IExternalFulfillment fulfillmentContract = IExternalFulfillment(_callbackAddr);
             // solhint-disable-next-line no-empty-blocks
@@ -515,7 +518,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     /* ========== PRIVATE PURE FUNCTIONS ========== */
 
     function _generateSpecKey(address _oracle, bytes32 _specId) private pure returns (bytes32) {
-        return keccak256(abi.encode(_oracle, _specId));
+        return keccak256(abi.encodePacked(_oracle, _specId));
     }
 
     function _requireEqualLength(uint256 _length1, uint256 _length2) private pure {

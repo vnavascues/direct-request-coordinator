@@ -11,7 +11,6 @@ contract FulfillChainlinkExternalRequestBase {
     error FulfillChainlinkExternalRequestCompatible__IsPendingRequest();
     error FulfillChainlinkExternalRequestCompatible__CallerIsNotRequestOracle();
 
-    event ChainlinkCancelled(bytes32 indexed id);
     event ChainlinkFulfilled(bytes32 indexed id);
 
     /**
@@ -46,28 +45,6 @@ contract FulfillChainlinkExternalRequestBase {
         notPendingRequest(_requestId)
     {
         s_pendingRequests[_requestId] = _oracleAddress;
-    }
-
-    /**
-     * @notice Allows a request to be cancelled if it has not been fulfilled
-     * @dev Requires keeping track of the expiration value emitted from the oracle contract.
-     * Deletes the request from the `pendingRequests` mapping.
-     * Emits ChainlinkCancelled event.
-     * @param _requestId The request ID
-     * @param _payment The amount of LINK sent for the request
-     * @param _callbackFunc The callback function specified for the request
-     * @param _expiration The time of the expiration for the request
-     */
-    function _cancelChainlinkRequest(
-        bytes32 _requestId,
-        uint256 _payment,
-        bytes4 _callbackFunc,
-        uint256 _expiration
-    ) internal {
-        OperatorInterface requested = OperatorInterface(s_pendingRequests[_requestId]);
-        delete s_pendingRequests[_requestId];
-        emit ChainlinkCancelled(_requestId);
-        requested.cancelOracleRequest(_requestId, _payment, _callbackFunc, _expiration);
     }
 
     /**
