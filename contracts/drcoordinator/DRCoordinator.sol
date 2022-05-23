@@ -37,30 +37,33 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
      * evmChainID: ? I don't think multichain works with directrequest/operator.sol, discarded
      */
     struct FulfillConfig {
-        address msgSender;
-        address callbackAddr;
-        uint256 payment;
-        uint256 minConfirmations;
-        uint256 gasLimit;
-        uint256 fulfillmentFee;
-        FeeType feeType;
+        address msgSender; // 20 bytes
+        uint96 payment; // 12 bytes
+        address callbackAddr; // 20 bytes
+        uint96 fulfillmentFee; // 12 bytes
+        uint8 minConfirmations; // 1 byte
+        uint48 gasLimit; // 6 bytes
+        FeeType feeType; // 1 byte
     }
+    bytes32 private constant NO_SPEC_KEY = bytes32(0); // 32 bytes
 
-    uint256 private constant LINK_TOTAL_SUPPLY = 1e27;
-    bytes32 private constant NO_SPEC_KEY = bytes32(0);
-    uint8 private constant MIN_FALLBACK_MSG_DATA_LENGTH = 36;
-    uint16 public constant MAX_REQUEST_CONFIRMATIONS = 200;
-    bool public immutable IS_SEQUENCER_DEPENDANT;
-    address public immutable FLAG_SEQUENCER_OFFLINE;
-    FlagsInterface public immutable CHAINLINK_FLAGS;
-    LinkTokenInterface public immutable LINK;
-    AggregatorV3Interface public immutable LINK_TKN_FEED;
-    bytes20 private s_sha1;
-    // TODO config start: config, within a scruct?
-    uint256 private s_fallbackWeiPerUnitLink;
-    uint256 private s_gasAfterPaymentCalculation; // TODO: int32? - 33285
-    uint256 private s_stalenessSeconds; // TODO: uint32 - 86400
-    // TODO config end: config, within a scruct?
+    uint96 private constant LINK_TOTAL_SUPPLY = 1e27; // 12 bytes
+    address public immutable FLAG_SEQUENCER_OFFLINE; // 20 bytes
+
+    uint8 private constant MIN_FALLBACK_MSG_DATA_LENGTH = 36; // 1 byte
+    uint16 public constant MAX_REQUEST_CONFIRMATIONS = 200; // 2 bytes
+    bool public immutable IS_SEQUENCER_DEPENDANT; // 1 byte
+    FlagsInterface public immutable CHAINLINK_FLAGS; // 20 bytes
+
+    LinkTokenInterface public immutable LINK; // 20 bytes
+    AggregatorV3Interface public immutable LINK_TKN_FEED; // 20 bytes
+
+    bytes20 private s_sha1; // 20 bytes
+    uint48 private s_gasAfterPaymentCalculation; // 6 bytes
+
+    uint256 private s_stalenessSeconds; // 32 bytes (or uint32 - 4 bytes)
+
+    uint256 private s_fallbackWeiPerUnitLink; // 32 bytes
     string private s_description;
     mapping(bytes32 => FulfillConfig) private s_requestIdToFulfillConfig; /* requestId */ /* FulfillConfig */
     SpecLibrary.Map private s_keyToSpec; /* keccack256(oracle,specId) */ /* Spec */
@@ -112,7 +115,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         address _linkTknFeed,
         string memory _description,
         uint256 _fallbackWeiPerUnitLink,
-        uint256 _gasAfterPaymentCalculation,
+        uint48 _gasAfterPaymentCalculation,
         uint256 _stalenessSeconds,
         bool _isSequencerDependant,
         string memory _sequencerOfflineFlag,
@@ -186,8 +189,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         address _oracle,
         bytes32 _specId,
         address _callbackAddr,
-        uint256 _callbackGasLimit,
-        uint256 _callbackMinConfirmations,
+        uint48 _callbackGasLimit,
+        uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external whenNotPaused nonReentrant returns (bytes32) {
         // Validate params
@@ -227,7 +230,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         fulfillConfig.msgSender = msg.sender;
         fulfillConfig.callbackAddr = _callbackAddr;
         fulfillConfig.payment = spec.payment;
-        fulfillConfig.minConfirmations = _callbackMinConfirmations; // TODO: spec.minConfirmations;
+        fulfillConfig.minConfirmations = _callbackMinConfirmations;
         fulfillConfig.gasLimit = _callbackGasLimit + s_gasAfterPaymentCalculation; // TODO: spec.gasLimit;
         fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
         fulfillConfig.feeType = spec.feeType;
@@ -271,7 +274,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         s_fallbackWeiPerUnitLink = _fallbackWeiPerUnitLink;
     }
 
-    function setGasAfterPaymentCalculation(uint256 _gasAfterPaymentCalculation) external onlyOwner {
+    function setGasAfterPaymentCalculation(uint48 _gasAfterPaymentCalculation) external onlyOwner {
         s_gasAfterPaymentCalculation = _gasAfterPaymentCalculation;
     }
 
@@ -316,9 +319,9 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     function calculateMaxPaymentAmount(
         uint256 _weiPerUnitGas,
-        uint256 _payment,
-        uint256 _gasLimit,
-        uint256 _fulfillmentFee,
+        uint96 _payment,
+        uint48 _gasLimit,
+        uint96 _fulfillmentFee,
         FeeType _feeType
     ) external view returns (uint256) {
         // TODO: if purpose is simulation, discount fallback gas
@@ -337,10 +340,10 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     function calculateSpotPaymentAmount(
         uint256 _startGas,
-        uint256 _gasAfterPaymentCalculation,
+        uint48 _gasAfterPaymentCalculation,
         uint256 _weiPerUnitGas,
-        uint256 _payment,
-        uint256 _fulfillmentFee,
+        uint96 _payment,
+        uint96 _fulfillmentFee,
         FeeType _feeType
     ) external view returns (uint256) {
         // TODO: if purpose is simulation, discount fallback gas
@@ -378,12 +381,21 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         return s_fallbackWeiPerUnitLink;
     }
 
-    function getGasAfterPaymentCalculation() external view returns (uint256) {
+    function getGasAfterPaymentCalculation() external view returns (uint48) {
         return s_gasAfterPaymentCalculation;
     }
 
     function getSha1() external view returns (bytes20) {
         return s_sha1;
+    }
+
+    function getSpec(bytes32 _key) external view returns (Spec memory) {
+        _requireSpecIsInserted(_key, s_keyToSpec.isInserted(_key));
+        return s_keyToSpec.getSpec(_key);
+    }
+
+    function getSpecMapKeys() external view returns (bytes32[] memory) {
+        return s_keyToSpec.keys;
     }
 
     function getStalenessSeconds() external view returns (uint256) {
@@ -424,11 +436,11 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     function _calculatePaymentAmount(
         PaymentNoFeeType _paymentNoFeeType,
         uint256 _startGas,
-        uint256 _gasAfterPaymentCalculation,
+        uint48 _gasAfterPaymentCalculation,
         uint256 _weiPerUnitGas,
-        uint256 _payment,
-        uint256 _gasLimit,
-        uint256 _fulfillmentFee,
+        uint96 _payment,
+        uint48 _gasLimit,
+        uint96 _fulfillmentFee,
         FeeType _feeType
     ) private view returns (uint256) {
         uint256 weiPerUnitLink = _getFeedData();
@@ -449,7 +461,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         }
         uint256 amount;
         if (_feeType == FeeType.FLAT) {
-            amount = paymentNoFee + 1e12 * _fulfillmentFee;
+            amount = paymentNoFee + _fulfillmentFee;
         } else if (_feeType == FeeType.PERMIRYAD) {
             amount = paymentNoFee + (paymentNoFee * _fulfillmentFee) / 1e4;
         } else {
@@ -468,7 +480,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         if (IS_SEQUENCER_DEPENDANT && CHAINLINK_FLAGS.getFlag(FLAG_SEQUENCER_OFFLINE)) {
             return s_fallbackWeiPerUnitLink;
         }
-        uint256 stalenessSeconds = s_stalenessSeconds; // TODO: uint32
+        uint256 stalenessSeconds = s_stalenessSeconds;
         uint256 timestamp;
         int256 answer;
         uint256 weiPerUnitLink;

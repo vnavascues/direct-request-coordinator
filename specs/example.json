@@ -1,0 +1,43 @@
+[
+  {
+    "description": {
+      "adapter": null,
+      "chainId": 42,
+      "jobId": 187,
+      "jobName": "Coingecko Get Price",
+      "nodeId": "eth_kovan",
+      "notes": null
+    },
+    "configuration": {
+      "externalJobId": "17f946d0-c3fb-47b1-91b8-195f4ec036dc",
+      "feeType": 0,
+      "fulfillmentFee": "100000000000000000",
+      "gasLimit": 500000,
+      "minConfirmations": 2,
+      "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "payment": "10000000000000000"
+    }
+  },
+  {
+    "description": {
+      "adapter": {
+        "id": "my_adapter_example",
+        "version": "1.0.0"
+      },
+      "chainId": 42,
+      "jobId": 22,
+      "jobName": "My Adapter Example Get Data v1.0.0",
+      "nodeId": "eth_kovan",
+      "notes": "Lorem Ipsum"
+    },
+    "configuration": {
+      "externalJobId": "6dd6c530-670f-4742-bdfc-2055d93cf63c",
+      "feeType": 1,
+      "fulfillmentFee": "1100",
+      "gasLimit": 1000000,
+      "minConfirmations": 2,
+      "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "payment": "200000000000000000"
+    }
+  }
+]

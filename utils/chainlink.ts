@@ -1,9 +1,13 @@
+import { BigNumber } from "ethers";
 import { HardhatRuntimeEnvironment, Network } from "hardhat/types";
+
 import { getChecksumAddress } from "./addresses";
 import { ChainId, chainIdTkn } from "./constants";
 import { throwNewError } from "./errors";
 import { logger } from "./logger";
 import type { LinkToken } from "../src/types";
+
+export const LINK_TOTAL_SUPPLY = BigNumber.from("10").pow("27");
 
 export const chainIdFlags: ReadonlyMap<ChainId, string> = new Map([
   [ChainId.ARB_MAINNET, "0x3C14e07Edd0dC67442FA96f1Ec6999c57E810a83"],

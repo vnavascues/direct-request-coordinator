@@ -17,14 +17,13 @@ enum FeeType {
  * evmChainID: ? I don't think multichain works with directrequest/operator.sol, discarded
  */
 struct Spec {
-    bytes32 specId;
-    address oracle;
-    uint256 payment;
-    uint256 minConfirmations;
-    uint256 gasLimit;
-    uint256 fulfillmentFee;
-    FeeType feeType;
-    // TODO: define if fee is % or flat (fee type) - enum
+    bytes32 specId; // 32 bytes
+    address oracle; // 20 bytes
+    uint96 payment; // 1e27 < 2^96 = 12 bytes
+    uint8 minConfirmations; // 200 < 2^8 = 1 byte
+    uint48 gasLimit; // < 2.81 * 10^14 = 6 bytes
+    uint96 fulfillmentFee; // 1e27 < 2^96 = 12 bytes
+    FeeType feeType; // uint8 = 1 byte
 }
 
 error SpecLibrary__SpecIsNotInserted(bytes32 key);
