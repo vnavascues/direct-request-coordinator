@@ -86,10 +86,10 @@ export function testFallback(signers: Signers, context: Context): void {
   });
 
   // TODO: test revert allowance
-  it.only("TODO - reverts when the caller did not set enough allowance", async function () {
+  it("TODO - reverts when the caller did not set enough allowance", async function () {
     // Arrange
     // 1. Insert the Spec
-    const specs = parseSpecsFile(path.join(filePath, "file1.json"));
+    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
       spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
     });
@@ -100,7 +100,7 @@ export function testFallback(signers: Signers, context: Context): void {
     // 2. Set LINK_TKN_FEED last answer
     await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
     // 3. Take care on consumer LINK balance
-    const weiPerUnitGas = BigNumber.from("30000000000");
+    const weiPerUnitGas = BigNumber.from("2500000000");
     const maxPaymentAmount = await context.drCoordinator
       .connect(signers.externalCaller)
       .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
@@ -151,6 +151,77 @@ export function testFallback(signers: Signers, context: Context): void {
       .withArgs(requestId, result)
       .to.emit(context.drCoordinator, "RequestFulfilled")
       .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionSignature, msgData);
+  });
+
+  // TODO: test revert allowance
+  it.only("TODO - reverts when the caller did not set enough allowance", async function () {
+    // Arrange
+    // 1. Insert the Spec
+    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
+    specs.forEach(spec => {
+      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+    });
+    const fileSpecMap = await getSpecConvertedMap(specs);
+    const [key] = [...fileSpecMap.keys()];
+    const spec = fileSpecMap.get(key) as SpecConverted;
+    await context.drCoordinator.connect(signers.owner).setSpec(key, spec);
+    // 2. Set LINK_TKN_FEED last answer
+    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
+    // 3. Take care on consumer LINK balance
+    const weiPerUnitGas = BigNumber.from("2500000000");
+    const maxPaymentAmount = await context.drCoordinator
+      .connect(signers.externalCaller)
+      .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
+    console.log(`*** max payment amount LINK: ${ethers.utils.formatEther(maxPaymentAmount)}`);
+    await context.linkToken
+      .connect(signers.deployer)
+      .transfer(context.aDrCoordinatorConsumer.address, maxPaymentAmount);
+    await context.aDrCoordinatorConsumer
+      .connect(signers.deployer)
+      .approve(context.drCoordinator.address, maxPaymentAmount);
+    // 3. Make consumer call DRCoordinator.requestData()
+    await context.aDrCoordinatorConsumer
+      .connect(signers.deployer)
+      .requestSchedule(
+        context.drCoordinator.address,
+        context.operator.address,
+        spec.specId,
+        spec.gasLimit,
+        spec.minConfirmations,
+        BigNumber.from("0"),
+        BigNumber.from("1"),
+        BigNumber.from("1653742133"),
+      );
+    const filterOracleRequest = context.operator.filters.OracleRequest();
+    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
+    const { requestId, cancelExpiration } = eventOracleRequest.args;
+
+    // Assert
+    // const callbackFunctionSignature = "0x7c1f72a0";
+    // const result = BigNumber.from("777");
+    // const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256"], [requestId, result]);
+    // const msgData = `${callbackFunctionSignature}${encodedData.slice(2)}`;
+    // const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
+    // await expect(
+    //   context.operator
+    //     .connect(signers.operatorSender)
+    //     .fulfillOracleRequest2(
+    //       requestId,
+    //       spec.payment,
+    //       context.drCoordinator.address,
+    //       callbackFunctionSignature,
+    //       cancelExpiration,
+    //       encodedData,
+    //       {
+    //         gasLimit: BigNumber.from(spec.gasLimit).add(gasAfterPaymentCalculation),
+    //         gasPrice: weiPerUnitGas,
+    //       },
+    //     ),
+    // )
+    //   .to.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256")
+    //   .withArgs(requestId, result)
+    //   .to.emit(context.drCoordinator, "RequestFulfilled")
+    //   .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionSignature, msgData);
   });
 
   // TODO: test revert balance

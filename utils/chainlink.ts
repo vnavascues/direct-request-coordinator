@@ -90,6 +90,16 @@ export async function deployLinkTokenOnHardhat(hre: HardhatRuntimeEnvironment): 
   return linkToken;
 }
 
+export async function getLinkBalanceOf(
+  hre: HardhatRuntimeEnvironment,
+  address: string,
+  addressLINK: string,
+): Promise<BigNumber> {
+  const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
+  const contractLINK = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLINK)) as LinkToken;
+  return contractLINK.balanceOf(address);
+}
+
 export function getNetworkLinkAddress(network: Network): string {
   const chainId = network.config.chainId;
   let link = chainIdLink.get(chainId as number);
@@ -125,4 +135,20 @@ export async function getNetworkLinkAddressDeployingOnHardhat(hre: HardhatRuntim
     chainIdLink.set(ChainId.HARDHAT, linkToken.address);
   }
   return getNetworkLinkAddress(hre.network);
+}
+
+export async function validateLinkAddressFunds(
+  hre: HardhatRuntimeEnvironment,
+  address: string,
+  addressLINK: string,
+  fundsLINK: BigNumber,
+): Promise<void> {
+  const balance = await getLinkBalanceOf(hre, address, addressLINK);
+  if (balance.lt(fundsLINK)) {
+    const fmtBalance = hre.ethers.utils.formatUnits(balance);
+    const fmtFunds = hre.ethers.utils.formatUnits(fundsLINK);
+    throw new Error(
+      `Insufficient LINK balance in ${address}: ${fmtBalance} LINK. Can't fund the contract with: ${fmtFunds} LINK`,
+    );
+  }
 }

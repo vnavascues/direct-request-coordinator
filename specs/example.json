@@ -37,7 +37,7 @@
       "gasLimit": 1000000,
       "minConfirmations": 2,
       "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
-      "payment": "200000000000000000"
+      "payment": "100000000000000000"
     }
   }
 ]

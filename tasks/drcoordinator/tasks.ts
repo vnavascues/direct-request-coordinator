@@ -1,3 +1,5 @@
+import type { ContractTransaction } from "@ethersproject/contracts";
+import { BigNumber } from "ethers";
 import { task, types } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";
 import hash from "object-hash";
@@ -27,6 +29,7 @@ import {
   updateSpecs,
   validateConfigurationExternalJobId,
   validateConfigurationOracleAddr,
+  verifyConsumer,
   verifyDRCoordinator,
   withdraw,
 } from "./methods";
@@ -38,7 +41,10 @@ import {
   convertJobIdToBytes32,
   getNetworkLinkAddress,
   getNetworkLinkTknFeedAddress,
+  validateLinkAddressFunds,
 } from "../../utils/chainlink";
+import { LinkToken } from "../../src/types";
+import { getNumberOfConfirmations } from "../../utils/deployment";
 import { ChainId } from "../../utils/constants";
 import { getGasOverridesFromTaskArgs } from "../../utils/gas-estimation";
 import { logger } from "../../utils/logger";
@@ -413,4 +419,68 @@ task("drcoordinator:withdraw", "Withdraw LINK in the contract")
     }
 
     logger.info("*** Withdraw task finished successfully ***");
+  });
+
+/* *** A CONSUMER *** */
+
+task("drcoordinator:deploy-consumer")
+  .addParam("name", "The consumer contract name", undefined, types.string)
+  // Configuration after deployment
+  .addOptionalParam("funds", "The amount of LINK (wei) to fund the contract on deployment", undefined, typeBignumber)
+  // Verification
+  .addFlag("verify", "Verify the contract on Etherscan after deployment")
+  // Gas customisation
+  .addFlag("gas", "Customise the tx gas")
+  .addOptionalParam("type", "The tx type", undefined, types.int)
+  .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
+  .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
+  .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
+  .setAction(async function (taskArguments: TaskArguments, hre) {
+    const [signer] = await hre.ethers.getSigners();
+    logger.info(`signer address: ${signer.address}`);
+
+    // Get tx overrides with gas params
+    let overrides: Overrides = {};
+    if (taskArguments.gas) {
+      overrides = await getGasOverridesFromTaskArgs(taskArguments, hre);
+    }
+
+    // Get LINK address (by network)
+    const addressLink = getNetworkLinkAddress(hre.network);
+
+    // Custom validations
+    const funds = taskArguments.funds as BigNumber;
+    if (funds) {
+      await validateLinkAddressFunds(hre, signer.address, addressLink, funds);
+    }
+
+    // Deploy
+    const consumerFactory = await hre.ethers.getContractFactory(taskArguments.name);
+    const consumer = await consumerFactory.deploy(addressLink, overrides);
+    logger.info(`${taskArguments.name} deployed to: ${consumer.address} | Tx hash: ${consumer.deployTransaction.hash}`);
+    await consumer.deployTransaction.wait(getNumberOfConfirmations(hre.network.config.chainId));
+
+    // Fund Consumer with LINK
+    if (funds) {
+      const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
+      const linkToken = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLink)) as LinkToken;
+      const logObjTransfer = {
+        to: consumer.address,
+        value: funds.toString(),
+      };
+      let tx: ContractTransaction;
+      try {
+        tx = await linkToken.transfer(consumer.address, funds, overrides);
+        logger.info(logObjTransfer, `transfer() LINK | Tx hash: ${tx.hash}`);
+        await tx.wait();
+      } catch (error) {
+        logger.child(logObjTransfer).error(error, `transfer() failed due to: ${error}`);
+        throw error;
+      }
+    }
+    if (!taskArguments.verify) return;
+
+    // Verify
+    // NB: contract verification request may fail if the contract address does not have bytecode. Wait until it's mined
+    await verifyConsumer(hre, consumer.address, addressLink);
   });

@@ -1,0 +1,24 @@
+[
+  {
+    "description": {
+      "adapter": {
+        "id": "my_adapter_example",
+        "version": "1.0.0"
+      },
+      "chainId": 42,
+      "jobId": 46,
+      "jobName": "Sportsdataio LinkPool Get Schedule v1.0.0 DRCoordinator",
+      "nodeId": "eth_kovan",
+      "notes": null
+    },
+    "configuration": {
+      "externalJobId": "235bbeca-65f3-44b7-ba8b-3af501e43622",
+      "feeType": 1,
+      "fulfillmentFee": "1100",
+      "gasLimit": 500000,
+      "minConfirmations": 2,
+      "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "payment": "200000000000000000"
+    }
+  }
+]

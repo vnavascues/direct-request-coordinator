@@ -158,7 +158,7 @@ export async function deployDRCoordinator(
     addressLinkTknFeed = getNetworkLinkTknFeedAddress(hre.network);
     sequencerOfflineFlag = chainIdSequencerOfflineFlag.get(chainId) || "";
     isSequencerDependant = !!sequencerOfflineFlag;
-    addressChainlinkFlags = chainIdFlags.get(chainId) || "";
+    addressChainlinkFlags = chainIdFlags.get(chainId) || ethers.constants.AddressZero;
   }
 
   // Deploy
@@ -877,6 +877,20 @@ function validateExternalAdapter(adapter: null | ExternalAdapter): void {
   if (!reSemVer.test(adapter.version)) {
     throw new Error(`Invalid adapter 'version': ${adapter.version}. Expected format is 'Major.Minor.Patch'`);
   }
+}
+
+export async function verifyConsumer(
+  hre: HardhatRuntimeEnvironment,
+  address: string,
+  addressLink: string,
+  contract?: string,
+): Promise<void> {
+  setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
+  await hre.run("verify:verify", {
+    address,
+    constructorArguments: [addressLink],
+    contract,
+  });
 }
 
 export async function verifyDRCoordinator(

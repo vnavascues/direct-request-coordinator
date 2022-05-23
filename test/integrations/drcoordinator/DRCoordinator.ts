@@ -9,6 +9,7 @@ import { testFallback } from "./DRCoordinator.fallback";
 import { testGetFeedData } from "./DRCoordinator.getFeedData";
 
 import type {
+  ADRCoordinatorConsumer,
   DRCoordinator,
   DRCoordinatorConsumer1TestHelper,
   LinkToken,
@@ -17,6 +18,8 @@ import type {
 } from "../../../src/types";
 
 export interface Context {
+  // TODO: remove
+  aDrCoordinatorConsumer: ADRCoordinatorConsumer;
   drCoordinator: DRCoordinator;
   drCoordinatorConsumer1TH: DRCoordinatorConsumer1TestHelper;
   linkToken: LinkToken;
@@ -113,6 +116,15 @@ describe.only("DRCoordinator", () => {
       .deploy(linkToken.address)) as DRCoordinatorConsumer1TestHelper;
     await drCoordinatorConsumer1TH.deployTransaction.wait();
     context.drCoordinatorConsumer1TH = drCoordinatorConsumer1TH;
+
+    // TODO: remove
+    // Deploy ADRCoordinatorConsumer
+    const aDrCoordinatorConsumerFactory = await ethers.getContractFactory("ADRCoordinatorConsumer");
+    const aDrCoordinatorConsumer = (await aDrCoordinatorConsumerFactory
+      .connect(signers.deployer)
+      .deploy(linkToken.address)) as ADRCoordinatorConsumer;
+    await aDrCoordinatorConsumer.deployTransaction.wait();
+    context.aDrCoordinatorConsumer = aDrCoordinatorConsumer;
   });
 
   describe("testCalculateMaxPaymentAmount()", () => testCalculateMaxPaymentAmount(signers, context));
