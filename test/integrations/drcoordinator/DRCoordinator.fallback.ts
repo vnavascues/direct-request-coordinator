@@ -108,11 +108,9 @@ export function testFallback(signers: Signers, context: Context): void {
     await context.linkToken
       .connect(signers.deployer)
       .transfer(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
-    console.log("*** 1");
     await context.drCoordinatorConsumer1TH
       .connect(signers.deployer)
       .approve(context.drCoordinator.address, maxPaymentAmount);
-    console.log("*** 2");
     // 3. Make consumer call DRCoordinator.requestData()
     await context.drCoordinatorConsumer1TH
       .connect(signers.deployer)
@@ -123,25 +121,36 @@ export function testFallback(signers: Signers, context: Context): void {
         spec.gasLimit,
         spec.minConfirmations,
       );
+    const filterOracleRequest = context.operator.filters.OracleRequest();
+    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
+    const { requestId, cancelExpiration } = eventOracleRequest.args;
 
-    // const specId = "0x3666636566346637363332353438363539646665363462336438643732343365";
-    // const oracle = context.operator.address;
-    // const callbackAddr = ""; // TODO;
-    // const req = ""; // TODO;
-    // await context.drCoordinator.connect(signers.externalCaller).requestData(oracle, specId, callbackAddr, req);
-    // // TODO: decrease allowance!
-    // const callbackFunctionSignature = "0x7c1f72a0";
-    // const requestId = "0x794239b5b2c74a8b53870f56a1a752b8fbe7e27f61d08f72a707159d2f44239a";
-    // const txRequest = {
-    //   to: context.drCoordinator.address,
-    //   from: signers.externalCaller.address,
-    //   data: `${callbackFunctionSignature}${requestId.slice(2)}`,
-    // };
-
-    // // Act & Assert
-    // await expect(signers.externalCaller.sendTransaction(txRequest)).to.be.revertedWith(
-    //   "Source must be the oracle of the request",
-    // );
+    // Assert
+    const callbackFunctionSignature = "0x7c1f72a0";
+    const result = BigNumber.from("777");
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256"], [requestId, result]);
+    const msgData = `${callbackFunctionSignature}${encodedData.slice(2)}`;
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
+    await expect(
+      context.operator
+        .connect(signers.operatorSender)
+        .fulfillOracleRequest2(
+          requestId,
+          spec.payment,
+          context.drCoordinator.address,
+          callbackFunctionSignature,
+          cancelExpiration,
+          encodedData,
+          {
+            gasLimit: BigNumber.from(spec.gasLimit).add(gasAfterPaymentCalculation),
+            gasPrice: weiPerUnitGas,
+          },
+        ),
+    )
+      .to.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256")
+      .withArgs(requestId, result)
+      .to.emit(context.drCoordinator, "RequestFulfilled")
+      .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionSignature, msgData);
   });
 
   // TODO: test revert balance

@@ -139,22 +139,19 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     // solhint-disable-next-line no-complex-fallback, payable-fallback
     fallback() external whenNotPaused nonReentrant {
         uint256 startGas = gasleft();
-
         // Validate requestId
         bytes4 callbackFunctionSignature = msg.sig; // bytes4(msg.data);
         bytes calldata data = msg.data;
         _requireFallbackMsgData(data);
         bytes32 requestId = abi.decode(data[4:], (bytes32));
         validateChainlinkCallback(requestId);
-
         // Retrieve FulfillConfig
         FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[requestId];
-
-        // Fulfill
-        // TODO: deal with gasLimit? - .call(data){gas: fulfillConfig.gasLimit}
+        // Fulfill just with the gas amount requested by the consumer
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = fulfillConfig.callbackAddr.call(data);
-        // TODO: calculate gas from here
+        (bool success, ) = fulfillConfig.callbackAddr.call{
+            gas: fulfillConfig.gasLimit - s_gasAfterPaymentCalculation
+        }(data);
         // Make payment
         uint256 payment = _calculatePaymentAmount(
             PaymentNoFeeType.SPOT,
@@ -166,6 +163,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             fulfillConfig.fulfillmentFee,
             fulfillConfig.feeType
         );
+        // NB: statemens below cost 53942 gas approx
         _requireLinkAllowance(LINK.allowance(fulfillConfig.msgSender, address(this)), payment);
         _requireLinkBalance(LINK.balanceOf(fulfillConfig.msgSender), payment);
         _requireLinkTransferFrom(
@@ -176,7 +174,6 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         );
         emit RequestFulfilled(requestId, success, fulfillConfig.callbackAddr, callbackFunctionSignature, data);
         delete s_requestIdToFulfillConfig[requestId];
-        // TODO: calculate gas to here
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
@@ -217,23 +214,31 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         );
         _requireLinkAllowance(LINK.allowance(msg.sender, address(this)), maxPayment);
         _requireLinkBalance(LINK.balanceOf(msg.sender), maxPayment);
+        _requireLinkTransferFrom(
+            LINK.transferFrom(msg.sender, address(this), spec.payment),
+            msg.sender,
+            address(this),
+            spec.payment
+        );
 
         // Extend Chainlink Request
+        uint48 gasLimit = _callbackGasLimit + s_gasAfterPaymentCalculation;
         _req.addUint("minConfirmations", uint256(spec.minConfirmations));
-        _req.addUint("gasLimit", uint256(spec.gasLimit));
+        _req.addUint("gasLimit", gasLimit);
 
         // Send Operator request
         console.log("*** DRCoordiantor - before request");
         console.logUint(spec.payment);
         bytes32 requestId = sendOperatorRequestTo(_oracle, _req, uint256(spec.payment));
         console.log("*** DRCoordiantor - after  request");
+        console.logBytes32(requestId);
         // Store fulfill config by request ID
         FulfillConfig memory fulfillConfig;
         fulfillConfig.msgSender = msg.sender;
         fulfillConfig.callbackAddr = _callbackAddr;
         fulfillConfig.payment = spec.payment;
         fulfillConfig.minConfirmations = _callbackMinConfirmations;
-        fulfillConfig.gasLimit = _callbackGasLimit + s_gasAfterPaymentCalculation; // TODO: spec.gasLimit;
+        fulfillConfig.gasLimit = gasLimit;
         fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
         fulfillConfig.feeType = spec.feeType;
         s_requestIdToFulfillConfig[requestId] = fulfillConfig;

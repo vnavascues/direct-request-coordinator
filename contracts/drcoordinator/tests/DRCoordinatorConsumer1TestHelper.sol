@@ -23,6 +23,10 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
 
     // Function signature: 0x7c1f72a0
     function fulfillUint256(bytes32 _requestId, uint256 _result) external recordChainlinkFulfillment(_requestId) {
+        console.log("*** result start");
+        console.logUint(_result);
+        console.logUint(gasleft());
+        console.log("*** result end");
         emit RequestFulfilledUint256(_requestId, _result);
     }
 
@@ -34,9 +38,8 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
         uint8 _callbackMinConfirmations
     ) external {
         Chainlink.Request memory req;
-        // TODO: _drCoordinator vs _oracle vs address(this)
+        // NB: Chainlink.Request callbackAddr must be address(DRCoordiantor)
         req.initialize(_specId, _drCoordinator, this.fulfillUint256.selector);
-        console.log("*** Consumer 1");
         bytes32 requestId = IDRCoordinator(_drCoordinator).requestData(
             _oracle,
             _specId,
@@ -45,8 +48,6 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
             _callbackMinConfirmations,
             req
         );
-        console.log("*** Consumer 2");
         _addChainlinkExternalRequest(_drCoordinator, requestId);
-        console.log("*** Consumer 3");
     }
 }

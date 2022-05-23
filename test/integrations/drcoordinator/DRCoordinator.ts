@@ -81,7 +81,7 @@ describe.only("DRCoordinator", () => {
     // Deploy DRCoordinator
     const descriptionDRC = "Testing DRCoordinator";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
-    const gasAfterPaymentCalculation = BigNumber.from("33285");
+    const gasAfterPaymentCalculation = BigNumber.from("55000"); // NB: approx 53942
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = false;
     const sequencerFlag = "";
