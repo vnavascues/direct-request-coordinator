@@ -75,7 +75,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
     const gasAfterPaymentCalculation = BigNumber.from("0");
     const weiPerUnitGas = BigNumber.from("1");
     const payment = BigNumber.from("0");
-    const fulfillmentFee = BigNumber.from("10").pow("15"); // NB: fulfillmentFee * 1e12 >= totalSupply (1e27)
+    const fulfillmentFee = BigNumber.from("10").pow("27"); // NB: LINK totalSupply (1e27)
     await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("1"));
 
     // Act & Assert
@@ -105,9 +105,10 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         gasAfterPaymentCalculation: BigNumber.from("50000"),
         weiPerUnitGas: BigNumber.from("30000000000"),
         payment: BigNumber.from("100000000000000000"), // 0.1 LINK
-        fulfillmentFee: BigNumber.from("1000000"), // 1 LINK, 1e6
+        fulfillmentFee: BigNumber.from("1000000000000000000"), // 1 LINK
         feeType: FeeType.FLAT,
-        expectedAmount: BigNumber.from("1648656118148291788"), // 1.65 LINK
+        expectedDelta: BigNumber.from("1000000000000000"), // 0.001 LINK
+        expectedAmount: BigNumber.from("1650469843860781478"), // 1.65 LINK
       },
     },
     {
@@ -119,7 +120,8 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         payment: BigNumber.from("100000000000000000"), // 0.1 LINK
         fulfillmentFee: BigNumber.from("1225"), // 12.25%
         feeType: FeeType.PERMIRYAD,
-        expectedAmount: BigNumber.from("728116492621457532"), // 0.73 LINK
+        expectedDelta: BigNumber.from("1000000000000000"), // 0.001 LINK
+        expectedAmount: BigNumber.from("729805041174287832"), // 0.73 LINK
       },
     },
   ];
@@ -144,7 +146,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         );
 
       // Assert
-      expect(amount).to.equal(testData.expectedAmount);
+      expect(amount).to.be.closeTo(testData.expectedAmount, testData.expectedDelta);
     });
   }
 }

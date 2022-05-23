@@ -16,7 +16,7 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
     await revertToSnapshot(snapshotId);
   });
 
-  it("reverts if feeType is not supported", async function () {
+  it("reverts if 'feeType' is not supported", async function () {
     // Arrange
     const weiPerUnitGas = BigNumber.from("1");
     const payment = BigNumber.from("100000000000000000"); // 0.1 LINK
@@ -33,7 +33,7 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
     ).to.be.reverted;
   });
 
-  it("reverts if paymentNoFee is zero", async function () {
+  it("reverts if 'paymentNoFee' is zero", async function () {
     // Arrange
     const weiPerUnitGas = BigNumber.from("0");
     const payment = BigNumber.from("0");
@@ -50,12 +50,12 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
     ).to.be.revertedWith(`DRCoordinator__PaymentNoFeeIsZero()`);
   });
 
-  it("reverts if amount is greater than all LINK supply", async function () {
+  it("reverts if 'amount' is greater than all LINK supply", async function () {
     // Arrange
     const weiPerUnitGas = BigNumber.from("1");
     const payment = BigNumber.from("0");
     const gasLimit = BigNumber.from("1");
-    const fulfillmentFee = BigNumber.from("10").pow("15"); // NB: fulfillmentFee * 1e12 >= totalSupply (1e27)
+    const fulfillmentFee = BigNumber.from("10").pow("27"); // NB: LINK totalSupply (1e27)
     await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("1"));
 
     // Act & Assert
@@ -74,8 +74,9 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
         weiPerUnitGas: BigNumber.from("30000000000"),
         payment: BigNumber.from("100000000000000000"), // 0.1 LINK
         gasLimit: BigNumber.from("2000000"),
-        fulfillmentFee: BigNumber.from("1000000"), // 1 LINK, 1e6
+        fulfillmentFee: BigNumber.from("1000000000000000000"), // 1 LINK
         feeType: FeeType.FLAT,
+        expectedDelta: BigNumber.from("1000000000000000"), // 0.001 LINK
         expectedAmount: BigNumber.from("18091712914594219838"), // 18 LINK
       },
     },
@@ -87,6 +88,7 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
         gasLimit: BigNumber.from("2000000"),
         fulfillmentFee: BigNumber.from("1225"), // 12.25%
         feeType: FeeType.PERMIRYAD,
+        expectedDelta: BigNumber.from("1000000000000000"), // 0.001 LINK
         expectedAmount: BigNumber.from("19185447746632011768"), // 19.18 LINK
       },
     },
@@ -108,7 +110,7 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
         );
 
       // Assert
-      expect(amount).to.equal(testData.expectedAmount);
+      expect(amount).to.be.closeTo(testData.expectedAmount, testData.expectedDelta);
     });
   }
 }
