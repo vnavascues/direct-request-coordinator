@@ -9,8 +9,16 @@ Chainlink Spring 22 hackaton
   - Discuss if the current pay-as-you-go model makes any sense at all beyond this PoC.
   - Discuss dynamic LINK prices would affect market.link UI/UX.
   - Discuss the pricing model, e.g. tiers, fee types, etc.
+  - Discuss how does it affect `directrequest` metrics in terms of LINK transferred from a consumer to an `Operator.sol`.
 
 - Engineering:
+
+  - Profile & benchmark a TOML invasive model:
+
+    1. Each Spec stores the `callbackFunctionSignature` (bytes4) or `callbackFunctionName`.
+    2. TOML jobspec always encodes as `(bytes32 requestId, bytes result)`.
+    3. DRCoordinator does not rely on `fallback` but a `fulfillRequest(bytes32 requestId, bytes calldata _data)`
+    4. The function above makes the final fulfillment encoding.
 
   - Add more testing, e.g. edge cases, run a fuzzer. Run a proper SC audit.
   - Consider integrating Keepers to TODO...
