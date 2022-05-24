@@ -129,6 +129,6 @@ describe.only("DRCoordinator", () => {
 
   describe("testCalculateMaxPaymentAmount()", () => testCalculateMaxPaymentAmount(signers, context));
   describe("testCalculateSpotPaymentAmount()", () => testCalculateSpotPaymentAmount(signers, context));
-  describe("testFallback()", () => testFallback(signers, context));
+  describe.only("testFallback()", () => testFallback(signers, context));
   describe("testGetFeedData()", () => testGetFeedData(signers, context));
 });

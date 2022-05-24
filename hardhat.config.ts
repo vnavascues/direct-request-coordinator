@@ -8,6 +8,7 @@ import "solidity-coverage";
 
 import "./tasks/accounts";
 import "./tasks/drcoordinator";
+import "./tasks/tools";
 import "./tasks/verify";
 
 import { resolve } from "path";

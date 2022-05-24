@@ -24,7 +24,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
 
     // Act & Assert
     await expect(context.drCoordinator.connect(signers.externalCaller).getFeedData()).to.be.revertedWith(
-      "DRCoordinator__FeedAnswerIsNotPositive()",
+      "DRCoordinator__FeedAnswerIsNotGtZero",
     );
   });
 

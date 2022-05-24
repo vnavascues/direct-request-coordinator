@@ -11,6 +11,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IExternalFulfillment } from "./IExternalFulfillment.sol";
 import { FeeType, Spec, SpecLibrary } from "./SpecLibrary.sol";
+import "hardhat/console.sol";
 
 // NB: enum placed outside due to Slither bug https://github.com/crytic/slither/issues/1166
 enum PaymentPreFeeType {
@@ -87,7 +88,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         bool success,
         address indexed callbackAddr,
         bytes4 callbackFunctionSignature,
-        bytes data
+        bytes data,
+        uint256 payment
     );
     event DRCoordinator__SetChainlinkExternalRequestFailed(
         address indexed callbackAddr,
@@ -126,13 +128,13 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     // solhint-disable-next-line no-complex-fallback, payable-fallback
     fallback() external whenNotPaused nonReentrant {
-        uint256 startGas = gasleft();
         // Validate requestId
         bytes4 callbackFunctionSignature = msg.sig; // bytes4(msg.data);
         bytes calldata data = msg.data;
         _requireFallbackMsgData(data);
         bytes32 requestId = abi.decode(data[4:], (bytes32));
         validateChainlinkCallback(requestId);
+
         // Retrieve FulfillConfig by request ID
         FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[requestId];
         // Fulfill just with the gas amount requested by the consumer
@@ -140,10 +142,11 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         (bool success, ) = fulfillConfig.callbackAddr.call{
             gas: fulfillConfig.gasLimit - s_gasAfterPaymentCalculation
         }(data);
+
         // Charge LINK payment
         uint256 payment = _calculatePaymentAmount(
             PaymentPreFeeType.SPOT,
-            startGas,
+            fulfillConfig.gasLimit,
             tx.gasprice,
             fulfillConfig.payment,
             0,
@@ -165,7 +168,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             success,
             fulfillConfig.callbackAddr,
             callbackFunctionSignature,
-            data
+            data,
+            payment
         );
     }
 
@@ -334,7 +338,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     function calculateSpotPaymentAmount(
-        uint256 _startGas,
+        uint48 _startGas,
         uint256 _weiPerUnitGas,
         uint96 _payment,
         uint96 _fulfillmentFee,
@@ -435,7 +439,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     function _calculatePaymentAmount(
         PaymentPreFeeType _paymentPreFeeType,
-        uint256 _startGas,
+        uint48 _startGas,
         uint256 _weiPerUnitGas,
         uint96 _payment,
         uint48 _gasLimit,

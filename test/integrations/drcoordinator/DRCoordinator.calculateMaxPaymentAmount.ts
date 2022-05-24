@@ -33,7 +33,7 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
     ).to.be.reverted;
   });
 
-  it("reverts if 'paymentNoFee' is zero", async function () {
+  it("reverts if 'paymentPreFee' is less or equal than 'payment'", async function () {
     // Arrange
     const weiPerUnitGas = BigNumber.from("0");
     const payment = BigNumber.from("0");
@@ -47,7 +47,7 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
       context.drCoordinator
         .connect(signers.externalCaller)
         .calculateMaxPaymentAmount(weiPerUnitGas, payment, gasLimit, fulfillmentFee, FeeType.FLAT),
-    ).to.be.revertedWith(`DRCoordinator__PaymentNoFeeIsZero()`);
+    ).to.be.revertedWith(`DRCoordinator__PaymentPreFeeIsLtePayment`);
   });
 
   it("reverts if 'amount' is greater than all LINK supply", async function () {
@@ -64,7 +64,7 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
       context.drCoordinator
         .connect(signers.externalCaller)
         .calculateMaxPaymentAmount(weiPerUnitGas, payment, gasLimit, fulfillmentFee, FeeType.FLAT),
-    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsTooLarge()`);
+    ).to.be.revertedWith(`DRCoordinator__PaymentAfterFeeIsGtLinkTotalSupply`);
   });
 
   const testCases = [

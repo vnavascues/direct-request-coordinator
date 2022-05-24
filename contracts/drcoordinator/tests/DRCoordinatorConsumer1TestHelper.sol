@@ -9,6 +9,10 @@ import { console } from "hardhat/console.sol";
 contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase {
     using Chainlink for Chainlink.Request;
 
+    error FulfillUint256Failed();
+    error LinkTransferFailed(address to, uint256 amount);
+
+    event FundsWithdrawn(address payee, uint256 amount);
     event RequestFulfilledUint256(bytes32 indexed requestId, uint256 result);
 
     constructor(address _link) {
@@ -22,11 +26,14 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
     }
 
     // Function signature: 0x7c1f72a0
-    function fulfillUint256(bytes32 _requestId, uint256 _result) external recordChainlinkFulfillment(_requestId) {
-        console.log("*** result start");
-        console.logUint(_result);
-        console.logUint(gasleft());
-        console.log("*** result end");
+    function fulfillUint256(
+        bytes32 _requestId,
+        uint256 _result,
+        bool _revert
+    ) external recordChainlinkFulfillment(_requestId) {
+        if (_revert) {
+            revert FulfillUint256Failed();
+        }
         emit RequestFulfilledUint256(_requestId, _result);
     }
 
@@ -49,5 +56,20 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
             req
         );
         _addChainlinkExternalRequest(_drCoordinator, requestId);
+    }
+
+    function withdraw(address payable _payee, uint256 _amount) external {
+        emit FundsWithdrawn(_payee, _amount);
+        _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
+    }
+
+    function _requireLinkTransfer(
+        bool _success,
+        address _to,
+        uint256 _amount
+    ) private pure {
+        if (!_success) {
+            revert LinkTransferFailed(_to, _amount);
+        }
     }
 }
