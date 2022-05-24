@@ -1,0 +1,7 @@
+{
+  "filter_paths": "@chainlink/contracts|@openzeppelin/contracts",
+  "hardhat_artifacts_directory": "./artifacts",
+  "hardhat_cache_directory": "./cache",
+  "detectors_to_exclude": "naming-convention,reentrancy-events",
+  "solc_remaps": "@chainlink/contracts=./node_modules/@chainlink/contracts @openzeppelin/contracts=./node_modules/@openzeppelin/contracts"
+}

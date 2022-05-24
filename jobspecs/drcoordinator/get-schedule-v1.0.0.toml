@@ -1,11 +1,12 @@
 type = "directrequest"
 schemaVersion = 1
+externalJobID = "235bbeca-65f3-44b7-ba8b-3af501e43622"
 requesters = [
-    "0x0000000000000000000000000000000000000000"
+    "0x7e70aBA8171e0bCf02AA40b5DAB64FF24b622C2a"
 ] # Replace with DRCoordinator.sol address (1 of 3)
-minContractPaymentLinkJuels = "20000000000000000" # 0.02 LINK
+minContractPaymentLinkJuels = "5000000000000000" # 0.005 LINK
 name = "Sportsdataio LinkPool Get Schedule v1.0.0 DRCoordinator"
-contractAddress = "0x0000000000000000000000000000000000000000" # Replace with Operator.sol address (2 of 3)
+contractAddress = "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00" # Replace with Operator.sol address (2 of 3)
 maxTaskDuration = "0s"
 observationSource = """
     decode_log          [type="ethabidecodelog"
@@ -31,7 +32,7 @@ observationSource = """
                          abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
                          data="{\\"requestId\\": $(decode_log.requestId),\\"payment\\": $(decode_log.payment),\\"callbackAddress\\": $(decode_log.callbackAddr),\\"callbackFunctionId\\": $(decode_log.callbackFunctionId),\\"expiration\\": $(decode_log.cancelExpiration),\\"data\\": $(encode_data)}"]
 
-    submit_tx           [type="ethtx" to="0x0000000000000000000000000000000000000000" data="$(encode_tx)" minConfirmations="$(decode_log.minConfirmations)" gasLimit="$(decode_log.gasLimit)"] // Replace with Operator.sol address (3 of 3)
+    submit_tx           [type="ethtx" to="0x878541888a928a31F9EAb4cB61DfD4e381EC2f00" data="$(encode_tx)" minConfirmations="$(decode_cbor.minConfirmations)" gasLimit="$(decode_cbor.gasLimit)"] // Replace with Operator.sol address (3 of 3)
 
     decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_tx -> submit_tx
 """

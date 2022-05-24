@@ -1,21 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-// TODO: optimise
 enum FeeType {
     FLAT,
     PERMIRYAD
 }
 
-/**
- * from: 1 or more -> array?
- * to: this contract, requester, or fulfillment won't work
- * data: ok
- * gasLimit: ok
- * txMeta: can't pass
- * minConfirmations: ok, 2 o 3
- * evmChainID: ? I don't think multichain works with directrequest/operator.sol, discarded
- */
 struct Spec {
     bytes32 specId; // 32 bytes
     address oracle; // 20 bytes
@@ -30,7 +20,7 @@ error SpecLibrary__SpecIsNotInserted(bytes32 key);
 
 library SpecLibrary {
     struct Map {
-        bytes32[] keys; // TODO: hash(oracle,specId)
+        bytes32[] keys; // key = keccak256(abi.encodePacked(oracle, specId))
         mapping(bytes32 => Spec) keyToSpec;
         mapping(bytes32 => uint256) indexOf;
         mapping(bytes32 => bool) inserted;

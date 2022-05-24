@@ -11,31 +11,18 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IExternalFulfillment } from "./IExternalFulfillment.sol";
 import { FeeType, Spec, SpecLibrary } from "./SpecLibrary.sol";
-import { console } from "hardhat/console.sol";
 
-/**
- * Justify a Spec per (oracle, specId): same specId on different nodes/networks w/wo different payment and/or gas limits
- *
- * https://etherscan.io/address/0x271682DEB8C4E0901D1a1550aD2e64D568E69909#readContract
- */
+// NB: enum placed outside due to Slither bug https://github.com/crytic/slither/issues/1166
+enum PaymentPreFeeType {
+    MAX,
+    SPOT
+}
+
 contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, ReentrancyGuard, ChainlinkClient {
     using Address for address;
     using Chainlink for Chainlink.Request;
     using SpecLibrary for SpecLibrary.Map;
 
-    enum PaymentNoFeeType {
-        MAX,
-        SPOT
-    }
-    /**
-     * from: 1 or more -> array?
-     * to: this contract, requester, or fulfillment won't work
-     * data: ok
-     * gasLimit: ok
-     * txMeta: can't pass
-     * minConfirmations: ok
-     * evmChainID: ? I don't think multichain works with directrequest/operator.sol, discarded
-     */
     struct FulfillConfig {
         address msgSender; // 20 bytes
         uint96 payment; // 12 bytes
@@ -46,69 +33,70 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         FeeType feeType; // 1 byte
     }
     bytes32 private constant NO_SPEC_KEY = bytes32(0); // 32 bytes
-
     uint96 private constant LINK_TOTAL_SUPPLY = 1e27; // 12 bytes
-    address public immutable FLAG_SEQUENCER_OFFLINE; // 20 bytes
-
     uint8 private constant MIN_FALLBACK_MSG_DATA_LENGTH = 36; // 1 byte
-    uint16 public constant MAX_REQUEST_CONFIRMATIONS = 200; // 2 bytes
+    uint8 public constant MAX_REQUEST_CONFIRMATIONS = 200; // 1 byte
     bool public immutable IS_SEQUENCER_DEPENDANT; // 1 byte
+    address public immutable FLAG_SEQUENCER_OFFLINE; // 20 bytes
     FlagsInterface public immutable CHAINLINK_FLAGS; // 20 bytes
-
     LinkTokenInterface public immutable LINK; // 20 bytes
     AggregatorV3Interface public immutable LINK_TKN_FEED; // 20 bytes
-
     bytes20 private s_sha1; // 20 bytes
     uint48 private s_gasAfterPaymentCalculation; // 6 bytes
-
     uint256 private s_stalenessSeconds; // 32 bytes (or uint32 - 4 bytes)
-
     uint256 private s_fallbackWeiPerUnitLink; // 32 bytes
     string private s_description;
     mapping(bytes32 => FulfillConfig) private s_requestIdToFulfillConfig; /* requestId */ /* FulfillConfig */
-    SpecLibrary.Map private s_keyToSpec; /* keccack256(oracle,specId) */ /* Spec */
+    SpecLibrary.Map private s_keyToSpec; /* keccak256(abi.encodePacked(oracle, specId)) */ /* Spec */
 
     error DRCoordinator__ArraysLengthIsNotEqual();
     error DRCoordinator__CallbackAddrIsDRCoordinator();
     error DRCoordinator__CallbackAddrIsNotAContract();
     error DRCoordinator__FallbackMsgDataIsInvalid();
-    error DRCoordinator__FeedAnswerIsNotPositive();
+    error DRCoordinator__FeedAnswerIsNotGtZero(int256 answer);
     error DRCoordinator__FeeTypeIsUnsupported(FeeType feeType);
-    error DRCoordinator__GasLimitIsGreaterThanSpecGasLimit(uint256 gasLimit, uint256 specGasLimit);
+    error DRCoordinator__GasLimitIsGtSpecGasLimit(uint48 gasLimit, uint48 specGasLimit);
     error DRCoordinator__GasLimitIsZero();
-    error DRCoordinator__FulfillmentFeeIsGreaterThanLinkTotalSupply();
+    error DRCoordinator__FulfillmentFeeIsGtLinkTotalSupply();
     error DRCoordinator__FulfillmentFeeIsZero();
     error DRCoordinator__LinkAllowanceIsInsufficient(uint256 allowance, uint256 payment);
     error DRCoordinator__LinkBalanceIsInsufficient(uint256 balance, uint256 payment);
-    error DRCoordinator__LinkPaymentIsTooLarge();
     error DRCoordinator__LinkTransferFailed(address to, uint256 payment);
     error DRCoordinator__LinkTransferFromFailed(address from, address to, uint256 payment);
     error DRCoordinator__LinkWeiPriceIsZero();
-    error DRCoordinator__MinConfirmationsIsGreaterThanMaxRequesetConfirmations();
-    error DRCoordinator__MinConfirmationsIsGreaterThanSpecMinConfirmations(
-        uint256 minConfirmations,
-        uint256 specMinConfirmations
+    error DRCoordinator__MinConfirmationsIsGtMaxRequesetConfirmations(
+        uint8 minConfirmations,
+        uint8 maxRequestConfirmations
     );
+    error DRCoordinator__MinConfirmationsIsGtSpecMinConfirmations(uint8 minConfirmations, uint8 specMinConfirmations);
     error DRCoordinator__OracleIsNotAContract();
-    error DRCoordinator__PaymentIsGreaterThanLinkTotalSupply();
+    error DRCoordinator__PaymentAfterFeeIsGtLinkTotalSupply(uint256 paymentAfterFee);
+    error DRCoordinator__PaymentIsGtLinkTotalSupply();
     error DRCoordinator__PaymentIsZero();
-    error DRCoordinator__PaymentNoFeeIsZero();
-    error DRCoordinator__PaymentNoFeeTypeUnsupported(PaymentNoFeeType paymentNoFeeType);
+    error DRCoordinator__PaymentPreFeeIsLtePayment(uint256 paymentPreFee, uint96 payment);
+    error DRCoordinator__PaymentPreFeeTypeUnsupported(PaymentPreFeeType paymentPreFeeType);
     error DRCoordinator__SpecIsNotInserted(bytes32 key);
     error DRCoordinator__SpecIdIsZero();
     error DRCoordinator__SpecKeysArraysIsEmpty();
 
-    event FundsWithdrawn(address payee, uint256 amount);
-    event RequestFulfilled(
+    event DRCoordinator__FallbackWeiPerUnitLinkSet(uint256 fallbackWeiPerUnitLink);
+    event DRCoordinator__FundsWithdrawn(address payee, uint256 amount);
+    event DRCoordinator__GasAfterPaymentCalculationSet(uint48 gasAfterPaymentCalculation);
+    event DRCoordinator__RequestFulfilled(
         bytes32 indexed requestId,
         bool success,
         address indexed callbackAddr,
         bytes4 callbackFunctionSignature,
         bytes data
     );
-    event SetChainlinkExternalRequestFailed(address indexed callbackAddr, bytes32 indexed requestId, bytes32 key);
-    event SpecRemoved(bytes32 indexed key);
-    event SpecSet(bytes32 indexed key, Spec spec);
+    event DRCoordinator__SetChainlinkExternalRequestFailed(
+        address indexed callbackAddr,
+        bytes32 indexed requestId,
+        bytes32 key
+    );
+    event DRCoordinator__SpecRemoved(bytes32 indexed key);
+    event DRCoordinator__SpecSet(bytes32 indexed key, Spec spec);
+    event DRCoordinator__StalenessSecondsSet(uint256 stalenessSeconds);
 
     constructor(
         address _link,
@@ -145,18 +133,17 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         _requireFallbackMsgData(data);
         bytes32 requestId = abi.decode(data[4:], (bytes32));
         validateChainlinkCallback(requestId);
-        // Retrieve FulfillConfig
+        // Retrieve FulfillConfig by request ID
         FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[requestId];
         // Fulfill just with the gas amount requested by the consumer
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = fulfillConfig.callbackAddr.call{
             gas: fulfillConfig.gasLimit - s_gasAfterPaymentCalculation
         }(data);
-        // Make payment
+        // Charge LINK payment
         uint256 payment = _calculatePaymentAmount(
-            PaymentNoFeeType.SPOT,
+            PaymentPreFeeType.SPOT,
             startGas,
-            s_gasAfterPaymentCalculation,
             tx.gasprice,
             fulfillConfig.payment,
             0,
@@ -172,8 +159,14 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             address(this),
             payment
         );
-        emit RequestFulfilled(requestId, success, fulfillConfig.callbackAddr, callbackFunctionSignature, data);
         delete s_requestIdToFulfillConfig[requestId];
+        emit DRCoordinator__RequestFulfilled(
+            requestId,
+            success,
+            fulfillConfig.callbackAddr,
+            callbackFunctionSignature,
+            data
+        );
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
@@ -194,17 +187,15 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         _requireOracle(_oracle);
         _requireSpecId(_specId);
         _requireCallbackAddr(_callbackAddr);
-
         bytes32 key = _generateSpecKey(_oracle, _specId);
         _requireSpecIsInserted(key, s_keyToSpec.isInserted(key));
-        // Check LINK funds (based on max gas limit)
         Spec memory spec = s_keyToSpec.getSpec(key);
-        _requireMinConfirmations(spec.minConfirmations, _callbackMinConfirmations);
-        _requireGasLimit(spec.gasLimit, _callbackGasLimit);
+        _requireMinConfirmations(_callbackMinConfirmations, spec.minConfirmations);
+        _requireGasLimit(_callbackGasLimit, spec.gasLimit);
 
+        // Check whether caller has enough LINK funds (payment amount calculated using all the _callbackGasLimit)
         uint256 maxPayment = _calculatePaymentAmount(
-            PaymentNoFeeType.MAX,
-            0,
+            PaymentPreFeeType.MAX,
             0,
             tx.gasprice,
             spec.payment,
@@ -221,36 +212,31 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             spec.payment
         );
 
-        // Extend Chainlink Request
+        // Extend the Chainlink.Request with the TOML jobspec dynamic params
         uint48 gasLimit = _callbackGasLimit + s_gasAfterPaymentCalculation;
+        _req.addUint("gasLimit", uint256(gasLimit));
         _req.addUint("minConfirmations", uint256(spec.minConfirmations));
-        _req.addUint("gasLimit", gasLimit);
 
-        // Send Operator request
-        console.log("*** DRCoordiantor - before request");
-        console.logUint(spec.payment);
+        // Send an Operator request
         bytes32 requestId = sendOperatorRequestTo(_oracle, _req, uint256(spec.payment));
-        console.log("*** DRCoordiantor - after  request");
-        console.logBytes32(requestId);
-        // Store fulfill config by request ID
+
+        // Store the fulfillment configuration by request ID
         FulfillConfig memory fulfillConfig;
         fulfillConfig.msgSender = msg.sender;
-        fulfillConfig.callbackAddr = _callbackAddr;
         fulfillConfig.payment = spec.payment;
+        fulfillConfig.callbackAddr = _callbackAddr;
+        fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
         fulfillConfig.minConfirmations = _callbackMinConfirmations;
         fulfillConfig.gasLimit = gasLimit;
-        fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
         fulfillConfig.feeType = spec.feeType;
         s_requestIdToFulfillConfig[requestId] = fulfillConfig;
-        console.log("*** DRCoordiantor - set requestIdToFulfillConfig");
+        // In case of "external request" (i.e. requester !== callbackAddr) notify the fulfillment contract about the
+        // pending request
         if (_callbackAddr != msg.sender) {
-            console.log("*** DRCoordiantor - is not callbackAddr");
-            // Set a new pending request on the callbackAddr (fulfillment contract)
             IExternalFulfillment fulfillmentContract = IExternalFulfillment(_callbackAddr);
             // solhint-disable-next-line no-empty-blocks
             try fulfillmentContract.setChainlinkExternalRequest(address(this), requestId) {} catch {
-                // NB: revert could be the alternative
-                emit SetChainlinkExternalRequestFailed(_callbackAddr, requestId, key);
+                emit DRCoordinator__SetChainlinkExternalRequestFailed(_callbackAddr, requestId, key);
             }
         }
         return requestId;
@@ -280,10 +266,12 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     function setFallbackWeiPerUnitLink(uint256 _fallbackWeiPerUnitLink) external onlyOwner {
         _requireLinkWeiPrice(_fallbackWeiPerUnitLink);
         s_fallbackWeiPerUnitLink = _fallbackWeiPerUnitLink;
+        emit DRCoordinator__FallbackWeiPerUnitLinkSet(_fallbackWeiPerUnitLink);
     }
 
     function setGasAfterPaymentCalculation(uint48 _gasAfterPaymentCalculation) external onlyOwner {
         s_gasAfterPaymentCalculation = _gasAfterPaymentCalculation;
+        emit DRCoordinator__GasAfterPaymentCalculationSet(_gasAfterPaymentCalculation);
     }
 
     function setSha1(bytes20 _sha1) external onlyOwner whenNotPaused {
@@ -308,6 +296,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     function setStalenessSeconds(uint256 _stalenessSeconds) external onlyOwner {
         s_stalenessSeconds = _stalenessSeconds;
+        emit DRCoordinator__StalenessSecondsSet(_stalenessSeconds);
     }
 
     function unpause() external onlyOwner {
@@ -315,7 +304,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     function withdraw(address payable _payee, uint256 _amount) external onlyOwner {
-        emit FundsWithdrawn(_payee, _amount);
+        emit DRCoordinator__FundsWithdrawn(_payee, _amount);
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }
 
@@ -332,11 +321,9 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         uint96 _fulfillmentFee,
         FeeType _feeType
     ) external view returns (uint256) {
-        // TODO: if purpose is simulation, discount fallback gas
         return
             _calculatePaymentAmount(
-                PaymentNoFeeType.MAX,
-                0,
+                PaymentPreFeeType.MAX,
                 0,
                 _weiPerUnitGas,
                 _payment,
@@ -348,18 +335,15 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     function calculateSpotPaymentAmount(
         uint256 _startGas,
-        uint48 _gasAfterPaymentCalculation,
         uint256 _weiPerUnitGas,
         uint96 _payment,
         uint96 _fulfillmentFee,
         FeeType _feeType
     ) external view returns (uint256) {
-        // TODO: if purpose is simulation, discount fallback gas
         return
             _calculatePaymentAmount(
-                PaymentNoFeeType.SPOT,
+                PaymentPreFeeType.SPOT,
                 _startGas,
-                _gasAfterPaymentCalculation,
                 _weiPerUnitGas,
                 _payment,
                 0,
@@ -393,6 +377,10 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         return s_gasAfterPaymentCalculation;
     }
 
+    function getNumberOfSpecs() external view returns (uint256) {
+        return s_keyToSpec.size();
+    }
+
     function getSha1() external view returns (bytes20) {
         return s_sha1;
     }
@@ -400,6 +388,10 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     function getSpec(bytes32 _key) external view returns (Spec memory) {
         _requireSpecIsInserted(_key, s_keyToSpec.isInserted(_key));
         return s_keyToSpec.getSpec(_key);
+    }
+
+    function getSpecKeyAtIndex(uint256 _index) external view returns (bytes32) {
+        return s_keyToSpec.getKeyAtIndex(_index);
     }
 
     function getSpecMapKeys() external view returns (bytes32[] memory) {
@@ -421,7 +413,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     function _removeSpec(bytes32 _key) private {
         _requireSpecIsInserted(_key, s_keyToSpec.isInserted(_key));
         s_keyToSpec.remove(_key);
-        emit SpecRemoved(_key);
+        emit DRCoordinator__SpecRemoved(_key);
     }
 
     function _setSpec(bytes32 _key, Spec calldata _spec) private {
@@ -432,7 +424,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         _requireSpecGasLimit(_spec.gasLimit);
         _requireSpecFulfillmentFee(_spec.fulfillmentFee);
         s_keyToSpec.set(_key, _spec);
-        emit SpecSet(_key, _spec);
+        emit DRCoordinator__SpecSet(_key, _spec);
     }
 
     /* ========== PRIVATE VIEW FUNCTIONS ========== */
@@ -442,48 +434,48 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     function _calculatePaymentAmount(
-        PaymentNoFeeType _paymentNoFeeType,
+        PaymentPreFeeType _paymentPreFeeType,
         uint256 _startGas,
-        uint48 _gasAfterPaymentCalculation,
         uint256 _weiPerUnitGas,
         uint96 _payment,
         uint48 _gasLimit,
         uint96 _fulfillmentFee,
         FeeType _feeType
     ) private view returns (uint256) {
+        // NB: parameters accept 0 to allow estimation calls
         uint256 weiPerUnitLink = _getFeedData();
-        // (1e18 juels/link) (wei/gas * gas) / (wei/link) = juels
-        uint256 paymentNoFee;
-        if (_paymentNoFeeType == PaymentNoFeeType.MAX) {
-            paymentNoFee = (1e18 * _weiPerUnitGas * _gasLimit) / weiPerUnitLink;
-        } else if (_paymentNoFeeType == PaymentNoFeeType.SPOT) {
-            paymentNoFee =
-                (1e18 * _weiPerUnitGas * (_gasAfterPaymentCalculation + _startGas - gasleft())) /
+        uint256 paymentPreFee = 0;
+        if (_paymentPreFeeType == PaymentPreFeeType.MAX) {
+            paymentPreFee = (1e18 * _weiPerUnitGas * _gasLimit) / weiPerUnitLink;
+        } else if (_paymentPreFeeType == PaymentPreFeeType.SPOT) {
+            paymentPreFee =
+                (1e18 * _weiPerUnitGas * (s_gasAfterPaymentCalculation + _startGas - gasleft())) /
                 weiPerUnitLink;
         } else {
-            revert DRCoordinator__PaymentNoFeeTypeUnsupported(_paymentNoFeeType);
+            revert DRCoordinator__PaymentPreFeeTypeUnsupported(_paymentPreFeeType);
         }
-        paymentNoFee = paymentNoFee - _payment;
-        if (paymentNoFee == 0) {
-            revert DRCoordinator__PaymentNoFeeIsZero();
+        if (paymentPreFee <= _payment) {
+            // NB: adjust the spec.payment if paymentPreFee - spec.payment <= 0 LINK
+            revert DRCoordinator__PaymentPreFeeIsLtePayment(paymentPreFee, _payment);
         }
-        uint256 amount;
+        paymentPreFee = paymentPreFee - _payment;
+        uint256 paymentAfterFee = 0;
         if (_feeType == FeeType.FLAT) {
-            amount = paymentNoFee + _fulfillmentFee;
+            paymentAfterFee = paymentPreFee + _fulfillmentFee;
         } else if (_feeType == FeeType.PERMIRYAD) {
-            amount = paymentNoFee + (paymentNoFee * _fulfillmentFee) / 1e4;
+            paymentAfterFee = paymentPreFee + (paymentPreFee * _fulfillmentFee) / 1e4;
         } else {
             revert DRCoordinator__FeeTypeIsUnsupported(_feeType);
         }
-        if (amount > 1e27) {
-            // Calculated amount cannot be more than all of the link in existence.
-            revert DRCoordinator__LinkPaymentIsTooLarge();
+        if (paymentAfterFee > LINK_TOTAL_SUPPLY) {
+            // Amount can't be > LINK total supply
+            revert DRCoordinator__PaymentAfterFeeIsGtLinkTotalSupply(paymentAfterFee);
         }
-        return amount;
+        return paymentAfterFee;
     }
 
-    // TODO: currently only supports LINK_TKN feeds (1 hop). Enable a mode that supports TKN_USD to USD_LINK (2 hops)
-    // on networks that do not have a LINK_TKN feed yet.
+    // TODO: it currently calculates the 'weiPerUnitLink' via a single feed (LINK / TKN). Add a 2-hops feed support
+    // (LINK / USD + TKN / USD, 2 hops) on networks that don't have yet a LINK / TKN feed, e.g. Moonbeam, Harmony
     function _getFeedData() private view returns (uint256) {
         if (IS_SEQUENCER_DEPENDANT && CHAINLINK_FLAGS.getFlag(FLAG_SEQUENCER_OFFLINE)) {
             return s_fallbackWeiPerUnitLink;
@@ -493,8 +485,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         int256 answer;
         uint256 weiPerUnitLink;
         (, answer, , timestamp, ) = LINK_TKN_FEED.latestRoundData();
-        if (answer <= 0) {
-            revert DRCoordinator__FeedAnswerIsNotPositive();
+        if (answer < 1) {
+            revert DRCoordinator__FeedAnswerIsNotGtZero(answer);
         }
         // solhint-disable-next-line not-rely-on-time
         if (stalenessSeconds > 0 && stalenessSeconds < block.timestamp - timestamp) {
@@ -523,6 +515,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     /* ========== PRIVATE PURE FUNCTIONS ========== */
 
     function _generateSpecKey(address _oracle, bytes32 _specId) private pure returns (bytes32) {
+        // (oracle, specId) composite key allows storing N specs with the same externalJobID but different Operator.sol
         return keccak256(abi.encodePacked(_oracle, _specId));
     }
 
@@ -538,18 +531,9 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         }
     }
 
-    function _requireFulfillmentFee(uint256 _fulfillmentFee) private pure {
-        if (_fulfillmentFee == 0) {
-            revert DRCoordinator__FulfillmentFeeIsZero();
-        }
-        if (_fulfillmentFee > LINK_TOTAL_SUPPLY) {
-            revert DRCoordinator__FulfillmentFeeIsGreaterThanLinkTotalSupply();
-        }
-    }
-
-    function _requireGasLimit(uint256 _specGasLimit, uint256 _gasLimit) private pure {
+    function _requireGasLimit(uint48 _gasLimit, uint48 _specGasLimit) private pure {
         if (_gasLimit > _specGasLimit) {
-            revert DRCoordinator__GasLimitIsGreaterThanSpecGasLimit(_gasLimit, _specGasLimit);
+            revert DRCoordinator__GasLimitIsGtSpecGasLimit(_gasLimit, _specGasLimit);
         }
         _requireSpecGasLimit(_gasLimit);
     }
@@ -593,32 +577,32 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         }
     }
 
-    function _requireMinConfirmations(uint256 _specMinConfirmations, uint256 _minConfirmations) private pure {
+    function _requireMinConfirmations(uint8 _minConfirmations, uint8 _specMinConfirmations) private pure {
         if (_minConfirmations > _specMinConfirmations) {
-            revert DRCoordinator__MinConfirmationsIsGreaterThanSpecMinConfirmations(
-                _minConfirmations,
-                _specMinConfirmations
-            );
+            revert DRCoordinator__MinConfirmationsIsGtSpecMinConfirmations(_minConfirmations, _specMinConfirmations);
         }
         _requireSpecMinConfirmations(_minConfirmations);
     }
 
-    function _requireSpecMinConfirmations(uint256 _minConfirmations) private pure {
+    function _requireSpecMinConfirmations(uint8 _minConfirmations) private pure {
         if (_minConfirmations > MAX_REQUEST_CONFIRMATIONS) {
-            revert DRCoordinator__MinConfirmationsIsGreaterThanMaxRequesetConfirmations();
+            revert DRCoordinator__MinConfirmationsIsGtMaxRequesetConfirmations(
+                _minConfirmations,
+                MAX_REQUEST_CONFIRMATIONS
+            );
         }
     }
 
-    function _requireSpecFulfillmentFee(uint256 _fulfillmentFee) private pure {
+    function _requireSpecFulfillmentFee(uint96 _fulfillmentFee) private pure {
         if (_fulfillmentFee == 0) {
             revert DRCoordinator__FulfillmentFeeIsZero();
         }
         if (_fulfillmentFee > LINK_TOTAL_SUPPLY) {
-            revert DRCoordinator__FulfillmentFeeIsGreaterThanLinkTotalSupply();
+            revert DRCoordinator__FulfillmentFeeIsGtLinkTotalSupply();
         }
     }
 
-    function _requireSpecGasLimit(uint256 _gasLimit) private pure {
+    function _requireSpecGasLimit(uint48 _gasLimit) private pure {
         if (_gasLimit == 0) {
             revert DRCoordinator__GasLimitIsZero();
         }
@@ -647,7 +631,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             revert DRCoordinator__PaymentIsZero();
         }
         if (_payment > LINK_TOTAL_SUPPLY) {
-            revert DRCoordinator__PaymentIsGreaterThanLinkTotalSupply();
+            revert DRCoordinator__PaymentIsGtLinkTotalSupply();
         }
     }
 }

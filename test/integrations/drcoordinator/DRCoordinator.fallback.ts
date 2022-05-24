@@ -168,7 +168,7 @@ export function testFallback(signers: Signers, context: Context): void {
     // 2. Set LINK_TKN_FEED last answer
     await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
     // 3. Take care on consumer LINK balance
-    const weiPerUnitGas = BigNumber.from("2500000000");
+    const weiPerUnitGas = BigNumber.from("1000000000");
     const maxPaymentAmount = await context.drCoordinator
       .connect(signers.externalCaller)
       .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
@@ -191,10 +191,15 @@ export function testFallback(signers: Signers, context: Context): void {
         BigNumber.from("0"),
         BigNumber.from("1"),
         BigNumber.from("1653742133"),
+        {
+          gasPrice: weiPerUnitGas,
+        },
       );
     const filterOracleRequest = context.operator.filters.OracleRequest();
     const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
     const { requestId, cancelExpiration } = eventOracleRequest.args;
+    console.log("*** requestId", requestId);
+    console.log("*** cancelExpiration", cancelExpiration);
 
     // Assert
     // const callbackFunctionSignature = "0x7c1f72a0";
