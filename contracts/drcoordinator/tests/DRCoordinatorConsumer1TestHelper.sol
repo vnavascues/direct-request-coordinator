@@ -15,6 +15,7 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
     error LinkTransferFailed(address to, uint256 amount);
 
     event FundsWithdrawn(address payee, uint256 amount);
+    event RequestFulfilledNothing(bytes32 indexed requestId, bytes result);
     event RequestFulfilledUint256(bytes32 indexed requestId, uint256 result);
 
     constructor(address _link) {
@@ -27,19 +28,58 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
         LINK.approve(_drCoordinator, _amount);
     }
 
+    // Function signature: 0xf43c62ab
+    function fulfillNothing(bytes32 _requestId, bytes calldata _result)
+        external
+        recordChainlinkFulfillment(_requestId)
+    // solhint-disable-next-line no-empty-blocks
+    {
+        emit RequestFulfilledNothing(_requestId, _result);
+    }
+
     // Function signature: 0x7c1f72a0
     function fulfillUint256(
         bytes32 _requestId,
         uint256 _result,
         bool _revert
     ) external recordChainlinkFulfillment(_requestId) {
-        console.log("*** boom");
-        console.logUint(_result);
-        console.logBool(_revert);
         if (_revert) {
             revert FulfillUint256Failed();
         }
         emit RequestFulfilledUint256(_requestId, _result);
+    }
+
+    function requestNothing(
+        address _drCoordinator,
+        address _oracle,
+        bytes32 _specId,
+        uint48 _callbackGasLimit,
+        uint8 _callbackMinConfirmations,
+        FulfillMode _fulfillMode
+    ) external {
+        Chainlink.Request memory req;
+        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
+        req.initialize(_specId, address(this), this.fulfillNothing.selector);
+
+        bytes32 requestId;
+        if (_fulfillMode == FulfillMode.FALLBACK) {
+            requestId = IDRCoordinator(_drCoordinator).requestDataViaFallback(
+                _oracle,
+                _callbackGasLimit,
+                _callbackMinConfirmations,
+                req
+            );
+        } else if (_fulfillMode == FulfillMode.FULFILL_DATA) {
+            requestId = IDRCoordinator(_drCoordinator).requestDataViaFulfillData(
+                _oracle,
+                _callbackGasLimit,
+                _callbackMinConfirmations,
+                req
+            );
+        } else {
+            revert FulfillModeUnsupported(_fulfillMode);
+        }
+        _addChainlinkExternalRequest(_drCoordinator, requestId);
     }
 
     function requestUint256(

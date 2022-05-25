@@ -42,6 +42,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
     bytes32 private constant NO_SPEC_KEY = bytes32(0); // 32 bytes
     uint96 private constant LINK_TOTAL_SUPPLY = 1e27; // 12 bytes
+    uint48 private constant MIN_CONSUMER_GAS_LIMIT = 400_000; // 6 bytes, from Operator.sol MINIMUM_CONSUMER_GAS_LIMIT
     uint8 private constant MIN_FALLBACK_MSG_DATA_LENGTH = 36; // 1 byte
     uint8 public constant MAX_REQUEST_CONFIRMATIONS = 200; // 1 byte
     bool public immutable IS_SEQUENCER_DEPENDANT; // 1 byte
@@ -64,7 +65,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     error DRCoordinator__FeedAnswerIsNotGtZero(int256 answer);
     error DRCoordinator__FeeTypeIsUnsupported(FeeType feeType);
     error DRCoordinator__GasLimitIsGtSpecGasLimit(uint48 gasLimit, uint48 specGasLimit);
-    error DRCoordinator__GasLimitIsZero();
+    error DRCoordinator__GasLimitIsLtMinConsumerGasLimit(uint48 gasLimit, uint48 minConsumerGasLimit);
     error DRCoordinator__FulfillmentFeeIsGtLinkTotalSupply();
     error DRCoordinator__FulfillmentFeeIsZero();
     error DRCoordinator__FulfillModeUnsupported(FulfillMode fulfillmode);
@@ -668,8 +669,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     function _requireSpecGasLimit(uint48 _gasLimit) private pure {
-        if (_gasLimit == 0) {
-            revert DRCoordinator__GasLimitIsZero();
+        if (_gasLimit < MIN_CONSUMER_GAS_LIMIT) {
+            revert DRCoordinator__GasLimitIsLtMinConsumerGasLimit(_gasLimit, MIN_CONSUMER_GAS_LIMIT);
         }
     }
 

@@ -11,6 +11,7 @@ import {
   FeeType,
   MAX_PERMIRYAD_FULFILLMENT_FEE,
   MAX_REQUEST_CONFIRMATIONS,
+  MIN_CONSUMER_GAS_LIMIT,
   TaskExecutionMode,
   TaskName,
 } from "./constants";
@@ -790,7 +791,7 @@ export function validateConfigurationFulfillmentFee(fulfillmentFee: string, feeT
     BigNumber.from(fulfillmentFee).gt(LINK_TOTAL_SUPPLY)
   ) {
     throw new Error(
-      `Invalid 'fulfillmentFee': ${fulfillmentFee}. Expected an integer (as string) 0 < fulfillmentFee <= LINK totalSupply`,
+      `Invalid 'fulfillmentFee': ${fulfillmentFee}. Expected an integer (as string) 0 < fulfillmentFee <= 1e27 (LINK total supply)`,
     );
   }
 
@@ -807,8 +808,8 @@ export function validateConfigurationFulfillmentFee(fulfillmentFee: string, feeT
 }
 
 export function validateConfigurationGasLimit(gasLimit: number): void {
-  if (typeof gasLimit !== "number" || !Number.isInteger(gasLimit) || gasLimit < 0) {
-    throw new Error(`Invalid 'gasLimit': ${gasLimit}. Expected an integer 0 <= gasLimit`);
+  if (typeof gasLimit !== "number" || !Number.isInteger(gasLimit) || gasLimit < MIN_CONSUMER_GAS_LIMIT) {
+    throw new Error(`Invalid 'gasLimit': ${gasLimit}. Expected an integer gasLimit >= ${MIN_CONSUMER_GAS_LIMIT}`);
   }
 }
 
@@ -844,7 +845,9 @@ export function validateConfigurationPayment(payment: string): void {
     BigNumber.from(payment).lte("0") ||
     BigNumber.from(payment).gt(LINK_TOTAL_SUPPLY)
   ) {
-    throw new Error(`Invalid 'payment': ${payment}. Expected an integer (as string) 0 < payment <= LINK totalSupply`);
+    throw new Error(
+      `Invalid 'payment': ${payment}. Expected an integer (as string) 0 < payment <= 1e27 (LINK total supply)`,
+    );
   }
 }
 

@@ -1,4 +1,3 @@
-import type { ContractTransaction } from "@ethersproject/contracts";
 import { BigNumber } from "ethers";
 import { task, types } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";
@@ -36,11 +35,13 @@ import {
 import type { Spec } from "./types";
 import { BetterSet } from "../../libs/better-set";
 import {
+  approve as approveLink,
   chainIdFlags,
   chainIdSequencerOfflineFlag,
   convertJobIdToBytes32,
   getNetworkLinkAddress,
   getNetworkLinkTknFeedAddress,
+  transfer as transferLink,
   validateLinkAddressFunds,
 } from "../../utils/chainlink";
 import { LinkToken } from "../../src/types";
@@ -426,7 +427,14 @@ task("drcoordinator:withdraw", "Withdraw LINK in the contract")
 task("drcoordinator:deploy-consumer")
   .addParam("name", "The consumer contract name", undefined, types.string)
   // Configuration after deployment
-  .addOptionalParam("funds", "The amount of LINK (wei) to fund the contract on deployment", undefined, typeBignumber)
+  .addFlag("fund", "Tops-up the consumer contract with LINK from the signer's wallet")
+  .addOptionalParam(
+    "amount",
+    "The amount of LINK (wei) to fund the contract after deployment",
+    undefined,
+    typeBignumber,
+  )
+  .addOptionalParam("approveTo", "Approves the amount to the specific address", undefined, typeAddress)
   // Verification
   .addFlag("verify", "Verify the contract on Etherscan after deployment")
   // Gas customisation
@@ -449,9 +457,11 @@ task("drcoordinator:deploy-consumer")
     const addressLink = getNetworkLinkAddress(hre.network);
 
     // Custom validations
-    const funds = taskArguments.funds as BigNumber;
-    if (funds) {
-      await validateLinkAddressFunds(hre, signer.address, addressLink, funds);
+    if (taskArguments.fund) {
+      if (!taskArguments.amount) {
+        throw new Error(`Flag 'fund' requires task argument 'amount' (and optionally 'approve')`);
+      }
+      await validateLinkAddressFunds(hre, signer.address, addressLink, taskArguments.amount as BigNumber);
     }
 
     // Deploy
@@ -461,21 +471,19 @@ task("drcoordinator:deploy-consumer")
     await consumer.deployTransaction.wait(getNumberOfConfirmations(hre.network.config.chainId));
 
     // Fund Consumer with LINK
-    if (funds) {
+    if (taskArguments.fund) {
       const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
       const linkToken = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLink)) as LinkToken;
-      const logObjTransfer = {
-        to: consumer.address,
-        value: funds.toString(),
-      };
-      let tx: ContractTransaction;
-      try {
-        tx = await linkToken.transfer(consumer.address, funds, overrides);
-        logger.info(logObjTransfer, `transfer() LINK | Tx hash: ${tx.hash}`);
-        await tx.wait();
-      } catch (error) {
-        logger.child(logObjTransfer).error(error, `transfer() failed due to: ${error}`);
-        throw error;
+      await transferLink(linkToken, signer, consumer.address as string, taskArguments.amount as BigNumber, overrides);
+      // Approve amount
+      if (taskArguments.approveTo) {
+        await approveLink(
+          linkToken,
+          signer,
+          taskArguments.approveTo as string,
+          taskArguments.amount as BigNumber,
+          overrides,
+        );
       }
     }
     if (!taskArguments.verify) return;

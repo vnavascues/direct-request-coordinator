@@ -270,7 +270,7 @@ export function testFallback(signers: Signers, context: Context): void {
     const result = BigNumber.from("777");
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, true]);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const expectedPayment = BigNumber.from("72080453676643718");
+    const expectedPayment = BigNumber.from("69031181046623284");
     const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
       context.drCoordinatorConsumer1TH.address,
@@ -346,7 +346,7 @@ export function testFallback(signers: Signers, context: Context): void {
     const result = BigNumber.from("777");
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, false]);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const expectedPayment = BigNumber.from("73136368683858095");
+    const expectedPayment = BigNumber.from("70087096053837661");
     const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
       context.drCoordinatorConsumer1TH.address,
@@ -370,6 +370,84 @@ export function testFallback(signers: Signers, context: Context): void {
         ),
     )
       .to.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256")
+      .withArgs(requestId, result)
+      .to.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled")
+      .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionSignature, expectedPayment);
+    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(
+      drCoordinatorBalanceBefore.add(expectedPayment),
+    );
+    expect(await context.linkToken.balanceOf(context.drCoordinatorConsumer1TH.address)).to.equal(
+      drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
+    );
+  });
+
+  it("fulfills the request (case response is 0x)", async function () {
+    // Arrange
+    // 1. Insert the Spec
+    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
+    specs.forEach(spec => {
+      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+    });
+    const fileSpecMap = await getSpecConvertedMap(specs);
+    const [key] = [...fileSpecMap.keys()];
+    const spec = fileSpecMap.get(key) as SpecConverted;
+    await context.drCoordinator.connect(signers.owner).setSpec(key, spec);
+    // 2. Set LINK_TKN_FEED last answer
+    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
+    // 3. Take care on consumer LINK balance
+    const weiPerUnitGas = BigNumber.from("2500000000");
+    const maxPaymentAmount = await context.drCoordinator
+      .connect(signers.externalCaller)
+      .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
+    await context.linkToken
+      .connect(signers.deployer)
+      .transfer(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+    await context.drCoordinatorConsumer1TH
+      .connect(signers.deployer)
+      .approve(context.drCoordinator.address, maxPaymentAmount);
+    // 3. Make consumer call DRCoordinator.requestData()
+    await context.drCoordinatorConsumer1TH
+      .connect(signers.deployer)
+      .requestNothing(
+        context.drCoordinator.address,
+        context.operator.address,
+        spec.specId,
+        spec.gasLimit,
+        spec.minConfirmations,
+        FulfillMode.FALLBACK,
+      );
+    // 4. Prepare fulfillOracleRequest2 arguments
+    const filterOracleRequest = context.operator.filters.OracleRequest();
+    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
+    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    const callbackFunctionSignature = "0xf43c62ab";
+    const result = "0x";
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, result]);
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
+    const expectedPayment = BigNumber.from("70449669279206453");
+    const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
+    const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
+      context.drCoordinatorConsumer1TH.address,
+    );
+
+    // Act & Assert
+    await expect(
+      context.operator
+        .connect(signers.operatorSender)
+        .fulfillOracleRequest2(
+          requestId,
+          spec.payment,
+          context.drCoordinator.address,
+          callbackFunctionSignature,
+          cancelExpiration,
+          encodedData,
+          {
+            gasLimit: BigNumber.from(spec.gasLimit).add(gasAfterPaymentCalculation),
+            gasPrice: weiPerUnitGas,
+          },
+        ),
+    )
+      .to.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledNothing")
       .withArgs(requestId, result)
       .to.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled")
       .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionSignature, expectedPayment);

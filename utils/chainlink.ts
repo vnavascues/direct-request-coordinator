@@ -1,10 +1,13 @@
-import { BigNumber } from "ethers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { BigNumber, ethers } from "ethers";
+import type { ContractTransaction } from "@ethersproject/contracts";
 import { HardhatRuntimeEnvironment, Network } from "hardhat/types";
 
 import { getChecksumAddress } from "./addresses";
 import { ChainId, chainIdTkn } from "./constants";
 import { throwNewError } from "./errors";
 import { logger } from "./logger";
+import type { Overrides } from "./types";
 import type { LinkToken } from "../src/types";
 
 export const LINK_TOTAL_SUPPLY = BigNumber.from("10").pow("27");
@@ -63,6 +66,28 @@ export const chainIdSequencerOfflineFlag: ReadonlyMap<ChainId, string> = new Map
   [ChainId.ARB_MAINNET, "chainlink.flags.arbitrum-seq-offline"],
   [ChainId.ARB_RINKEBY, "chainlink.flags.arbitrum-seq-offline"],
 ]);
+
+export async function approve(
+  linkToken: LinkToken,
+  signer: ethers.Wallet | SignerWithAddress,
+  spender: string,
+  value: BigNumber,
+  overrides?: Overrides,
+): Promise<void> {
+  const logObjTransfer = {
+    spender,
+    value: value.toString(),
+  };
+  let tx: ContractTransaction;
+  try {
+    tx = await linkToken.connect(signer).approve(spender, value, overrides);
+    logger.info(logObjTransfer, `approve() | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObjTransfer).error(error, `approve() failed due to: ${error}`);
+    throw error;
+  }
+}
 
 export function convertBytes32ToJobId(hexStr: string): string {
   const start = hexStr.startsWith("0x") ? 2 : 0;
@@ -135,6 +160,28 @@ export async function getNetworkLinkAddressDeployingOnHardhat(hre: HardhatRuntim
     chainIdLink.set(ChainId.HARDHAT, linkToken.address);
   }
   return getNetworkLinkAddress(hre.network);
+}
+
+export async function transfer(
+  linkToken: LinkToken,
+  signer: ethers.Wallet | SignerWithAddress,
+  to: string,
+  value: BigNumber,
+  overrides?: Overrides,
+): Promise<void> {
+  const logObjTransfer = {
+    to,
+    value: value.toString(),
+  };
+  let tx: ContractTransaction;
+  try {
+    tx = await linkToken.connect(signer).transfer(to, value, overrides);
+    logger.info(logObjTransfer, `transfer() LINK | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObjTransfer).error(error, `transfer() LINK failed due to: ${error}`);
+    throw error;
+  }
 }
 
 export async function validateLinkAddressFunds(
