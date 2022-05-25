@@ -2,11 +2,12 @@
 pragma solidity 0.8.13;
 
 import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
+import { FulfillMode } from "./DRCoordinator.sol";
 import { FulfillChainlinkExternalRequestBase } from "./FulfillChainlinkExternalRequestBase.sol";
 import { IDRCoordinator } from "./IDRCoordinator.sol";
 import { console } from "hardhat/console.sol";
 
-contract ADRCoordinatorConsumer is FulfillChainlinkExternalRequestBase {
+contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
     using Chainlink for Chainlink.Request;
 
     struct GameCreateMlb {
@@ -23,6 +24,7 @@ contract ADRCoordinatorConsumer is FulfillChainlinkExternalRequestBase {
     }
     mapping(bytes32 => bytes32[]) public requestIdGames;
 
+    error FulfillModeUnsupported(FulfillMode fulfillmode);
     error LinkTransferFailed(address to, uint256 amount);
 
     event FundsWithdrawn(address payee, uint256 amount);
@@ -80,25 +82,36 @@ contract ADRCoordinatorConsumer is FulfillChainlinkExternalRequestBase {
         uint8 _callbackMinConfirmations,
         uint256 _market,
         uint256 _leagueId,
-        uint256 _date
+        uint256 _date,
+        FulfillMode _fulfillMode
     ) external {
         Chainlink.Request memory req;
-        // NB: Chainlink.Request callbackAddr must be address(DRCoordiantor)
-        req.initialize(_specId, _drCoordinator, this.fulfillSchedule.selector);
+        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
+        req.initialize(_specId, address(this), this.fulfillSchedule.selector);
 
         // NB: sportsdata-linkpool specific
         req.addUint("market", _market);
         req.addUint("leagueId", _leagueId);
         req.addUint("date", _date);
 
-        bytes32 requestId = IDRCoordinator(_drCoordinator).requestData(
-            _oracle,
-            _specId,
-            address(this),
-            _callbackGasLimit,
-            _callbackMinConfirmations,
-            req
-        );
+        bytes32 requestId;
+        if (_fulfillMode == FulfillMode.FALLBACK) {
+            requestId = IDRCoordinator(_drCoordinator).requestDataViaFallback(
+                _oracle,
+                _callbackGasLimit,
+                _callbackMinConfirmations,
+                req
+            );
+        } else if (_fulfillMode == FulfillMode.FULFILL_DATA) {
+            requestId = IDRCoordinator(_drCoordinator).requestDataViaFulfillData(
+                _oracle,
+                _callbackGasLimit,
+                _callbackMinConfirmations,
+                req
+            );
+        } else {
+            revert FulfillModeUnsupported(_fulfillMode);
+        }
         _addChainlinkExternalRequest(_drCoordinator, requestId);
     }
 

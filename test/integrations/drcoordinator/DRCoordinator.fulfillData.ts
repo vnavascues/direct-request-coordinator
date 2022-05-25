@@ -11,7 +11,7 @@ import type { Overrides } from "../../../utils/types";
 import { SpecConverted } from "../../../tasks/drcoordinator/types";
 
 // TODO: test when _requireLinkTransferFrom() reverts (LINK.transferFrom fails)
-export function testFallback(signers: Signers, context: Context): void {
+export function testFulfillData(signers: Signers, context: Context): void {
   const filePath = path.resolve(__dirname, "specs");
   const overrides: Overrides = {};
   let snapshotId: string;
@@ -34,49 +34,12 @@ export function testFallback(signers: Signers, context: Context): void {
     );
   });
 
-  it("reverts when the transaction sent contains ETH", async function () {
-    // Arrange
-    const callbackFunctionSignature = "0x5e9b81e1"; // NB: "fulfillUint256(bytes32,uint256,bool)" function signature
-    const txRequest = {
-      to: context.drCoordinator.address,
-      from: signers.externalCaller.address,
-      data: callbackFunctionSignature,
-      value: ethers.utils.parseEther("1.0"),
-    };
-
-    // Act & Assert
-    await expect(signers.externalCaller.sendTransaction(txRequest)).to.be.revertedWith(
-      `Transaction reverted: fallback function is not payable and was called with value 1000000000000000000`,
-    );
-  });
-
-  it("reverts when 'msg.data' does not have the minimum length", async function () {
-    // Arrange
-    const callbackFunctionSignature = "0x5e9b81e1"; // NB: "fulfillUint256(bytes32,uint256,bool)" function signature
-    const txRequest = {
-      to: context.drCoordinator.address,
-      from: signers.externalCaller.address,
-      data: callbackFunctionSignature,
-    };
-
-    // Act & Assert
-    await expect(signers.externalCaller.sendTransaction(txRequest)).to.be.revertedWith(
-      "DRCoordinator__FallbackMsgDataIsInvalid",
-    );
-  });
-
   it("reverts when the 'requestId' is not valid", async function () {
     // Arrange
-    const callbackFunctionSignature = "0x5e9b81e1"; // NB: "fulfillUint256(bytes32,uint256,bool)" function signature
     const requestId = "0x794239b5b2c74a8b53870f56a1a752b8fbe7e27f61d08f72a707159d2f44239a";
-    const txRequest = {
-      to: context.drCoordinator.address,
-      from: signers.externalCaller.address,
-      data: `${callbackFunctionSignature}${requestId.slice(2)}`,
-    };
 
     // Act & Assert
-    await expect(signers.externalCaller.sendTransaction(txRequest)).to.be.revertedWith(
+    await expect(context.drCoordinator.connect(signers.externalCaller).fulfillData(requestId, "0x")).to.be.revertedWith(
       "Source must be the oracle of the request",
     );
   });
@@ -116,7 +79,7 @@ export function testFallback(signers: Signers, context: Context): void {
         spec.specId,
         spec.gasLimit,
         spec.minConfirmations,
-        FulfillMode.FALLBACK,
+        FulfillMode.FULFILL_DATA,
       );
     // 4. Query the OracleRequest event from Operator.sol
     const filterOracleRequest = context.operator.filters.OracleRequest();
@@ -127,9 +90,13 @@ export function testFallback(signers: Signers, context: Context): void {
       .connect(signers.deployer)
       .approve(context.drCoordinator.address, BigNumber.from("0"));
     // 6. Prepare fulfillOracleRequest2 args
-    const callbackFunctionSignature = "0x5e9b81e1";
+    const callbackFunctionSignature = "0x23905e15"; // 'fulfillData(bytes32,bytes)'
     const result = BigNumber.from("777");
-    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, false]);
+    const encodedResult = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bool"],
+      [requestId, result, false],
+    );
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
 
     // Act & Assert
@@ -190,7 +157,7 @@ export function testFallback(signers: Signers, context: Context): void {
         spec.specId,
         spec.gasLimit,
         spec.minConfirmations,
-        FulfillMode.FALLBACK,
+        FulfillMode.FULFILL_DATA,
       );
     // 4. Query the OracleRequest event from Operator.sol
     const filterOracleRequest = context.operator.filters.OracleRequest();
@@ -200,9 +167,13 @@ export function testFallback(signers: Signers, context: Context): void {
     const availableFunds = await context.linkToken.balanceOf(context.drCoordinatorConsumer1TH.address);
     await context.drCoordinatorConsumer1TH.connect(signers.deployer).withdraw(signers.deployer.address, availableFunds);
     // 6. Prepare fulfillOracleRequest2 args
-    const callbackFunctionSignature = "0x5e9b81e1";
+    const callbackFunctionSignature = "0x23905e15"; // 'fulfillData(bytes32,bytes)'
     const result = BigNumber.from("777");
-    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, false]);
+    const encodedResult = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bool"],
+      [requestId, result, false],
+    );
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
 
     // Act & Assert
@@ -260,23 +231,28 @@ export function testFallback(signers: Signers, context: Context): void {
         spec.specId,
         spec.gasLimit,
         spec.minConfirmations,
-        FulfillMode.FALLBACK,
+        FulfillMode.FULFILL_DATA,
       );
     // 4. Prepare fulfillOracleRequest2 arguments
     const filterOracleRequest = context.operator.filters.OracleRequest();
     const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
     const { requestId, cancelExpiration } = eventOracleRequest.args;
-    const callbackFunctionSignature = "0x5e9b81e1";
+    const callbackFunctionSignature = "0x23905e15"; // 'fulfillData(bytes32,bytes)'
     const result = BigNumber.from("777");
-    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, true]);
+    const encodedResult = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bool"],
+      [requestId, result, true],
+    );
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const expectedPayment = BigNumber.from("72080453676643718");
+    const expectedPayment = BigNumber.from("72951106487562199");
     const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
       context.drCoordinatorConsumer1TH.address,
     );
 
     // Act & Assert
+    const expectedCallbackFunctionSignature = "0x5e9b81e1";
     await expect(
       context.operator
         .connect(signers.operatorSender)
@@ -294,7 +270,13 @@ export function testFallback(signers: Signers, context: Context): void {
         ),
     )
       .to.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled")
-      .withArgs(requestId, false, context.drCoordinatorConsumer1TH.address, callbackFunctionSignature, expectedPayment);
+      .withArgs(
+        requestId,
+        false,
+        context.drCoordinatorConsumer1TH.address,
+        expectedCallbackFunctionSignature,
+        expectedPayment,
+      );
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
@@ -336,23 +318,28 @@ export function testFallback(signers: Signers, context: Context): void {
         spec.specId,
         spec.gasLimit,
         spec.minConfirmations,
-        FulfillMode.FALLBACK,
+        FulfillMode.FULFILL_DATA,
       );
     // 4. Prepare fulfillOracleRequest2 arguments
     const filterOracleRequest = context.operator.filters.OracleRequest();
     const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
     const { requestId, cancelExpiration } = eventOracleRequest.args;
-    const callbackFunctionSignature = "0x5e9b81e1";
+    const callbackFunctionSignature = "0x23905e15"; // 'fulfillData(bytes32,bytes)'
     const result = BigNumber.from("777");
-    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, false]);
+    const encodedResult = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bool"],
+      [requestId, result, false],
+    );
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const expectedPayment = BigNumber.from("73136368683858095");
+    const expectedPayment = BigNumber.from("74007021494776576");
     const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
       context.drCoordinatorConsumer1TH.address,
     );
 
     // Act & Assert
+    const expectedCallbackFunctionSignature = "0x5e9b81e1";
     await expect(
       context.operator
         .connect(signers.operatorSender)
@@ -372,7 +359,13 @@ export function testFallback(signers: Signers, context: Context): void {
       .to.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256")
       .withArgs(requestId, result)
       .to.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled")
-      .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionSignature, expectedPayment);
+      .withArgs(
+        requestId,
+        true,
+        context.drCoordinatorConsumer1TH.address,
+        expectedCallbackFunctionSignature,
+        expectedPayment,
+      );
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );

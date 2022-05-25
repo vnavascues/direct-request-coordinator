@@ -2,11 +2,11 @@ type = "directrequest"
 schemaVersion = 1
 externalJobID = "235bbeca-65f3-44b7-ba8b-3af501e43622"
 requesters = [
-    "0x7e70aBA8171e0bCf02AA40b5DAB64FF24b622C2a"
-] # Replace with DRCoordinator.sol address (1 of 3)
-minContractPaymentLinkJuels = "5000000000000000" # 0.005 LINK
-name = "Sportsdataio LinkPool Get Schedule v1.0.0 DRCoordinator"
-contractAddress = "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00" # Replace with Operator.sol address (2 of 3)
+    "0x0000000000000000000000000000000000000000"
+] # Replace (1 of 4) with DRCoordinator.sol address
+minContractPaymentLinkJuels = "5000000000000000" # Replace (2 of 4) with initial LINK payment amount
+name = "Sportsdataio Get Schedule v1.0.0 DRCoordinator fulfillData"
+contractAddress = "0x0000000000000000000000000000000000000000" # Replace (3 o 4) with Operator.sol address
 maxTaskDuration = "0s"
 observationSource = """
     decode_log          [type="ethabidecodelog"
@@ -24,15 +24,19 @@ observationSource = """
 
     parse_result        [type="jsonparse" data="$(sportsdataio_lp)" path="result"]
 
-    encode_data         [type="ethabiencode"
+    encode_result       [type="ethabiencode"
                          abi="(bytes32 _requestId, bytes32[] _result)"
                          data="{\\"_requestId\\": $(decode_log.requestId),\\"_result\\": $(parse_result)}"]
+
+    encode_data         [type="ethabiencode"
+                         abi="(bytes32 _requestId, bytes calldata _data)"
+                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_data\\": $(encode_result)}"]
 
     encode_tx           [type="ethabiencode"
                          abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
                          data="{\\"requestId\\": $(decode_log.requestId),\\"payment\\": $(decode_log.payment),\\"callbackAddress\\": $(decode_log.callbackAddr),\\"callbackFunctionId\\": $(decode_log.callbackFunctionId),\\"expiration\\": $(decode_log.cancelExpiration),\\"data\\": $(encode_data)}"]
 
-    submit_tx           [type="ethtx" to="0x878541888a928a31F9EAb4cB61DfD4e381EC2f00" data="$(encode_tx)" minConfirmations="$(decode_cbor.minConfirmations)" gasLimit="$(decode_cbor.gasLimit)"] // Replace with Operator.sol address (3 of 3)
+    submit_tx           [type="ethtx" to="0x0000000000000000000000000000000000000000" data="$(encode_tx)" minConfirmations="$(decode_cbor.minConfirmations)" gasLimit="$(decode_cbor.gasLimit)"] // Replace (4 o 4) with Operator.sol address
 
-    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_tx -> submit_tx
+    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_result -> encode_data -> encode_tx -> submit_tx
 """

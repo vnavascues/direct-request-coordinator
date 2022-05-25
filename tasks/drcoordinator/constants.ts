@@ -8,6 +8,11 @@ export enum FeeType {
   PERMIRYAD = 1,
 }
 
+export enum FulfillMode {
+  FALLBACK = 0,
+  FULFILL_DATA = 1,
+}
+
 export enum PaymentNoFeeType {
   MAX = 0,
   SPOT = 1,

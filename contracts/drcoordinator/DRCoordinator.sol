@@ -19,6 +19,12 @@ enum PaymentPreFeeType {
     SPOT
 }
 
+// NB: enum placed outside due to Slither bug https://github.com/crytic/slither/issues/1166
+enum FulfillMode {
+    FALLBACK,
+    FULFILL_DATA
+}
+
 contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, ReentrancyGuard, ChainlinkClient {
     using Address for address;
     using Chainlink for Chainlink.Request;
@@ -32,6 +38,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         uint8 minConfirmations; // 1 byte
         uint48 gasLimit; // 6 bytes
         FeeType feeType; // 1 byte
+        bytes4 callbackFunctionId; // 4 bytes
     }
     bytes32 private constant NO_SPEC_KEY = bytes32(0); // 32 bytes
     uint96 private constant LINK_TOTAL_SUPPLY = 1e27; // 12 bytes
@@ -60,6 +67,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     error DRCoordinator__GasLimitIsZero();
     error DRCoordinator__FulfillmentFeeIsGtLinkTotalSupply();
     error DRCoordinator__FulfillmentFeeIsZero();
+    error DRCoordinator__FulfillModeUnsupported(FulfillMode fulfillmode);
     error DRCoordinator__LinkAllowanceIsInsufficient(uint256 allowance, uint256 payment);
     error DRCoordinator__LinkBalanceIsInsufficient(uint256 balance, uint256 payment);
     error DRCoordinator__LinkTransferFailed(address to, uint256 payment);
@@ -88,7 +96,6 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         bool success,
         address indexed callbackAddr,
         bytes4 callbackFunctionSignature,
-        bytes data,
         uint256 payment
     );
     event DRCoordinator__SetChainlinkExternalRequestFailed(
@@ -129,121 +136,44 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     // solhint-disable-next-line no-complex-fallback, payable-fallback
     fallback() external whenNotPaused nonReentrant {
         // Validate requestId
-        bytes4 callbackFunctionSignature = msg.sig; // bytes4(msg.data);
         bytes calldata data = msg.data;
         _requireFallbackMsgData(data);
         bytes32 requestId = abi.decode(data[4:], (bytes32));
         validateChainlinkCallback(requestId);
-
-        // Retrieve FulfillConfig by request ID
-        FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[requestId];
-        // Fulfill just with the gas amount requested by the consumer
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = fulfillConfig.callbackAddr.call{
-            gas: fulfillConfig.gasLimit - s_gasAfterPaymentCalculation
-        }(data);
-
-        // Charge LINK payment
-        uint256 payment = _calculatePaymentAmount(
-            PaymentPreFeeType.SPOT,
-            fulfillConfig.gasLimit,
-            tx.gasprice,
-            fulfillConfig.payment,
-            0,
-            fulfillConfig.fulfillmentFee,
-            fulfillConfig.feeType
-        );
-        // NB: statemens below cost 53942 gas approx
-        _requireLinkAllowance(LINK.allowance(fulfillConfig.msgSender, address(this)), payment);
-        _requireLinkBalance(LINK.balanceOf(fulfillConfig.msgSender), payment);
-        _requireLinkTransferFrom(
-            LINK.transferFrom(fulfillConfig.msgSender, address(this), payment),
-            fulfillConfig.msgSender,
-            address(this),
-            payment
-        );
-        delete s_requestIdToFulfillConfig[requestId];
-        emit DRCoordinator__RequestFulfilled(
-            requestId,
-            success,
-            fulfillConfig.callbackAddr,
-            callbackFunctionSignature,
-            data,
-            payment
-        );
+        _fulfillData(requestId, data, FulfillMode.FALLBACK);
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
+
+    function fulfillData(bytes32 _requestId, bytes calldata _data)
+        external
+        whenNotPaused
+        nonReentrant
+        recordChainlinkFulfillment(_requestId)
+    {
+        _fulfillData(_requestId, _data, FulfillMode.FULFILL_DATA);
+    }
 
     function pause() external onlyOwner {
         _pause();
     }
 
-    function requestData(
+    function requestDataViaFallback(
         address _oracle,
-        bytes32 _specId,
-        address _callbackAddr,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external whenNotPaused nonReentrant returns (bytes32) {
-        // Validate params
-        _requireOracle(_oracle);
-        _requireSpecId(_specId);
-        _requireCallbackAddr(_callbackAddr);
-        bytes32 key = _generateSpecKey(_oracle, _specId);
-        _requireSpecIsInserted(key, s_keyToSpec.isInserted(key));
-        Spec memory spec = s_keyToSpec.getSpec(key);
-        _requireMinConfirmations(_callbackMinConfirmations, spec.minConfirmations);
-        _requireGasLimit(_callbackGasLimit, spec.gasLimit);
+        return _requestData(_oracle, _callbackGasLimit, _callbackMinConfirmations, _req, FulfillMode.FALLBACK);
+    }
 
-        // Check whether caller has enough LINK funds (payment amount calculated using all the _callbackGasLimit)
-        uint256 maxPayment = _calculatePaymentAmount(
-            PaymentPreFeeType.MAX,
-            0,
-            tx.gasprice,
-            spec.payment,
-            _callbackGasLimit,
-            spec.fulfillmentFee,
-            spec.feeType
-        );
-        _requireLinkAllowance(LINK.allowance(msg.sender, address(this)), maxPayment);
-        _requireLinkBalance(LINK.balanceOf(msg.sender), maxPayment);
-        _requireLinkTransferFrom(
-            LINK.transferFrom(msg.sender, address(this), spec.payment),
-            msg.sender,
-            address(this),
-            spec.payment
-        );
-
-        // Extend the Chainlink.Request with the TOML jobspec dynamic params
-        uint48 gasLimit = _callbackGasLimit + s_gasAfterPaymentCalculation;
-        _req.addUint("gasLimit", uint256(gasLimit));
-        _req.addUint("minConfirmations", uint256(spec.minConfirmations));
-
-        // Send an Operator request
-        bytes32 requestId = sendOperatorRequestTo(_oracle, _req, uint256(spec.payment));
-
-        // Store the fulfillment configuration by request ID
-        FulfillConfig memory fulfillConfig;
-        fulfillConfig.msgSender = msg.sender;
-        fulfillConfig.payment = spec.payment;
-        fulfillConfig.callbackAddr = _callbackAddr;
-        fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
-        fulfillConfig.minConfirmations = _callbackMinConfirmations;
-        fulfillConfig.gasLimit = gasLimit;
-        fulfillConfig.feeType = spec.feeType;
-        s_requestIdToFulfillConfig[requestId] = fulfillConfig;
-        // In case of "external request" (i.e. requester !== callbackAddr) notify the fulfillment contract about the
-        // pending request
-        if (_callbackAddr != msg.sender) {
-            IExternalFulfillment fulfillmentContract = IExternalFulfillment(_callbackAddr);
-            // solhint-disable-next-line no-empty-blocks
-            try fulfillmentContract.setChainlinkExternalRequest(address(this), requestId) {} catch {
-                emit DRCoordinator__SetChainlinkExternalRequestFailed(_callbackAddr, requestId, key);
-            }
-        }
-        return requestId;
+    function requestDataViaFulfillData(
+        address _oracle,
+        uint48 _callbackGasLimit,
+        uint8 _callbackMinConfirmations,
+        Chainlink.Request memory _req
+    ) external whenNotPaused nonReentrant returns (bytes32) {
+        return _requestData(_oracle, _callbackGasLimit, _callbackMinConfirmations, _req, FulfillMode.FULFILL_DATA);
     }
 
     function removeSpec(bytes32 _key) external onlyOwner whenNotPaused {
@@ -414,10 +344,138 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     /* ========== PRIVATE FUNCTIONS ========== */
 
+    function _fulfillData(
+        bytes32 _requestId,
+        bytes calldata _data,
+        FulfillMode _fulfillMode
+    ) private {
+        // Retrieve FulfillConfig by request ID
+        FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
+
+        // Format data
+        bytes memory data;
+        if (_fulfillMode == FulfillMode.FALLBACK) {
+            data = _data;
+        } else if (_fulfillMode == FulfillMode.FULFILL_DATA) {
+            data = abi.encodePacked(fulfillConfig.callbackFunctionId, _data);
+        } else {
+            revert DRCoordinator__FulfillModeUnsupported(_fulfillMode);
+        }
+
+        // Fulfill just with the gas amount requested by the consumer
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = fulfillConfig.callbackAddr.call{
+            gas: fulfillConfig.gasLimit - s_gasAfterPaymentCalculation
+        }(data);
+
+        // Charge LINK payment
+        uint256 payment = _calculatePaymentAmount(
+            PaymentPreFeeType.SPOT,
+            fulfillConfig.gasLimit,
+            tx.gasprice,
+            fulfillConfig.payment,
+            0,
+            fulfillConfig.fulfillmentFee,
+            fulfillConfig.feeType
+        );
+        // NB: statemens below cost 53000-56000 gas approx
+        _requireLinkAllowance(LINK.allowance(fulfillConfig.msgSender, address(this)), payment);
+        _requireLinkBalance(LINK.balanceOf(fulfillConfig.msgSender), payment);
+        _requireLinkTransferFrom(
+            LINK.transferFrom(fulfillConfig.msgSender, address(this), payment),
+            fulfillConfig.msgSender,
+            address(this),
+            payment
+        );
+        delete s_requestIdToFulfillConfig[_requestId];
+        emit DRCoordinator__RequestFulfilled(
+            _requestId,
+            success,
+            fulfillConfig.callbackAddr,
+            fulfillConfig.callbackFunctionId,
+            payment
+        );
+    }
+
     function _removeSpec(bytes32 _key) private {
         _requireSpecIsInserted(_key, s_keyToSpec.isInserted(_key));
         s_keyToSpec.remove(_key);
         emit DRCoordinator__SpecRemoved(_key);
+    }
+
+    function _requestData(
+        address _oracle,
+        uint48 _callbackGasLimit,
+        uint8 _callbackMinConfirmations,
+        Chainlink.Request memory _req,
+        FulfillMode _fulfillMode
+    ) private returns (bytes32) {
+        // Validate params
+        bytes32 specId = _req.id;
+        address callbackAddr = _req.callbackAddress;
+        _requireOracle(_oracle);
+        _requireSpecId(specId);
+        _requireCallbackAddr(callbackAddr);
+        bytes32 key = _generateSpecKey(_oracle, specId);
+        _requireSpecIsInserted(key, s_keyToSpec.isInserted(key));
+        Spec memory spec = s_keyToSpec.getSpec(key);
+        _requireMinConfirmations(_callbackMinConfirmations, spec.minConfirmations);
+        _requireGasLimit(_callbackGasLimit, spec.gasLimit);
+
+        // Check whether caller has enough LINK funds (payment amount calculated using all the _callbackGasLimit)
+        uint256 maxPayment = _calculatePaymentAmount(
+            PaymentPreFeeType.MAX,
+            0,
+            tx.gasprice,
+            spec.payment,
+            _callbackGasLimit,
+            spec.fulfillmentFee,
+            spec.feeType
+        );
+        _requireLinkAllowance(LINK.allowance(msg.sender, address(this)), maxPayment);
+        _requireLinkBalance(LINK.balanceOf(msg.sender), maxPayment);
+        _requireLinkTransferFrom(
+            LINK.transferFrom(msg.sender, address(this), spec.payment),
+            msg.sender,
+            address(this),
+            spec.payment
+        );
+
+        // Initialise the fulfill configuration
+        FulfillConfig memory fulfillConfig;
+        fulfillConfig.msgSender = msg.sender;
+        fulfillConfig.payment = spec.payment;
+        fulfillConfig.callbackAddr = callbackAddr;
+        fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
+        fulfillConfig.minConfirmations = _callbackMinConfirmations;
+        uint48 gasLimit = _callbackGasLimit + s_gasAfterPaymentCalculation;
+        fulfillConfig.gasLimit = gasLimit;
+        fulfillConfig.feeType = spec.feeType;
+        fulfillConfig.callbackFunctionId = _req.callbackFunctionId;
+
+        // Replace Chainlink.Request 'callbackAddress', 'callbackFunctionId'
+        // and extend 'buffer' with the dynamic TOML jobspec params
+        if (_fulfillMode == FulfillMode.FULFILL_DATA) {
+            _req.callbackFunctionId = this.fulfillData.selector;
+        }
+        _req.callbackAddress = address(this);
+        _req.addUint("gasLimit", uint256(gasLimit)); // TODO: test whether has to be a string
+        _req.addUint("minConfirmations", uint256(spec.minConfirmations));
+
+        // Send an Operator request, and store the fulfill configuration by 'requestId'
+        bytes32 requestId = sendOperatorRequestTo(_oracle, _req, uint256(spec.payment));
+        s_requestIdToFulfillConfig[requestId] = fulfillConfig;
+
+        // In case of "external request" (i.e. requester !== callbackAddr) notify the fulfillment contract about the
+        // pending request
+        if (callbackAddr != msg.sender) {
+            IExternalFulfillment fulfillmentContract = IExternalFulfillment(callbackAddr);
+            // solhint-disable-next-line no-empty-blocks
+            try fulfillmentContract.setChainlinkExternalRequest(address(this), requestId) {} catch {
+                emit DRCoordinator__SetChainlinkExternalRequestFailed(callbackAddr, requestId, key);
+            }
+        }
+        return requestId;
     }
 
     function _setSpec(bytes32 _key, Spec calldata _spec) private {

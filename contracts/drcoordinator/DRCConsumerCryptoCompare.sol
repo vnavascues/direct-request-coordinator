@@ -2,20 +2,24 @@
 pragma solidity 0.8.13;
 
 import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
-import { FulfillMode } from "../DRCoordinator.sol";
-import { FulfillChainlinkExternalRequestBase } from "../FulfillChainlinkExternalRequestBase.sol";
-import { IDRCoordinator } from "../IDRCoordinator.sol";
+import { FulfillMode } from "./DRCoordinator.sol";
+import { FulfillChainlinkExternalRequestBase } from "./FulfillChainlinkExternalRequestBase.sol";
+import { IDRCoordinator } from "./IDRCoordinator.sol";
 import { console } from "hardhat/console.sol";
 
-contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase {
+contract DRCConsumerCryptoCompare is FulfillChainlinkExternalRequestBase {
     using Chainlink for Chainlink.Request;
 
-    error FulfillModeUnsupported(FulfillMode fulfillmode);
-    error FulfillUint256Failed();
+    struct PriceData {
+        uint256 btc;
+        uint256 eth;
+        uint256 link;
+    }
+    mapping(bytes32 => PriceData) public requestIdToPriceData;
+
     error LinkTransferFailed(address to, uint256 amount);
 
     event FundsWithdrawn(address payee, uint256 amount);
-    event RequestFulfilledUint256(bytes32 indexed requestId, uint256 result);
 
     constructor(address _link) {
         _setChainlinkToken(_link);
@@ -27,22 +31,24 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
         LINK.approve(_drCoordinator, _amount);
     }
 
-    // Function signature: 0x7c1f72a0
-    function fulfillUint256(
+    function fulfillPrices(
         bytes32 _requestId,
-        uint256 _result,
-        bool _revert
+        uint256 _btc,
+        uint256 _eth,
+        uint256 _link
     ) external recordChainlinkFulfillment(_requestId) {
-        console.log("*** boom");
-        console.logUint(_result);
-        console.logBool(_revert);
-        if (_revert) {
-            revert FulfillUint256Failed();
-        }
-        emit RequestFulfilledUint256(_requestId, _result);
+        PriceData memory priceData;
+        priceData.btc = _btc;
+        priceData.eth = _eth;
+        priceData.link = _link;
+        requestIdToPriceData[_requestId] = priceData;
     }
 
-    function requestUint256(
+    function getPriceData(bytes32 _requestId) external view returns (PriceData memory) {
+        return requestIdToPriceData[_requestId];
+    }
+
+    function requestPrices(
         address _drCoordinator,
         address _oracle,
         bytes32 _specId,
@@ -52,7 +58,7 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
-        req.initialize(_specId, address(this), this.fulfillUint256.selector);
+        req.initialize(_specId, address(this), this.fulfillPrices.selector);
 
         bytes32 requestId;
         if (_fulfillMode == FulfillMode.FALLBACK) {

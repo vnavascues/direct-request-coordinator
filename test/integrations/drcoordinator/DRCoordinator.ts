@@ -6,10 +6,10 @@ import { ethers } from "hardhat";
 import { testCalculateMaxPaymentAmount } from "./DRCoordinator.calculateMaxPaymentAmount";
 import { testCalculateSpotPaymentAmount } from "./DRCoordinator.calculateSpotPaymentAmount";
 import { testFallback } from "./DRCoordinator.fallback";
+import { testFulfillData } from "./DRCoordinator.fulfillData";
 import { testGetFeedData } from "./DRCoordinator.getFeedData";
 
 import type {
-  ADRCoordinatorConsumer,
   DRCoordinator,
   DRCoordinatorConsumer1TestHelper,
   LinkToken,
@@ -18,8 +18,6 @@ import type {
 } from "../../../src/types";
 
 export interface Context {
-  // TODO: remove
-  aDrCoordinatorConsumer: ADRCoordinatorConsumer;
   drCoordinator: DRCoordinator;
   drCoordinatorConsumer1TH: DRCoordinatorConsumer1TestHelper;
   linkToken: LinkToken;
@@ -84,7 +82,7 @@ describe.only("DRCoordinator", () => {
     // Deploy DRCoordinator
     const descriptionDRC = "Testing DRCoordinator";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
-    const gasAfterPaymentCalculation = BigNumber.from("55000"); // NB: approx 53942
+    const gasAfterPaymentCalculation = BigNumber.from("56000");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = false;
     const sequencerFlag = "";
@@ -116,19 +114,11 @@ describe.only("DRCoordinator", () => {
       .deploy(linkToken.address)) as DRCoordinatorConsumer1TestHelper;
     await drCoordinatorConsumer1TH.deployTransaction.wait();
     context.drCoordinatorConsumer1TH = drCoordinatorConsumer1TH;
-
-    // TODO: remove
-    // Deploy ADRCoordinatorConsumer
-    const aDrCoordinatorConsumerFactory = await ethers.getContractFactory("ADRCoordinatorConsumer");
-    const aDrCoordinatorConsumer = (await aDrCoordinatorConsumerFactory
-      .connect(signers.deployer)
-      .deploy(linkToken.address)) as ADRCoordinatorConsumer;
-    await aDrCoordinatorConsumer.deployTransaction.wait();
-    context.aDrCoordinatorConsumer = aDrCoordinatorConsumer;
   });
 
   describe("testCalculateMaxPaymentAmount()", () => testCalculateMaxPaymentAmount(signers, context));
   describe("testCalculateSpotPaymentAmount()", () => testCalculateSpotPaymentAmount(signers, context));
-  describe.only("testFallback()", () => testFallback(signers, context));
+  describe("testFallback()", () => testFallback(signers, context));
+  describe("testFulfillData()", () => testFulfillData(signers, context));
   describe("testGetFeedData()", () => testGetFeedData(signers, context));
 });

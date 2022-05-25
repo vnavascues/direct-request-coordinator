@@ -13,18 +13,23 @@ Chainlink Spring 22 hackaton
 
 - Engineering:
 
-  - Profile & benchmark a TOML invasive model:
+  - Either fulfill via `fallback`, or via `fulfillData`. Choose une, probably is unjustified keeping both. Benchmark them (gas cost), consumer/node-operator pros & cons, etc.
 
-    1. Each Spec stores the `callbackFunctionSignature` (bytes4) or `callbackFunctionName`.
-    2. TOML jobspec always encodes as `(bytes32 requestId, bytes result)`.
-    3. DRCoordinator does not rely on `fallback` but a `fulfillRequest(bytes32 requestId, bytes calldata _data)`
-    4. The function above makes the final fulfillment encoding.
+    - `fallback`:
 
-  - Add more testing, e.g. edge cases, run a fuzzer. Run a proper SC audit.
-  - Consider integrating Keepers to TODO...
+      - Pros: slightly less TOML jobspec invasive (no need to add an extra `ethabiencode`). Leverages off-chain, no extra `abi.encode()` on-chain.
+      - Cons: feels hacky. Any con of using `fallback`.
+
+    - `fulfillData`:
+      - Pros: any pro of using a method instead of the fallback one. Can use `recordChainlinkFulfillment(requestId)`.
+      - Cons: requires adding an extra TOML jobspec task (i.e. `ethabiencode`). Nonetheless, DRCoordinator already forces you to create a new TOML jobspec, as the following fields/properties have to be amended: `minContractPaymentLinkJuels` (directrequest field), `gasLimit` (from `ethtx` task), `minConfirmations` (from `ethtx` task).
+
   - Add support for a subscription model, like `VRFCoordinatorV2.sol`.
-  - Consider storing the config (e.g. fallbackWeiPerUnitLink, gasAfterPaymentCalculation, stalenessSeconds) in a struct.
+  - Support `cancelRequest` for consumers. Easier to implement on subscription model.
+  - Improve the existing tests, e.g few integration tests should be moved into a unit test suite, add more unit tests, test more edge cases, run a fuzzer. Also run a proper SC audit.
+  - Consider storing the config (e.g. `fallbackWeiPerUnitLink`, `gasAfterPaymentCalculation`, `stalenessSeconds`) in a struct.
   - Add support for calculating the `weiPerUnitLink` via `LINK / USD` + `TKN / USD` on networks where the `LINK / TKN` price feed is not available yet.
+  - Consider integrating Keepers for keeping up-to-date `fallbackWeiPerUnitLink` (this is tricky, as `performUpkeep()` is an external public function).
   - Improve the tooling, and scripting.
   - Monitoring.
 
@@ -34,11 +39,13 @@ Chainlink Spring 22 hackaton
 
 - `key`: composite key by `keccak256(abi.encodePacked(oracle, specId))`. It allows storing N specs that share the same `externalJobID` but have different `oracleAddr` (via `Operator.sol`).
 - `payment`: it must be greater or equal than `minContractPaymentLinkJuels` TOML jobspec field (or its non-explicit default). Setting a `payment` value is not trivial, beware of:
+
   - Chainlink node version and/or its `MINIMUM_CONTRACT_PAYMENT_LINK_JUELS`.
   - Network gas price.
   - Gas estimation given by `calculateMaxPaymentAmount()` (based on `Spec.gasLimit`).
   - Minimum LINK price on the network by writing `0x` (min ~44k gas) via Operator.sol.
   - Value range is: `0 < payment <= 1e27 (LINK_TOTAL_SUPPLY)`.
+
 - `minConfirmations`:
   - Value range is: `0 <= minConfirmations <= 200 (MAX_REQUEST_CONFIRMATIONS)`.
 - `fulfilmentFee`:
