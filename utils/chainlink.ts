@@ -11,6 +11,7 @@ import type { Overrides } from "./types";
 import type { LinkToken } from "../src/types";
 
 export const LINK_TOTAL_SUPPLY = BigNumber.from("10").pow("27");
+export const MIN_CONSUMER_GAS_LIMIT = 400_000; // From Operator.sol::MINIMUM_CONSUMER_GAS_LIMIT
 
 export const chainIdFlags: ReadonlyMap<ChainId, string> = new Map([
   [ChainId.ARB_MAINNET, "0x3C14e07Edd0dC67442FA96f1Ec6999c57E810a83"],

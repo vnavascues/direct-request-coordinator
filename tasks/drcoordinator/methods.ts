@@ -11,7 +11,6 @@ import {
   FeeType,
   MAX_PERMIRYAD_FULFILLMENT_FEE,
   MAX_REQUEST_CONFIRMATIONS,
-  MIN_CONSUMER_GAS_LIMIT,
   TaskExecutionMode,
   TaskName,
 } from "./constants";
@@ -36,6 +35,7 @@ import {
   getNetworkLinkAddressDeployingOnHardhat,
   getNetworkLinkTknFeedAddress,
   LINK_TOTAL_SUPPLY,
+  MIN_CONSUMER_GAS_LIMIT,
 } from "../../utils/chainlink";
 import { isAddressAContract, getNumberOfConfirmations } from "../../utils/deployment";
 import { formatNumericEnumValuesPretty } from "../../utils/enums";
@@ -718,7 +718,7 @@ export async function updateSpecs(
   batchSize?: number,
 ): Promise<void> {
   const keysToUpdateSet = new BetterSet<string>();
-  // Classify entries to be updated by topic
+  // Classify specs to be updated by topic
   for (const key of keysToCheckSet) {
     const drcSpec = drcSpecMap.get(key) as SpecConverted;
     const fileSpec = fileSpecMap.get(key) as SpecConverted;

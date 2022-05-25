@@ -7,7 +7,7 @@ requesters = [
     "0x0000000000000000000000000000000000000000"
 ]
 minContractPaymentLinkJuels = "1000000000000000" # Replace (2 of 4) with initial LINK payment amount
-name = "CryptoCompare Get Prices DRCoordinator fulfillData"
+name = "CryptoCompare Get Prices DRCoordinator fallback"
 contractAddress = "0x0000000000000000000000000000000000000000" # Replace (3 o 4) with Operator.sol address
 maxTaskDuration = "0s"
 observationSource = """
@@ -20,23 +20,19 @@ observationSource = """
 
     btc                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"]
     btc_parse           [type="jsonparse" path="USD" data="$(btc)"]
-    btc_multiply        [type="multiply" input="$(btc_parse)", times="100"]
+    btc_multiply        [type="multiply" input="$(btc_parse)", times="1000000"]
 
     eth                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD"]
     eth_parse           [type="jsonparse" path="USD" data="$(eth)"]
-    eth_multiply        [type="multiply" input="$(eth_parse)", times="100"]
+    eth_multiply        [type="multiply" input="$(eth_parse)", times="1000000"]
 
     link                [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD"]
     link_parse          [type="jsonparse" path="USD" data="$(link)"]
-    link_multiply       [type="multiply" input="$(link_parse)", times="100"]
-
-    encode_result       [type="ethabiencode"
-                         abi="(bytes32 _requestId, uint256 _btc, uint256 _eth, uint256 _link)"
-                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_btc\\": $(btc_multiply),\\"_eth\\": $(eth_multiply),\\"_link\\": $(link_multiply)}"]
+    link_multiply       [type="multiply" input="$(link_parse)", times="1000000"]
 
     encode_data         [type="ethabiencode"
-                         abi="(bytes32 _requestId, bytes calldata _data)"
-                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_data\\": $(encode_result)}"]
+                         abi="(bytes32 _requestId, uint256 _btc, uint256 _eth, uint256 _link)"
+                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_btc\\": $(btc_multiply),\\"_eth\\": $(eth_multiply),\\"_link\\": $(link_multiply)}"]
 
     encode_tx           [type="ethabiencode"
                          abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
@@ -45,8 +41,8 @@ observationSource = """
     submit_tx           [type="ethtx" to="0x0000000000000000000000000000000000000000" data="$(encode_tx)" minConfirmations="$(decode_cbor.minConfirmations)" gasLimit="$(decode_cbor.gasLimit)"] // Replace (4 o 4) with Operator.sol address
 
     decode_log -> decode_cbor
-    decode_cbor -> btc -> btc_parse -> btc_multiply -> encode_result
-    decode_cbor -> eth -> eth_parse -> eth_multiply -> encode_result
-    decode_cbor -> link -> link_parse -> link_multiply -> encode_result
-    encode_result -> encode_data -> encode_tx -> submit_tx
+    decode_cbor -> btc -> btc_parse -> btc_multiply -> encode_data
+    decode_cbor -> eth -> eth_parse -> eth_multiply -> encode_data
+    decode_cbor -> link -> link_parse -> link_multiply -> encode_data
+    encode_data -> encode_tx -> submit_tx
 """

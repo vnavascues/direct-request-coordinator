@@ -1,9 +1,9 @@
 {
-  "name": "directrequest-coordinator",
-  "description": "A fair directrequest price PoC",
+  "name": "direct-request-coordinator",
+  "description": "Contracts and jobs management tools that enable a data requester to pay to a node operator only as much LINK as is required to cover the gas costs incurred by data delivery plus some profit margin",
   "version": "1.0.0",
   "author": {
-    "name": "Victor Navascues Calvo",
+    "name": "Víctor Navascués Calvo",
     "url": "https://github.com/vnavascues"
   },
   "license": "MIT",

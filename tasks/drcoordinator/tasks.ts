@@ -1,9 +1,9 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { task, types } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";
 import hash from "object-hash";
 
-import { TaskExecutionMode, TaskName } from "./constants";
+import { DEFAULT_BATCH_SIZE, FeeType, TaskExecutionMode, TaskName } from "./constants";
 import {
   addSpecs,
   deleteSpecs,
@@ -45,8 +45,9 @@ import {
   validateLinkAddressFunds,
 } from "../../utils/chainlink";
 import { LinkToken } from "../../src/types";
-import { getNumberOfConfirmations } from "../../utils/deployment";
+import { MIN_CONSUMER_GAS_LIMIT } from "../../utils/chainlink";
 import { ChainId } from "../../utils/constants";
+import { getNumberOfConfirmations } from "../../utils/deployment";
 import { getGasOverridesFromTaskArgs } from "../../utils/gas-estimation";
 import { logger } from "../../utils/logger";
 import type { Overrides } from "../../utils/types";
@@ -58,9 +59,109 @@ import {
   uuid as typeUUID,
 } from "../../utils/task-arguments-validations";
 
+task("drcoordinator:calculate-max-amount", "Calculates the max LINK amount for the given params")
+  .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
+  .addOptionalParam("weiperunitgas", "The wei per unit of gas on the network", undefined, types.int)
+  .addParam(
+    "payment",
+    "The initial LINK payment amount in Juels (from Spec.payment and 'minContractPaymentLinkJuels')",
+    undefined,
+    typeBignumber,
+  )
+  .addParam("gaslimit", "The transaction gasLimit in gwei", MIN_CONSUMER_GAS_LIMIT, types.int)
+  .addParam("fulfillmentfee", "The fulfillment fee", undefined, typeBignumber)
+  .addParam(
+    "feetype",
+    "The fee type",
+    undefined,
+    typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMIRYAD.toString()]),
+  )
+  // Get wei per unit of gas from provider
+  .addFlag("provider", "Uses the providers `'gasPrice' for 'weiPerUnitGas'")
+  .setAction(async function (taskArguments: TaskArguments, hre) {
+    const [signer] = await hre.ethers.getSigners();
+    logger.info(`connecting to DRCoordinator at: ${taskArguments.address}`);
+    const drCoordinator = await getDRCoordinator(hre, taskArguments.address, TaskExecutionMode.PROD);
+
+    let weiPerGasUnit: BigNumber;
+    if (taskArguments.provider) {
+      weiPerGasUnit = (await hre.ethers.provider.getFeeData()).gasPrice as BigNumber;
+      if (weiPerGasUnit === null) {
+        throw new Error(`'gasPrice' not found on network: ${hre.network.name}`);
+      }
+    } else {
+      weiPerGasUnit = taskArguments.weiperunitgas as BigNumber;
+    }
+    const maxPaymentAmount = await drCoordinator
+      .connect(signer)
+      .calculateMaxPaymentAmount(
+        weiPerGasUnit,
+        taskArguments.payment as BigNumber,
+        taskArguments.gaslimit,
+        taskArguments.fulfillmentfee as BigNumber,
+        taskArguments.feetype,
+      );
+    logger.info(`maxPaymentAmount (Juels): ${maxPaymentAmount}`);
+    logger.info(`maxPaymentAmount (LINK): ${ethers.utils.formatEther(maxPaymentAmount)}`);
+  });
+
+// NB: this method has limitations. It does not take into account the gas incurrend by
+// Operator::fulfillRequest2 nor DRCoordinator::fallback or DRCoordiantor::fulfillData
+// All of them are affected, among other things, by the data size and fulfillment function.
+// Therefore it is needed to fine tune 'startgas'
+task("drcoordinator:calculate-spot-amount", "Calculates the spot LINK amount for the given params")
+  .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
+  .addParam("gaslimit", "The tx gasLimit in gwei", MIN_CONSUMER_GAS_LIMIT, types.int)
+  .addParam("startgas", "The gasleft at the beginning", MIN_CONSUMER_GAS_LIMIT, types.int)
+  .addOptionalParam("weiperunitgas", "The wei per unit of gas on the network", undefined, types.int)
+  .addParam(
+    "payment",
+    "The initial LINK payment amount in juels (from Spec.payment and 'minContractPaymentLinkJuels')",
+    undefined,
+    typeBignumber,
+  )
+  .addParam("fulfillmentfee", "The fulfillment fee", undefined, typeBignumber)
+  .addParam(
+    "feetype",
+    "The fee type",
+    undefined,
+    typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMIRYAD.toString()]),
+  )
+  // Get wei per unit of gas from provider
+  .addFlag("provider", "Uses the providers data for 'weiPerUnitGas'")
+  .setAction(async function (taskArguments: TaskArguments, hre) {
+    const [signer] = await hre.ethers.getSigners();
+    logger.info(`connecting to DRCoordinator at: ${taskArguments.address}`);
+    const drCoordinator = await getDRCoordinator(hre, taskArguments.address, TaskExecutionMode.PROD);
+
+    let weiPerGasUnit: BigNumber;
+    if (taskArguments.provider) {
+      weiPerGasUnit = (await hre.ethers.provider.getFeeData()).gasPrice as BigNumber;
+      if (weiPerGasUnit === null) {
+        throw new Error(`'gasPrice' not found on network: ${hre.network.name}`);
+      }
+    } else {
+      weiPerGasUnit = taskArguments.weiperunitgas as BigNumber;
+    }
+    const maxPaymentAmount = await drCoordinator
+      .connect(signer)
+      .calculateSpotPaymentAmount(
+        taskArguments.startgas,
+        weiPerGasUnit,
+        taskArguments.payment as BigNumber,
+        taskArguments.fulfillmentfee as BigNumber,
+        taskArguments.feetype,
+        {
+          gasLimit: taskArguments.gaslimit,
+        },
+      );
+    logger.info(`spotPaymentAmount (Juels): ${maxPaymentAmount}`);
+    logger.info(`spotPaymentAmount (LINK): ${ethers.utils.formatEther(maxPaymentAmount)}`);
+  });
+
 task("drcoordinator:deploy", "Deploy a DRCoordinator")
-  .addParam("description", "The contract description", undefined, types.string)
-  .addParam("fallbackweiperunitlink", "The fallback amount of TKN wei per LINK", undefined, typeBignumber)
+  .addParam("description", "The contract description", "", types.string)
+  .addParam("fallbackweiperunitlink", "The fallback amount of network TKN wei per LINK", undefined, typeBignumber)
   .addParam(
     "gasafterpaymentcalc",
     "The amount of wei used by the contract after sending the response to the consumer",
@@ -75,7 +176,7 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
   )
   // Configuration after deployment
   .addFlag("setup", "Configs the contract after deployment")
-  .addOptionalParam("owner", "The address to transfer the ownership", undefined, typeAddress)
+  .addOptionalParam("owner", "requires flag setup. The address to transfer the ownership", undefined, typeAddress)
   // Verification
   .addFlag("verify", "Verify the contract on Etherscan after deployment")
   // Gas customisation
@@ -136,17 +237,83 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
     );
   });
 
+task("drcoordinator:deploy-consumer")
+  .addParam("name", "The consumer contract name", undefined, types.string)
+  // Configuration after deployment
+  .addFlag("fund", "Top-up the consumer contract with LINK from the signer's wallet right after deployment")
+  .addOptionalParam(
+    "amount",
+    "The amount of LINK (wei) to fund the contract after deployment",
+    undefined,
+    typeBignumber,
+  )
+  .addOptionalParam("approveto", "Approve the amount to the specific address", undefined, typeAddress)
+  // Verification
+  .addFlag("verify", "Verify the contract on Etherscan after deployment")
+  // Gas customisation
+  .addFlag("gas", "Customise the tx gas")
+  .addOptionalParam("type", "The tx type", undefined, types.int)
+  .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
+  .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
+  .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
+  .setAction(async function (taskArguments: TaskArguments, hre) {
+    const [signer] = await hre.ethers.getSigners();
+    logger.info(`signer address: ${signer.address}`);
+
+    // Get tx overrides with gas params
+    let overrides: Overrides = {};
+    if (taskArguments.gas) {
+      overrides = await getGasOverridesFromTaskArgs(taskArguments, hre);
+    }
+
+    // Get LINK address (by network)
+    const addressLink = getNetworkLinkAddress(hre.network);
+
+    // Custom validations
+    if (taskArguments.fund) {
+      if (!taskArguments.amount) {
+        throw new Error(`Flag 'fund' requires task argument 'amount' (and optionally 'approve')`);
+      }
+      await validateLinkAddressFunds(hre, signer.address, addressLink, taskArguments.amount as BigNumber);
+    }
+
+    // Deploy
+    const consumerFactory = await hre.ethers.getContractFactory(taskArguments.name);
+    const consumer = await consumerFactory.deploy(addressLink, overrides);
+    logger.info(`${taskArguments.name} deployed to: ${consumer.address} | Tx hash: ${consumer.deployTransaction.hash}`);
+    await consumer.deployTransaction.wait(getNumberOfConfirmations(hre.network.config.chainId));
+
+    // Fund Consumer with LINK
+    if (taskArguments.fund) {
+      const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
+      const linkToken = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLink)) as LinkToken;
+      await transferLink(linkToken, signer, consumer.address as string, taskArguments.amount as BigNumber, overrides);
+      // Approve amount
+      if (taskArguments.approveto) {
+        await approveLink(
+          linkToken,
+          signer,
+          taskArguments.approveto as string,
+          taskArguments.amount as BigNumber,
+          overrides,
+        );
+      }
+    }
+    if (!taskArguments.verify) return;
+
+    // Verify
+    // NB: contract verification request may fail if the contract address does not have bytecode. Wait until it's mined
+    await verifyConsumer(hre, consumer.address, addressLink);
+  });
+
 task("drcoordinator:detail", "Log the DRCoordinator storage")
   .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
-  // TODO: remove dryrun?
-  // .addParam("mode", "The execution mode", TaskExecutionMode.DRYRUN, typeOptionsArray(Object.values(TaskExecutionMode)))
   .addFlag("keys", "Log the Spec keys")
   .addFlag("specs", "Log each Spec")
   .setAction(async function (taskArguments: TaskArguments, hre) {
     const [signer] = await hre.ethers.getSigners();
     logger.info(`connecting to DRCoordinator at: ${taskArguments.address}`);
     const drCoordinator = await getDRCoordinator(hre, taskArguments.address, TaskExecutionMode.PROD);
-    // const drCoordinator = await getDRCoordinator(hre, taskArguments.address, taskArguments.mode, signer, {});
 
     await logDRCoordinatorDetail(
       drCoordinator,
@@ -168,7 +335,6 @@ task("drcoordinator:generate-key", "Generate the Spec key")
     typeUUID,
   )
   .addOptionalParam("specid", "The job spec ID (as bytes32)", undefined, typeBytes(32))
-
   .setAction(async function (taskArguments: TaskArguments) {
     if (!taskArguments.externaljobid && !taskArguments.specid) {
       throw new Error(`Either 'externaljobid' or 'specid' task argument is required`);
@@ -191,7 +357,7 @@ task("drcoordinator:generate-key", "Generate the Spec key")
 task("drcoordinator:generate-sha1", "Generate the specs file 'sha1'")
   .addParam("filename", "The specs filename (without .json extension) in the specs folder", undefined, types.string)
   // Check specs file
-  .addFlag("check", "Checks the integrity of the specs file")
+  .addFlag("check", "Check the integrity of the specs file")
   .setAction(async function (taskArguments: TaskArguments, hre) {
     const filePath = `./specs/${taskArguments.filename}.json`;
     let specs: Spec[];
@@ -206,11 +372,11 @@ task("drcoordinator:generate-sha1", "Generate the specs file 'sha1'")
 
 task("drcoordinator:import-file", "CUD specs in the DRCoordinator storage")
   .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
-  .addParam("filename", "The entries filename (without .json extension) in the entries folder", undefined, types.string)
+  .addParam("filename", "The specs filename (without .json extension) in the specs folder", undefined, types.string)
   .addParam("mode", "The execution mode", TaskExecutionMode.DRYRUN, typeOptionsArray(Object.values(TaskExecutionMode)))
   // Batch import
   .addFlag("nobatch", "Disables the batch import")
-  .addOptionalParam("batchsize", "Number of entries per CUD transaction", 50, types.int)
+  .addOptionalParam("batchsize", "Number of specs per CUD transaction", DEFAULT_BATCH_SIZE, types.int)
   // Gas customisation
   .addFlag("gas", "Customise the tx gas")
   .addOptionalParam("type", "The tx type", undefined, types.int)
@@ -250,7 +416,7 @@ task("drcoordinator:import-file", "CUD specs in the DRCoordinator storage")
     const keysToAddSet = drcKeysSet.difference(fileKeysSet);
     const keysToCheckSet = fileKeysSet.intersection(drcKeysSet);
 
-    // Remove, update and add entries
+    // Remove, update and add specs
     const isBatchMode = !taskArguments.nobatch;
 
     await deleteSpecs(drCoordinator, signer, keysToRemoveSet, isBatchMode, overrides, taskArguments.batchsize);
@@ -273,7 +439,7 @@ task("drcoordinator:import-file", "CUD specs in the DRCoordinator storage")
     logger.info("*** Import file task finished successfully ***");
   });
 
-task("drcoordinator:set-stuff", "Set all kind of variables in the contract")
+task("drcoordinator:set-config", "Set all kind of variables in the contract")
   .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
   .addParam(
     "mode",
@@ -281,10 +447,10 @@ task("drcoordinator:set-stuff", "Set all kind of variables in the contract")
     TaskExecutionMode.FORKING,
     typeOptionsArray([TaskExecutionMode.FORKING, TaskExecutionMode.PROD]),
   )
-  .addOptionalParam("description", "The new 'description' value", undefined, types.string)
+  .addOptionalParam("description", "The new 'description'", undefined, types.string)
   .addOptionalParam("fallbackweiperunitlink", "The new 'fallbackWeiPerUnitLink'", undefined, typeBignumber)
   .addOptionalParam("gasafterpaymentcalc", "The new 'gasAfterPaymentCalculation'", undefined, types.int)
-  .addOptionalParam("owner", "The new 'owner' (address to transfer the ownership)", undefined, typeAddress)
+  .addOptionalParam("owner", "The new 'owner'", undefined, typeAddress)
   .addOptionalParam("pause", "Pause or unpause the contract", undefined, types.boolean)
   .addOptionalParam("sha1", "The new 'sha1'", undefined, typeBytes(20))
   .addOptionalParam("stalenessseconds", "The new 'stalenessSeconds'", undefined, typeBignumber)
@@ -391,7 +557,7 @@ task("drcoordinator:withdraw", "Withdraw LINK in the contract")
     typeOptionsArray([TaskExecutionMode.FORKING, TaskExecutionMode.PROD]),
   )
   // More granular withdraw
-  .addFlag("granular", "Allows setting a payee and an amount")
+  .addFlag("granular", "Allow setting a payee and an amount")
   .addOptionalParam("payee", "The address that receives the LINK", undefined, typeAddress)
   .addOptionalParam("amount", "The LINK amount", undefined, typeBignumber)
   // Gas customisation
@@ -420,75 +586,4 @@ task("drcoordinator:withdraw", "Withdraw LINK in the contract")
     }
 
     logger.info("*** Withdraw task finished successfully ***");
-  });
-
-/* *** A CONSUMER *** */
-
-task("drcoordinator:deploy-consumer")
-  .addParam("name", "The consumer contract name", undefined, types.string)
-  // Configuration after deployment
-  .addFlag("fund", "Tops-up the consumer contract with LINK from the signer's wallet")
-  .addOptionalParam(
-    "amount",
-    "The amount of LINK (wei) to fund the contract after deployment",
-    undefined,
-    typeBignumber,
-  )
-  .addOptionalParam("approveTo", "Approves the amount to the specific address", undefined, typeAddress)
-  // Verification
-  .addFlag("verify", "Verify the contract on Etherscan after deployment")
-  // Gas customisation
-  .addFlag("gas", "Customise the tx gas")
-  .addOptionalParam("type", "The tx type", undefined, types.int)
-  .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
-  .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
-  .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
-  .setAction(async function (taskArguments: TaskArguments, hre) {
-    const [signer] = await hre.ethers.getSigners();
-    logger.info(`signer address: ${signer.address}`);
-
-    // Get tx overrides with gas params
-    let overrides: Overrides = {};
-    if (taskArguments.gas) {
-      overrides = await getGasOverridesFromTaskArgs(taskArguments, hre);
-    }
-
-    // Get LINK address (by network)
-    const addressLink = getNetworkLinkAddress(hre.network);
-
-    // Custom validations
-    if (taskArguments.fund) {
-      if (!taskArguments.amount) {
-        throw new Error(`Flag 'fund' requires task argument 'amount' (and optionally 'approve')`);
-      }
-      await validateLinkAddressFunds(hre, signer.address, addressLink, taskArguments.amount as BigNumber);
-    }
-
-    // Deploy
-    const consumerFactory = await hre.ethers.getContractFactory(taskArguments.name);
-    const consumer = await consumerFactory.deploy(addressLink, overrides);
-    logger.info(`${taskArguments.name} deployed to: ${consumer.address} | Tx hash: ${consumer.deployTransaction.hash}`);
-    await consumer.deployTransaction.wait(getNumberOfConfirmations(hre.network.config.chainId));
-
-    // Fund Consumer with LINK
-    if (taskArguments.fund) {
-      const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
-      const linkToken = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLink)) as LinkToken;
-      await transferLink(linkToken, signer, consumer.address as string, taskArguments.amount as BigNumber, overrides);
-      // Approve amount
-      if (taskArguments.approveTo) {
-        await approveLink(
-          linkToken,
-          signer,
-          taskArguments.approveTo as string,
-          taskArguments.amount as BigNumber,
-          overrides,
-        );
-      }
-    }
-    if (!taskArguments.verify) return;
-
-    // Verify
-    // NB: contract verification request may fail if the contract address does not have bytecode. Wait until it's mined
-    await verifyConsumer(hre, consumer.address, addressLink);
   });

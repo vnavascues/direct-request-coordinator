@@ -89,7 +89,7 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
         req.initialize(_specId, address(this), this.fulfillSchedule.selector);
 
-        // NB: sportsdata-linkpool specific
+        // NB: sportsdata EA specific
         req.addUint("market", _market);
         req.addUint("leagueId", _leagueId);
         req.addUint("date", _date);

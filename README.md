@@ -1,6 +1,6 @@
-# directrequest-fair-payment
+# Direct Request Coordinator
 
-Chainlink Spring 22 hackaton
+Chainlink Spring '22 hackaton
 
 ## TODO
 
@@ -31,6 +31,7 @@ Chainlink Spring 22 hackaton
   - Add support for a subscription model, like `VRFCoordinatorV2.sol`.
   - Support `cancelRequest` for consumers. Easier to implement on subscription model. Not having it implemented is not that severe due to the ridiculous low LINK amount of the initial payment (it could be that claiming it costs more than the refunded LINK).
   - Improve the existing tests, e.g few integration tests should be moved into a unit test suite, add more unit tests, test more edge cases, run a fuzzer. Also run a proper SC audit.
+  - Adding NatSpec.
   - Consider storing the config (e.g. `fallbackWeiPerUnitLink`, `gasAfterPaymentCalculation`, `stalenessSeconds`) in a struct.
   - Add support for calculating the `weiPerUnitLink` via `LINK / USD` + `TKN / USD` on networks where the `LINK / TKN` price feed is not available yet.
   - Consider integrating Keepers for keeping up-to-date `fallbackWeiPerUnitLink` (this is tricky, as `performUpkeep()` is an external public function).
