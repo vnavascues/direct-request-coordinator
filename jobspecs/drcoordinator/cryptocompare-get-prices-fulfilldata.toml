@@ -1,10 +1,12 @@
+# BE AWARE BUG: 'minConfirmations' on 'ethtx' task must be replaced by a stringified number.
+# https://github.com/smartcontractkit/chainlink/issues/6680
 type = "directrequest"
 schemaVersion = 1
-externalJobID = "235bbeca-65f3-44b7-ba8b-3af501e43622"
+# Replace (1 of 4) with DRCoordinator.sol address
 requesters = [
     "0x0000000000000000000000000000000000000000"
-] # Replace (1 of 4) with DRCoordinator.sol address
-minContractPaymentLinkJuels = "5000000000000000" # Replace (2 of 4) with initial LINK payment amount
+]
+minContractPaymentLinkJuels = "1000000000000000" # Replace (2 of 4) with initial LINK payment amount
 name = "CryptoCompare Get Prices DRCoordinator fulfillData"
 contractAddress = "0x0000000000000000000000000000000000000000" # Replace (3 o 4) with Operator.sol address
 maxTaskDuration = "0s"
@@ -16,17 +18,17 @@ observationSource = """
 
     decode_cbor         [type="cborparse" data="$(decode_log.data)"]
 
-    btc                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD" allowunrestrictednetworkaccess="true"]
+    btc                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"]
     btc_parse           [type="jsonparse" path="USD" data="$(btc)"]
     btc_multiply        [type="multiply" input="$(btc_parse)", times="100"]
 
-    eth                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD" allowunrestrictednetworkaccess="true"]
+    eth                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD"]
     eth_parse           [type="jsonparse" path="USD" data="$(eth)"]
     eth_multiply        [type="multiply" input="$(eth_parse)", times="100"]
 
-    link                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD" allowunrestrictednetworkaccess="true"]
-    link_parse           [type="jsonparse" path="USD" data="$(link)"]
-    link_multiply        [type="multiply" input="$(link_parse)", times="100"]
+    link                [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD"]
+    link_parse          [type="jsonparse" path="USD" data="$(link)"]
+    link_multiply       [type="multiply" input="$(link_parse)", times="100"]
 
     encode_result       [type="ethabiencode"
                          abi="(bytes32 _requestId, uint256 _btc, uint256 _eth, uint256 _link)"
@@ -44,7 +46,7 @@ observationSource = """
 
     decode_log -> decode_cbor
     decode_cbor -> btc -> btc_parse -> btc_multiply -> encode_result
-    decode_cbor -> btc -> eth_parse -> eth_multiply -> encode_result
-    decode_cbor -> btc -> link_parse -> link_multiply -> encode_result
+    decode_cbor -> eth -> eth_parse -> eth_multiply -> encode_result
+    decode_cbor -> link -> link_parse -> link_multiply -> encode_result
     encode_result -> encode_data -> encode_tx -> submit_tx
 """

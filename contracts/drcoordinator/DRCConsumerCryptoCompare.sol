@@ -17,6 +17,7 @@ contract DRCConsumerCryptoCompare is FulfillChainlinkExternalRequestBase {
     }
     mapping(bytes32 => PriceData) public requestIdToPriceData;
 
+    error FulfillModeUnsupported(FulfillMode fulfillmode);
     error LinkTransferFailed(address to, uint256 amount);
 
     event FundsWithdrawn(address payee, uint256 amount);
@@ -85,6 +86,14 @@ contract DRCConsumerCryptoCompare is FulfillChainlinkExternalRequestBase {
         emit FundsWithdrawn(_payee, _amount);
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }
+
+    /* ========== EXTERNAL VIEW FUNCTIONS ========== */
+
+    function availableFunds() external view returns (uint256) {
+        return LINK.balanceOf(address(this));
+    }
+
+    /* ========== PRIVATE FUNCTIONS ========== */
 
     function _requireLinkTransfer(
         bool _success,

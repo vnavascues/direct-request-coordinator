@@ -120,6 +120,14 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }
 
+    /* ========== EXTERNAL VIEW FUNCTIONS ========== */
+
+    function availableFunds() external view returns (uint256) {
+        return LINK.balanceOf(address(this));
+    }
+
+    /* ========== PRIVATE FUNCTIONS ========== */
+
     function _requireLinkTransfer(
         bool _success,
         address _to,

@@ -2,13 +2,14 @@ import type { ContractTransaction } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, ethers } from "ethers";
 import { readFileSync } from "fs";
-import type { HttpNetworkUserConfig, HardhatRuntimeEnvironment, TaskArguments } from "hardhat/types";
+import type { HardhatRuntimeEnvironment, TaskArguments } from "hardhat/types";
 
 import {
   ChainlinkNodeId,
   DUMMY_SET_CODE_BYTES,
   ExternalAdapterId,
   FeeType,
+  MAX_PERMIRYAD_FULFILLMENT_FEE,
   MAX_REQUEST_CONFIRMATIONS,
   TaskExecutionMode,
   TaskName,
@@ -758,7 +759,7 @@ export async function updateSpecs(
 export function validateConfiguration(configuration: Configuration): void {
   validateConfigurationExternalJobId(configuration.externalJobId);
   validateConfigurationFeeType(configuration.feeType as FeeType);
-  validateConfigurationFulfillmentFee(configuration.fulfillmentFee);
+  validateConfigurationFulfillmentFee(configuration.fulfillmentFee, configuration.feeType);
   validateConfigurationGasLimit(configuration.gasLimit);
   validateConfigurationMinConfirmations(configuration.minConfirmations);
   validateConfigurationOracleAddr(configuration.oracleAddr);
@@ -781,7 +782,7 @@ export function validateConfigurationFeeType(feeType: FeeType): void {
   }
 }
 
-export function validateConfigurationFulfillmentFee(fulfillmentFee: string): void {
+export function validateConfigurationFulfillmentFee(fulfillmentFee: string, feeType: FeeType): void {
   if (
     typeof fulfillmentFee !== "string" ||
     !BigNumber.isBigNumber(BigNumber.from(fulfillmentFee)) ||
@@ -791,6 +792,17 @@ export function validateConfigurationFulfillmentFee(fulfillmentFee: string): voi
     throw new Error(
       `Invalid 'fulfillmentFee': ${fulfillmentFee}. Expected an integer (as string) 0 < fulfillmentFee <= LINK totalSupply`,
     );
+  }
+
+  // NB: cross-validation for permyriad fee type. It can be personalised
+  if (feeType === FeeType.PERMIRYAD) {
+    if (BigNumber.from(fulfillmentFee).gt(MAX_PERMIRYAD_FULFILLMENT_FEE)) {
+      throw new Error(
+        `Invalid 'fulfillmentFee' for PERMIRYAD fee type: ${fulfillmentFee}. ` +
+          `Expected an integer (as string) 0 < fulfillmentFee <= ${MAX_PERMIRYAD_FULFILLMENT_FEE.toNumber()}. ` +
+          `Consider bumping MAX_PERMIRYAD_FULFILLMENT_FEE in case of wanting a higher permyriad`,
+      );
+    }
   }
 }
 

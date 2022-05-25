@@ -1,6 +1,7 @@
 import { BigNumber } from "ethers";
 
 export const DUMMY_SET_CODE_BYTES = "0x70657065"; // pepe
+export const MAX_PERMIRYAD_FULFILLMENT_FEE = BigNumber.from("10000"); // 100%
 export const MAX_REQUEST_CONFIRMATIONS = BigNumber.from("200");
 
 export enum FeeType {

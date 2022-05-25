@@ -1,9 +1,12 @@
+# BE AWARE BUG: 'minConfirmations' on 'ethtx' task must be replaced by a stringified number.
+# https://github.com/smartcontractkit/chainlink/issues/6680
 type = "directrequest"
 schemaVersion = 1
-externalJobID = "235bbeca-65f3-44b7-ba8b-3af501e43622"
+# Replace (1 of 4) with DRCoordinator.sol address
 requesters = [
     "0x0000000000000000000000000000000000000000"
-] # Replace (1 of 4) with DRCoordinator.sol addre# Replace (2 of 4) with initial LINK payment amount
+]
+minContractPaymentLinkJuels = "5000000000000000" # Replace (2 of 4) with initial LINK payment amount
 name = "Sportsdataio Get Schedule v1.0.0 DRCoordinator fallback"
 contractAddress = "0x0000000000000000000000000000000000000000" # Replace (3 o 4) with Operator.sol address
 maxTaskDuration = "0s"

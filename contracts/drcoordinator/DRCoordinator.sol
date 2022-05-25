@@ -459,8 +459,11 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             _req.callbackFunctionId = this.fulfillData.selector;
         }
         _req.callbackAddress = address(this);
-        _req.addUint("gasLimit", uint256(gasLimit)); // TODO: test whether has to be a string
-        _req.addUint("minConfirmations", uint256(spec.minConfirmations));
+        _req.addUint("gasLimit", uint256(gasLimit));
+        // NB: Chainlink nodes 1.2.0 to 1.4.1 can't parse uint/string for 'minConfirmations'
+        // https://github.com/smartcontractkit/chainlink/issues/6680
+        // _req.addUint("minConfirmations", uint256(spec.minConfirmations));
+        // _req.add("minConfirmations", Strings.toString(spec.minConfirmations));
 
         // Send an Operator request, and store the fulfill configuration by 'requestId'
         bytes32 requestId = sendOperatorRequestTo(_oracle, _req, uint256(spec.payment));
