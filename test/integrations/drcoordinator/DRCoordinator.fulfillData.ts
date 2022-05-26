@@ -10,7 +10,6 @@ import { getSpecConvertedMap, parseSpecsFile } from "../../../tasks/drcoordinato
 import type { Overrides } from "../../../utils/types";
 import { SpecConverted } from "../../../tasks/drcoordinator/types";
 
-// TODO: test when _requireLinkTransferFrom() reverts (LINK.transferFrom fails)
 export function testFulfillData(signers: Signers, context: Context): void {
   const filePath = path.resolve(__dirname, "specs");
   const overrides: Overrides = {};
@@ -44,87 +43,8 @@ export function testFulfillData(signers: Signers, context: Context): void {
     );
   });
 
-  it("reverts when the caller does not have enough allowance", async function () {
-    // TODO: from an Operator.sol point of view it can't revert. At the moment we do test `fulfillOracleRequest2` returns false
-    // DRCoordinator__RequestFulfilled is not emitted. We should test
-    // Arrange
-    // 1. Insert the Spec
-    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
-    specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
-    });
-    const fileSpecMap = await getSpecConvertedMap(specs);
-    const [key] = [...fileSpecMap.keys()];
-    const spec = fileSpecMap.get(key) as SpecConverted;
-    await context.drCoordinator.connect(signers.owner).setSpec(key, spec);
-    // 2. Set LINK_TKN_FEED last answer
-    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
-    // 3. Take care on consumer LINK balance
-    const weiPerUnitGas = BigNumber.from("2500000000");
-    const maxPaymentAmount = await context.drCoordinator
-      .connect(signers.externalCaller)
-      .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
-    await context.linkToken
-      .connect(signers.deployer)
-      .transfer(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
-    await context.drCoordinatorConsumer1TH
-      .connect(signers.deployer)
-      .approve(context.drCoordinator.address, maxPaymentAmount);
-    // 3. Make consumer call DRCoordinator.requestData()
-    await context.drCoordinatorConsumer1TH
-      .connect(signers.deployer)
-      .requestUint256(
-        context.drCoordinator.address,
-        context.operator.address,
-        spec.specId,
-        spec.gasLimit,
-        spec.minConfirmations,
-        FulfillMode.FULFILL_DATA,
-      );
-    // 4. Query the OracleRequest event from Operator.sol
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
-    // 5. Undo LINK approval
-    await context.drCoordinatorConsumer1TH
-      .connect(signers.deployer)
-      .approve(context.drCoordinator.address, BigNumber.from("0"));
-    // 6. Prepare fulfillOracleRequest2 args
-    const callbackFunctionSignature = "0x23905e15"; // 'fulfillData(bytes32,bytes)'
-    const result = BigNumber.from("777");
-    const encodedResult = ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bool"],
-      [requestId, result, false],
-    );
-    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-
-    // Act & Assert
-    await expect(
-      context.operator
-        .connect(signers.operatorSender)
-        .fulfillOracleRequest2(
-          requestId,
-          spec.payment,
-          context.drCoordinator.address,
-          callbackFunctionSignature,
-          cancelExpiration,
-          encodedData,
-          {
-            gasLimit: BigNumber.from(spec.gasLimit).add(gasAfterPaymentCalculation),
-            gasPrice: weiPerUnitGas,
-          },
-        ),
-    ).to.not.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled");
-    // TODO: alternatively test with these methods once hardhat supports them https://github.com/TrueFiEng/Waffle/issues/585
-    // expect("allowance").to.be.calledOnContract(context.linkToken);
-    // expect("balanceOf").to.not.be.calledOnContract(context.linkToken);
-    // expect("transferFrom").to.not.be.calledOnContract(context.linkToken);
-  });
-
   it("reverts when the caller does not have enough balance", async function () {
-    // TODO: from an Operator.sol point of view it can't revert. At the moment we do test `fulfillOracleRequest2` returns false
-    // DRCoordinator__RequestFulfilled is not emitted. We should test
+    // NB: from an Operator.sol point of view 'fulfillOracleRequest2()' can't revert
     // Arrange
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -142,13 +62,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
     const maxPaymentAmount = await context.drCoordinator
       .connect(signers.externalCaller)
       .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
-    await context.linkToken
+    await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
+    await context.drCoordinator
       .connect(signers.deployer)
-      .transfer(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
-    await context.drCoordinatorConsumer1TH
-      .connect(signers.deployer)
-      .approve(context.drCoordinator.address, maxPaymentAmount);
-    // 3. Make consumer call DRCoordinator.requestData()
+      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+    // 4. Make consumer call DRCoordinator.requestData()
     await context.drCoordinatorConsumer1TH
       .connect(signers.deployer)
       .requestUint256(
@@ -159,14 +77,18 @@ export function testFulfillData(signers: Signers, context: Context): void {
         spec.minConfirmations,
         FulfillMode.FULFILL_DATA,
       );
-    // 4. Query the OracleRequest event from Operator.sol
+    // 5. Query the OracleRequest event from Operator.sol
     const filterOracleRequest = context.operator.filters.OracleRequest();
     const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
     const { requestId, cancelExpiration } = eventOracleRequest.args;
-    // 5. Decrement LINK balance
-    const availableFunds = await context.linkToken.balanceOf(context.drCoordinatorConsumer1TH.address);
-    await context.drCoordinatorConsumer1TH.connect(signers.deployer).withdraw(signers.deployer.address, availableFunds);
-    // 6. Prepare fulfillOracleRequest2 args
+    // 6. Withdraw consumer funds
+    const availableFunds = await context.drCoordinator
+      .connect(signers.externalCaller)
+      .availableFunds(context.drCoordinatorConsumer1TH.address);
+    await context.drCoordinatorConsumer1TH
+      .connect(signers.deployer)
+      .withdrawFunds(context.drCoordinator.address, context.drCoordinatorConsumer1TH.address, availableFunds);
+    // 7. Prepare fulfillOracleRequest2 args
     const callbackFunctionSignature = "0x23905e15"; // 'fulfillData(bytes32,bytes)'
     const result = BigNumber.from("777");
     const encodedResult = ethers.utils.defaultAbiCoder.encode(
@@ -174,7 +96,12 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
+    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
+    const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
+    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumer1TH.address,
+    );
 
     // Act & Assert
     await expect(
@@ -192,10 +119,19 @@ export function testFulfillData(signers: Signers, context: Context): void {
             gasPrice: weiPerUnitGas,
           },
         ),
-    ).to.not.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled");
-    // TODO: alternatively test with these methods once hardhat supports them https://github.com/TrueFiEng/Waffle/issues/585
-    // expect("balanceOf").to.not.be.calledOnContract(context.linkToken);
-    // expect("transferFrom").to.not.be.calledOnContract(context.linkToken);
+    )
+      .to.not.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256")
+      .to.not.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled");
+    expect(
+      await context.drCoordinator.connect(signers.externalCaller).availableFunds(context.drCoordinator.address),
+    ).to.equal("0");
+    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
+    expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
+      drCoordinatorBalanceBefore,
+    );
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
+      drCoordinatorConsumer1THBalanceBefore,
+    );
   });
 
   it("fails to fulfill the request", async function () {
@@ -216,13 +152,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
     const maxPaymentAmount = await context.drCoordinator
       .connect(signers.externalCaller)
       .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
-    await context.linkToken
+    await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
+    await context.drCoordinator
       .connect(signers.deployer)
-      .transfer(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
-    await context.drCoordinatorConsumer1TH
-      .connect(signers.deployer)
-      .approve(context.drCoordinator.address, maxPaymentAmount);
-    // 3. Make consumer call DRCoordinator.requestData()
+      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+    // 4. Make consumer call DRCoordinator.requestData()
     await context.drCoordinatorConsumer1TH
       .connect(signers.deployer)
       .requestUint256(
@@ -233,7 +167,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         spec.minConfirmations,
         FulfillMode.FULFILL_DATA,
       );
-    // 4. Prepare fulfillOracleRequest2 arguments
+    // 5. Prepare fulfillOracleRequest2 arguments
     const filterOracleRequest = context.operator.filters.OracleRequest();
     const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
     const { requestId, cancelExpiration } = eventOracleRequest.args;
@@ -244,10 +178,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, true],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const expectedPayment = BigNumber.from("69901833857541766");
-    const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
+    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const expectedPayment = BigNumber.from("63353252532679109");
+    const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
+    const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
+    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
       context.drCoordinatorConsumer1TH.address,
     );
 
@@ -276,11 +211,13 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.drCoordinatorConsumer1TH.address,
         expectedCallbackFunctionSignature,
         expectedPayment,
-      );
-    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(
+      )
+      .to.not.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256");
+    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
+    expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
-    expect(await context.linkToken.balanceOf(context.drCoordinatorConsumer1TH.address)).to.equal(
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
       drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
     );
   });
@@ -303,13 +240,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
     const maxPaymentAmount = await context.drCoordinator
       .connect(signers.externalCaller)
       .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
-    await context.linkToken
+    await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
+    await context.drCoordinator
       .connect(signers.deployer)
-      .transfer(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
-    await context.drCoordinatorConsumer1TH
-      .connect(signers.deployer)
-      .approve(context.drCoordinator.address, maxPaymentAmount);
-    // 3. Make consumer call DRCoordinator.requestData()
+      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+    // 4. Make consumer call DRCoordinator.requestData()
     await context.drCoordinatorConsumer1TH
       .connect(signers.deployer)
       .requestUint256(
@@ -320,7 +255,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         spec.minConfirmations,
         FulfillMode.FULFILL_DATA,
       );
-    // 4. Prepare fulfillOracleRequest2 arguments
+    // 5. Prepare fulfillOracleRequest2 arguments
     const filterOracleRequest = context.operator.filters.OracleRequest();
     const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
     const { requestId, cancelExpiration } = eventOracleRequest.args;
@@ -331,10 +266,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const expectedPayment = BigNumber.from("70957748864756142");
-    const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
+    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const expectedPayment = BigNumber.from("64409167539893485");
+    const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
+    const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
+    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
       context.drCoordinatorConsumer1TH.address,
     );
 
@@ -366,10 +302,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
         expectedCallbackFunctionSignature,
         expectedPayment,
       );
-    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(
+    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
+    expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
-    expect(await context.linkToken.balanceOf(context.drCoordinatorConsumer1TH.address)).to.equal(
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
       drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
     );
   });
@@ -392,13 +329,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
     const maxPaymentAmount = await context.drCoordinator
       .connect(signers.externalCaller)
       .calculateMaxPaymentAmount(weiPerUnitGas, spec.payment, spec.gasLimit, spec.fulfillmentFee, spec.feeType);
-    await context.linkToken
+    await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
+    await context.drCoordinator
       .connect(signers.deployer)
-      .transfer(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
-    await context.drCoordinatorConsumer1TH
-      .connect(signers.deployer)
-      .approve(context.drCoordinator.address, maxPaymentAmount);
-    // 3. Make consumer call DRCoordinator.requestData()
+      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+    // 4. Make consumer call DRCoordinator.requestData()
     await context.drCoordinatorConsumer1TH
       .connect(signers.deployer)
       .requestNothing(
@@ -409,7 +344,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         spec.minConfirmations,
         FulfillMode.FULFILL_DATA,
       );
-    // 4. Prepare fulfillOracleRequest2 arguments
+    // 5. Prepare fulfillOracleRequest2 arguments
     const filterOracleRequest = context.operator.filters.OracleRequest();
     const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
     const { requestId, cancelExpiration } = eventOracleRequest.args;
@@ -417,10 +352,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
     const result = "0x"; // NB: emtpy string -> 0x
     const encodedResult = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, result]);
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const expectedPayment = BigNumber.from("71337019541293234");
-    const drCoordinatorBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.linkToken.balanceOf(
+    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const expectedPayment = BigNumber.from("64788438216430577");
+    const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
+    const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
+    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
       context.drCoordinatorConsumer1TH.address,
     );
 
@@ -452,10 +388,11 @@ export function testFulfillData(signers: Signers, context: Context): void {
         expectedCallbackFunctionSignature,
         expectedPayment,
       );
-    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(
+    expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
+    expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
-    expect(await context.linkToken.balanceOf(context.drCoordinatorConsumer1TH.address)).to.equal(
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
       drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
     );
   });

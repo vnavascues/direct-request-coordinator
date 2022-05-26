@@ -82,7 +82,6 @@ describe.only("DRCoordinator", () => {
     // Deploy DRCoordinator
     const descriptionDRC = "Testing DRCoordinator";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
-    const gasAfterPaymentCalculation = BigNumber.from("56000");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = false;
     const sequencerFlag = "";
@@ -95,7 +94,6 @@ describe.only("DRCoordinator", () => {
         context.mockV3Aggregator.address,
         descriptionDRC,
         fallbackWeiPerUnitLink,
-        gasAfterPaymentCalculation,
         stalenessSeconds,
         isSequencerDependant,
         sequencerFlag,

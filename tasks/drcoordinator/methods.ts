@@ -31,6 +31,7 @@ import {
   chainIdFlags,
   chainIdSequencerOfflineFlag,
   convertJobIdToBytes32,
+  getLinkBalanceOf,
   getNetworkLinkAddress,
   getNetworkLinkAddressDeployingOnHardhat,
   getNetworkLinkTknFeedAddress,
@@ -45,6 +46,25 @@ import { logger } from "../../utils/logger";
 import { reSemVer, reUUID } from "../../utils/regex";
 import type { Overrides } from "../../utils/types";
 import { setChainVerifyApiKeyEnv } from "../../utils/verification";
+
+export async function addFunds(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  consumer: string,
+  amount: BigNumber,
+  overrides?: Overrides,
+): Promise<void> {
+  const logObj = { consumer, amount: amount.toString() };
+  let tx: ContractTransaction;
+  try {
+    tx = await drCoordinator.connect(signer).addFunds(consumer, amount, overrides);
+    logger.info(logObj, `addFunds() | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObj).error(error, `addFunds() failed due to:`);
+    throw error;
+  }
+}
 
 export async function addSpecs(
   drCoordinator: DRCoordinator,
@@ -135,7 +155,6 @@ export async function deployDRCoordinator(
   signer: ethers.Wallet | SignerWithAddress,
   description: string,
   fallbackWeiPerUnitLink: BigNumber,
-  gasAfterPaymentCalculation: BigNumber,
   stalenessSeconds: BigNumber,
   overrides: Overrides,
   numberOfConfirmations?: number,
@@ -172,7 +191,6 @@ export async function deployDRCoordinator(
       addressLinkTknFeed,
       description,
       fallbackWeiPerUnitLink,
-      gasAfterPaymentCalculation,
       stalenessSeconds,
       isSequencerDependant,
       sequencerOfflineFlag,
@@ -219,7 +237,6 @@ export async function getDRCoordinator(
       signer,
       "DRCoordinator for dry run mode on hardhat", // description
       BigNumber.from("8000000000000000"), // fallbackWeiPerUnitLink
-      BigNumber.from("150000"), // gasAfterPaymentCalculation
       BigNumber.from("86400"), // stalenessSeconds
       overrides,
     );
@@ -317,6 +334,7 @@ export function hasSpecDifferences(fileSpec: SpecConverted, drcSpec: SpecConvert
 }
 
 export async function logDRCoordinatorDetail(
+  hre: HardhatRuntimeEnvironment,
   drCoordinator: DRCoordinator,
   logConfig: DRCoordinatorLogConfig,
   signer: ethers.Wallet | SignerWithAddress,
@@ -337,11 +355,12 @@ export async function logDRCoordinatorDetail(
     }
     const addressLink = await drCoordinator.connect(signer).LINK();
     const addressLinkTknFeed = await drCoordinator.connect(signer).LINK_TKN_FEED();
+    const gasAfterPaymentCalculation = await drCoordinator.connect(signer).GAS_AFTER_PAYMENT_CALCULATION();
     const fallbackWeiPerUnitLink = await drCoordinator.connect(signer).getFallbackWeiPerUnitLink();
-    const gasAfterPaymentCalculation = await drCoordinator.connect(signer).getGasAfterPaymentCalculation();
     const stalenessSeconds = await drCoordinator.connect(signer).getStalenessSeconds();
     const sha1 = await drCoordinator.connect(signer).getSha1();
-    const linkBalance = await drCoordinator.connect(signer).availableFunds();
+    const linkBalance = await getLinkBalanceOf(hre, drCoordinator.address, addressLink);
+    const linkProfit = await drCoordinator.connect(signer).availableFunds(drCoordinator.address);
     logger.info(
       {
         address: address,
@@ -349,15 +368,16 @@ export async function logDRCoordinatorDetail(
         description: description,
         owner: owner,
         paused: paused,
-        "availableFunds (LINK)": ethers.utils.formatUnits(linkBalance),
+        balance: `${ethers.utils.formatUnits(linkBalance)} LINK`,
+        profit: `${ethers.utils.formatUnits(linkProfit)} LINK`,
         LINK: addressLink,
         LINK_TKN_FEED: addressLinkTknFeed,
         MAX_REQUEST_CONFIRMATIONS: `${maxRequestConfirmations}`,
         IS_SEQUENCER_DEPENDANT: isSequencerPendant,
         FLAG_SEQUENCER_OFFLINE: flagsSequencerOffline,
         CHAINLINK_FLAGS: chainlinkFlags,
+        GAS_AFTER_PAYMENT_CALCULATION: `${gasAfterPaymentCalculation}`,
         fallbackWeiPerUnitLink: `${fallbackWeiPerUnitLink}`,
-        gasAfterPaymentCalculation: `${gasAfterPaymentCalculation}`,
         stalenessSeconds: `${stalenessSeconds}`,
         sha1: sha1,
       },
@@ -529,24 +549,6 @@ export async function setFallbackWeiPerUnitLink(
   }
 }
 
-export async function setGasAfterPaymentCalculation(
-  drCoordinator: DRCoordinator,
-  signer: ethers.Wallet | SignerWithAddress,
-  gasAfterPaymentCalculation: number,
-  overrides: Overrides,
-): Promise<void> {
-  const logObj = { gasAfterPaymentCalculation };
-  let tx: ContractTransaction;
-  try {
-    tx = await drCoordinator.connect(signer).setGasAfterPaymentCalculation(gasAfterPaymentCalculation, overrides);
-    logger.info(logObj, `setGasAfterPaymentCalculation() | Tx hash: ${tx.hash}`);
-    await tx.wait();
-  } catch (error) {
-    logger.child(logObj).error(error, `setGasAfterPaymentCalculation() failed due to:`);
-    throw error;
-  }
-}
-
 export async function setSha1(
   drCoordinator: DRCoordinator,
   signer: ethers.Wallet | SignerWithAddress,
@@ -679,7 +681,7 @@ export async function setupDRCoordinatorBeforeTask(
   // Instantiante DRCoordinator either on the network (nodryrun) or on the hardhat network
   logger.info(`connecting to DRCoordinator at: ${taskArguments.address} ...`);
   const drCoordinator = await getDRCoordinator(hre, taskArguments.address, taskArguments.mode, signer, overrides);
-  await logDRCoordinatorDetail(drCoordinator, { detail: true }, signer);
+  await logDRCoordinatorDetail(hre, drCoordinator, { detail: true }, signer);
 
   // Check signer's role
   // TODO: request owner
@@ -915,7 +917,6 @@ export async function verifyDRCoordinator(
   addressLinkTknFeed: string,
   description: string,
   fallbackWeiPerUnitLink: BigNumber,
-  gasAfterPaymentCalc: BigNumber,
   stalenessSeconds: BigNumber,
   isSequencerDependant: boolean,
   sequencerOfflineFlag: string,
@@ -929,7 +930,6 @@ export async function verifyDRCoordinator(
       addressLinkTknFeed,
       description,
       fallbackWeiPerUnitLink,
-      gasAfterPaymentCalc,
       stalenessSeconds,
       isSequencerDependant,
       sequencerOfflineFlag,
@@ -938,7 +938,7 @@ export async function verifyDRCoordinator(
   });
 }
 
-export async function withdraw(
+export async function withdrawFunds(
   drCoordinator: DRCoordinator,
   signer: ethers.Wallet | SignerWithAddress,
   payee: string,
@@ -948,11 +948,11 @@ export async function withdraw(
   const logObj = { payee, amount: amount.toString() };
   let tx: ContractTransaction;
   try {
-    tx = await drCoordinator.connect(signer).withdraw(payee, amount, overrides);
-    logger.info(logObj, `withdraw() | Tx hash: ${tx.hash}`);
+    tx = await drCoordinator.connect(signer).withdrawFunds(payee, amount, overrides);
+    logger.info(logObj, `withdrawFunds() | Tx hash: ${tx.hash}`);
     await tx.wait();
   } catch (error) {
-    logger.child(logObj).error(error, `withdraw() failed due to:`);
+    logger.child(logObj).error(error, `withdrawFunds() failed due to:`);
     throw error;
   }
 }

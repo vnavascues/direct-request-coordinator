@@ -11,10 +11,10 @@ import "./tasks/drcoordinator";
 import "./tasks/tools";
 import "./tasks/verify";
 
-import { resolve } from "path";
-
 import { config as dotenvConfig } from "dotenv";
 import type { HardhatUserConfig } from "hardhat/config";
+import { resolve } from "path";
+
 import { ChainId } from "./utils/constants";
 import { networkUserConfigs } from "./utils/networks";
 

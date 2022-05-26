@@ -82,7 +82,7 @@ contract DRCConsumerCryptoCompare is FulfillChainlinkExternalRequestBase {
         _addChainlinkExternalRequest(_drCoordinator, requestId);
     }
 
-    function withdraw(address payable _payee, uint256 _amount) external {
+    function withdraw(address _payee, uint256 _amount) external {
         emit FundsWithdrawn(_payee, _amount);
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }

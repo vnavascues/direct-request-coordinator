@@ -120,6 +120,14 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }
 
+    function withdrawFunds(
+        address _drCoordinator,
+        address _payee,
+        uint96 _amount
+    ) external {
+        IDRCoordinator(_drCoordinator).withdrawFunds(_payee, _amount);
+    }
+
     function _requireLinkTransfer(
         bool _success,
         address _to,

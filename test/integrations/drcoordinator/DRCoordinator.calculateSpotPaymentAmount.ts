@@ -101,7 +101,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
     it(`calculates the payment amount for ${name}`, async function () {
       // Arrange
       await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
-      const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
+      const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
 
       // Act
       const amount = await context.drCoordinator

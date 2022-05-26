@@ -17,4 +17,6 @@ interface IDRCoordinator {
         uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external returns (bytes32);
+
+    function withdrawFunds(address _payee, uint96 _amount) external;
 }

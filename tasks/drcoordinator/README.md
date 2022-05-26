@@ -158,21 +158,20 @@ yarn hardhat drcoordinator:generate-sha1 \
 
 Task parameters:
 
-| Required? |          Name          |                                    Description                                    |   Type    |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-------------------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |      description       |                             The contract description                              |  string   |                |                                                  |    `''`     |
-|    ✅     | fallbackweiperunitlink |                  The fallback amount of network TKN wei per LINK                  | BigNumber |                |                                                  |             |
-|    ✅     |  gasafterpaymentcalc   | The amount of wei used by the contract after sending the response to the consumer | BigNumber |                |                                                  |             |
-|    ✅     |    stalenessseconds    |       The number of seconds after which the feed answer is considered stale       | BigNumber |                |                                                  |             |
-|           |         setup          |                       Configs the contract after deployment                       |   Flag    |                |                                                  |   `false`   |
-|           |         owner          |                       The address to transfer the ownership                       |   owner   |    --setup     |                                                  |             |
-|           |         verify         |                   Verifies the contract on Etherscan at the end                   |   Flag    |                |                                                  |   `false`   |
-|           |          gas           |                 Allows customising the tx gas (legacy & EIP-1559)                 |   Flag    |                |                                                  |   `false`   |
-|           |          type          |                                    The tx type                                    |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |        gasprice        |                       The type 0 tx `gasPrice` (in `gwei`)                        |   float   | --gas --type 0 |                                                  |             |
-|           |       gasmaxfee        |                     The type 0 tx `maxFeePerGas` (in `gwei`)                      |   float   | --gas --type 2 |                                                  |             |
-|           |     gasmaxpriority     |                    The type 0 tx `gasmaxpriority` (in `gwei`)                     |   float   | --gas --type 2 |                                                  |             |
-|           |        network         |                              Hardhat `network` param                              |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
+| Required? |          Name          |                              Description                              |   Type    |   Depends On   |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :-------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
+|    ✅     |      description       |                       The contract description                        |  string   |                |                                                  |    `''`     |
+|    ✅     | fallbackweiperunitlink |            The fallback amount of network TKN wei per LINK            | BigNumber |                |                                                  |             |
+|    ✅     |    stalenessseconds    | The number of seconds after which the feed answer is considered stale | BigNumber |                |                                                  |             |
+|           |         setup          |                 Configs the contract after deployment                 |   Flag    |                |                                                  |   `false`   |
+|           |         owner          |                 The address to transfer the ownership                 |   owner   |    --setup     |                                                  |             |
+|           |         verify         |             Verifies the contract on Etherscan at the end             |   Flag    |                |                                                  |   `false`   |
+|           |          gas           |           Allows customising the tx gas (legacy & EIP-1559)           |   Flag    |                |                                                  |   `false`   |
+|           |          type          |                              The tx type                              |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |        gasprice        |                 The type 0 tx `gasPrice` (in `gwei`)                  |   float   | --gas --type 0 |                                                  |             |
+|           |       gasmaxfee        |               The type 0 tx `maxFeePerGas` (in `gwei`)                |   float   | --gas --type 2 |                                                  |             |
+|           |     gasmaxpriority     |              The type 0 tx `gasmaxpriority` (in `gwei`)               |   float   | --gas --type 2 |                                                  |             |
+|           |        network         |                        Hardhat `network` param                        |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
 
 Example calls:
 
@@ -180,7 +179,6 @@ Example calls:
 yarn hardhat drcoordinator:deploy \
 --description beta-2 \
 --fallbackweiperunitlink "8000000000000000" \
---gasafterpaymentcalc "56000" \
 --stalenessseconds "86400" \
 --setup \
 --owner 0x0000000000000000000000000000000000000001 \
@@ -192,7 +190,6 @@ yarn hardhat drcoordinator:deploy \
 yarn hardhat drcoordinator:deploy \
 --description beta-2 \
 --fallbackweiperunitlink "8000000000000000" \
---gasafterpaymentcalc "56000" \
 --stalenessseconds "86400" \
 --setup \
 --owner 0x0000000000000000000000000000000000000001 \
@@ -293,23 +290,22 @@ yarn hardhat drcoordinator:import-file \
 
 Task parameters:
 
-| Required? |          Name          |                                      Description                                      |   Type    |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-----------------------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |        address         |                          The DRCoordinator contract address                           |  address  |                |                                                  |             |
-|    ✅     |          mode          |                                  The execution mode                                   |  string   |                |                `forking`, `prod`                 |  `forking`  |
-|           |      description       |                             The new contract description                              |  string   |                |                                                  |    `''`     |
-|           | fallbackweiperunitlink |                  The new fallback amount of network TKN wei per LINK                  | BigNumber |                |                                                  |             |
-|           |  gasafterpaymentcalc   | The new amount of wei used by the contract after sending the response to the consumer | BigNumber |                |                                                  |             |
-|           |         owner          |                       The new address to transfer the ownership                       |  address  |                |                                                  |             |
-|           |         pause          |                             Pause or unpause the contract                             |  boolean  |                |                                                  |             |
-|           |          sha1          |                                     The new sha1                                      |  bytes20  |                |                                                  |             |
-|           |    stalenessseconds    |       The new number of seconds after which the feed answer is considered stale       | BigNumber |                |                                                  |             |
-|           |          gas           |                   Allows customising the tx gas (legacy & EIP-1559)                   |   Flag    |                |                                                  |   `false`   |
-|           |          type          |                                      The tx type                                      |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |        gasprice        |                         The type 0 tx `gasPrice` (in `gwei`)                          |   float   | --gas --type 0 |                                                  |             |
-|           |       gasmaxfee        |                       The type 0 tx `maxFeePerGas` (in `gwei`)                        |   float   | --gas --type 2 |                                                  |             |
-|           |     gasmaxpriority     |                      The type 0 tx `gasmaxpriority` (in `gwei`)                       |   float   | --gas --type 2 |                                                  |             |
-|    ✅     |        network         |                                Hardhat `network` param                                |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |          Name          |                                Description                                |   Type    |   Depends On   |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :-----------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
+|    ✅     |        address         |                    The DRCoordinator contract address                     |  address  |                |                                                  |             |
+|    ✅     |          mode          |                            The execution mode                             |  string   |                |                `forking`, `prod`                 |  `forking`  |
+|           |      description       |                       The new contract description                        |  string   |                |                                                  |    `''`     |
+|           | fallbackweiperunitlink |            The new fallback amount of network TKN wei per LINK            | BigNumber |                |                                                  |             |
+|           |         owner          |                 The new address to transfer the ownership                 |  address  |                |                                                  |             |
+|           |         pause          |                       Pause or unpause the contract                       |  boolean  |                |                                                  |             |
+|           |          sha1          |                               The new sha1                                |  bytes20  |                |                                                  |             |
+|           |    stalenessseconds    | The new number of seconds after which the feed answer is considered stale | BigNumber |                |                                                  |             |
+|           |          gas           |             Allows customising the tx gas (legacy & EIP-1559)             |   Flag    |                |                                                  |   `false`   |
+|           |          type          |                                The tx type                                |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |        gasprice        |                   The type 0 tx `gasPrice` (in `gwei`)                    |   float   | --gas --type 0 |                                                  |             |
+|           |       gasmaxfee        |                 The type 0 tx `maxFeePerGas` (in `gwei`)                  |   float   | --gas --type 2 |                                                  |             |
+|           |     gasmaxpriority     |                The type 0 tx `gasmaxpriority` (in `gwei`)                 |   float   | --gas --type 2 |                                                  |             |
+|    ✅     |        network         |                          Hardhat `network` param                          |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
@@ -371,14 +367,13 @@ yarn hardhat drcoordinator:withdraw \
 
 Task parameters:
 
-| Required? |          Name          |                                    Description                                    |   Type    | Depends On |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-------------------------------------------------------------------------------: | :-------: | :--------: | :----------------------------------------------: | :---------: |
-|    ✅     |        address         |                        The DRCoordinator contract address                         |  address  |            |                                                  |             |
-|    ✅     |      description       |                             The contract description                              |  string   |            |                                                  |             |
-|    ✅     | fallbackweiperunitlink |                  The fallback amount of network TKN wei per LINK                  | BigNumber |            |                                                  |             |
-|    ✅     |  gasafterpaymentcalc   | The amount of wei used by the contract after sending the response to the consumer | BigNumber |            |                                                  |             |
-|    ✅     |    stalenessseconds    |       The number of seconds after which the feed answer is considered stale       | BigNumber |            |                                                  |             |
-|    ✅     |        network         |                              Hardhat `network` param                              |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |          Name          |                              Description                              |   Type    | Depends On |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :-------------------------------------------------------------------: | :-------: | :--------: | :----------------------------------------------: | :---------: |
+|    ✅     |        address         |                  The DRCoordinator contract address                   |  address  |            |                                                  |             |
+|    ✅     |      description       |                       The contract description                        |  string   |            |                                                  |             |
+|    ✅     | fallbackweiperunitlink |            The fallback amount of network TKN wei per LINK            | BigNumber |            |                                                  |             |
+|    ✅     |    stalenessseconds    | The number of seconds after which the feed answer is considered stale | BigNumber |            |                                                  |             |
+|    ✅     |        network         |                        Hardhat `network` param                        |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
@@ -386,7 +381,6 @@ Example calls:
 yarn hardhat drcoordinator:verify \
 --description beta-2 \
 --fallbackweiperunitlink "8000000000000000" \
---gasafterpaymentcalc "56000" \
 --stalenessseconds "86400" \
 --network eth-kovan
 ```

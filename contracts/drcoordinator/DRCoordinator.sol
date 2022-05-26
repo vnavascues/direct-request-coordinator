@@ -43,7 +43,10 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     bytes32 private constant NO_SPEC_KEY = bytes32(0); // 32 bytes
     uint96 private constant LINK_TOTAL_SUPPLY = 1e27; // 12 bytes
     uint48 private constant MIN_CONSUMER_GAS_LIMIT = 400_000; // 6 bytes, from Operator.sol MINIMUM_CONSUMER_GAS_LIMIT
+    // NB: with the current balance model & actions after calculating the payment, it is safe setting the
+    // GAS_AFTER_PAYMENT_CALCULATION to 50_000 as a constant. Exact amount used is 42489 gas
     uint8 private constant MIN_FALLBACK_MSG_DATA_LENGTH = 36; // 1 byte
+    uint48 public constant GAS_AFTER_PAYMENT_CALCULATION = 50_000; // 6 bytes
     uint8 public constant MAX_REQUEST_CONFIRMATIONS = 200; // 1 byte
     bool public immutable IS_SEQUENCER_DEPENDANT; // 1 byte
     address public immutable FLAG_SEQUENCER_OFFLINE; // 20 bytes
@@ -51,10 +54,10 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     LinkTokenInterface public immutable LINK; // 20 bytes
     AggregatorV3Interface public immutable LINK_TKN_FEED; // 20 bytes
     bytes20 private s_sha1; // 20 bytes
-    uint48 private s_gasAfterPaymentCalculation; // 6 bytes
     uint256 private s_stalenessSeconds; // 32 bytes (or uint32 - 4 bytes)
     uint256 private s_fallbackWeiPerUnitLink; // 32 bytes
     string private s_description;
+    mapping(address => uint96) private s_consumerToLinkBalance; /* address */ /* LINK */
     mapping(bytes32 => FulfillConfig) private s_requestIdToFulfillConfig; /* requestId */ /* FulfillConfig */
     SpecLibrary.Map private s_keyToSpec; /* keccak256(abi.encodePacked(oracle, specId)) */ /* Spec */
 
@@ -69,10 +72,11 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     error DRCoordinator__FulfillmentFeeIsGtLinkTotalSupply();
     error DRCoordinator__FulfillmentFeeIsZero();
     error DRCoordinator__FulfillModeUnsupported(FulfillMode fulfillmode);
-    error DRCoordinator__LinkAllowanceIsInsufficient(uint256 allowance, uint256 payment);
-    error DRCoordinator__LinkBalanceIsInsufficient(uint256 balance, uint256 payment);
-    error DRCoordinator__LinkTransferFailed(address to, uint256 payment);
-    error DRCoordinator__LinkTransferFromFailed(address from, address to, uint256 payment);
+    error DRCoordinator__LinkAllowanceIsInsufficient(uint96 amount, uint96 allowance);
+    error DRCoordinator__LinkBalanceIsZero();
+    error DRCoordinator__LinkBalanceIsInsufficient(uint96 amount, uint96 balance);
+    error DRCoordinator__LinkTransferFailed(address to, uint96 amount);
+    error DRCoordinator__LinkTransferFromFailed(address from, address to, uint96 payment);
     error DRCoordinator__LinkWeiPriceIsZero();
     error DRCoordinator__MinConfirmationsIsGtMaxRequesetConfirmations(
         uint8 minConfirmations,
@@ -90,7 +94,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     error DRCoordinator__SpecKeysArraysIsEmpty();
 
     event DRCoordinator__FallbackWeiPerUnitLinkSet(uint256 fallbackWeiPerUnitLink);
-    event DRCoordinator__FundsWithdrawn(address payee, uint256 amount);
+    event DRCoordinator__FundsAdded(address from, uint96 amount);
+    event DRCoordinator__FundsWithdrawn(address payee, uint96 amount);
     event DRCoordinator__GasAfterPaymentCalculationSet(uint48 gasAfterPaymentCalculation);
     event DRCoordinator__RequestFulfilled(
         bytes32 indexed requestId,
@@ -113,7 +118,6 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         address _linkTknFeed,
         string memory _description,
         uint256 _fallbackWeiPerUnitLink,
-        uint48 _gasAfterPaymentCalculation,
         uint256 _stalenessSeconds,
         bool _isSequencerDependant,
         string memory _sequencerOfflineFlag,
@@ -130,7 +134,6 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         CHAINLINK_FLAGS = FlagsInterface(_chainlinkFlags);
         s_description = _description;
         s_fallbackWeiPerUnitLink = _fallbackWeiPerUnitLink;
-        s_gasAfterPaymentCalculation = _gasAfterPaymentCalculation;
         s_stalenessSeconds = _stalenessSeconds;
     }
 
@@ -145,6 +148,19 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
+
+    function addFunds(address _consumer, uint96 _amount) external {
+        _requireLinkAllowance(_amount, uint96(LINK.allowance(msg.sender, address(this))));
+        _requireLinkBalance(_amount, uint96(LINK.balanceOf(msg.sender)));
+        s_consumerToLinkBalance[_consumer] += _amount;
+        emit DRCoordinator__FundsAdded(msg.sender, _amount);
+        _requireLinkTransferFrom(
+            LINK.transferFrom(msg.sender, address(this), _amount),
+            msg.sender,
+            address(this),
+            _amount
+        );
+    }
 
     function fulfillData(bytes32 _requestId, bytes calldata _data)
         external
@@ -204,11 +220,6 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         emit DRCoordinator__FallbackWeiPerUnitLinkSet(_fallbackWeiPerUnitLink);
     }
 
-    function setGasAfterPaymentCalculation(uint48 _gasAfterPaymentCalculation) external onlyOwner {
-        s_gasAfterPaymentCalculation = _gasAfterPaymentCalculation;
-        emit DRCoordinator__GasAfterPaymentCalculationSet(_gasAfterPaymentCalculation);
-    }
-
     function setSha1(bytes20 _sha1) external onlyOwner whenNotPaused {
         s_sha1 = _sha1;
     }
@@ -238,15 +249,18 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         _unpause();
     }
 
-    function withdraw(address payable _payee, uint256 _amount) external onlyOwner {
+    function withdrawFunds(address _payee, uint96 _amount) external {
+        address consumer = msg.sender == owner() ? address(this) : msg.sender;
+        _requireLinkBalance(_amount, s_consumerToLinkBalance[consumer]);
+        s_consumerToLinkBalance[consumer] -= _amount;
         emit DRCoordinator__FundsWithdrawn(_payee, _amount);
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }
 
     /* ========== EXTERNAL VIEW FUNCTIONS ========== */
 
-    function availableFunds() external view returns (uint256) {
-        return _availableFunds();
+    function availableFunds(address _consumer) external view returns (uint96) {
+        return s_consumerToLinkBalance[_consumer];
     }
 
     function calculateMaxPaymentAmount(
@@ -255,7 +269,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         uint48 _gasLimit,
         uint96 _fulfillmentFee,
         FeeType _feeType
-    ) external view returns (uint256) {
+    ) external view returns (uint96) {
         return
             _calculatePaymentAmount(
                 PaymentPreFeeType.MAX,
@@ -277,7 +291,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         uint96 _payment,
         uint96 _fulfillmentFee,
         FeeType _feeType
-    ) external view returns (uint256) {
+    ) external view returns (uint96) {
         return
             _calculatePaymentAmount(
                 PaymentPreFeeType.SPOT,
@@ -290,6 +304,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             );
     }
 
+    // TODO: pull FulfillConfig from s_requestIdToFulfillConfig via requestId, check and amend s_consumerToLinkBalance
+    // balances.
     function cancelRequest(
         bytes32 _requestId,
         uint256 _payment,
@@ -309,10 +325,6 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     function getFallbackWeiPerUnitLink() external view returns (uint256) {
         return s_fallbackWeiPerUnitLink;
-    }
-
-    function getGasAfterPaymentCalculation() external view returns (uint48) {
-        return s_gasAfterPaymentCalculation;
     }
 
     function getNumberOfSpecs() external view returns (uint256) {
@@ -369,11 +381,11 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         // Fulfill just with the gas amount requested by the consumer
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = fulfillConfig.callbackAddr.call{
-            gas: fulfillConfig.gasLimit - s_gasAfterPaymentCalculation
+            gas: fulfillConfig.gasLimit - GAS_AFTER_PAYMENT_CALCULATION
         }(data);
 
         // Charge LINK payment
-        uint256 payment = _calculatePaymentAmount(
+        uint96 payment = _calculatePaymentAmount(
             PaymentPreFeeType.SPOT,
             fulfillConfig.gasLimit,
             tx.gasprice,
@@ -382,15 +394,10 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             fulfillConfig.fulfillmentFee,
             fulfillConfig.feeType
         );
-        // NB: statemens below cost 53000-56000 gas approx
-        _requireLinkAllowance(LINK.allowance(fulfillConfig.msgSender, address(this)), payment);
-        _requireLinkBalance(LINK.balanceOf(fulfillConfig.msgSender), payment);
-        _requireLinkTransferFrom(
-            LINK.transferFrom(fulfillConfig.msgSender, address(this), payment),
-            fulfillConfig.msgSender,
-            address(this),
-            payment
-        );
+        // NB: statemens below cost 42489 gas -> GAS_AFTER_PAYMENT_CALCULATION = 50k gas
+        _requireLinkBalance(payment, s_consumerToLinkBalance[fulfillConfig.msgSender]);
+        s_consumerToLinkBalance[fulfillConfig.msgSender] -= payment;
+        s_consumerToLinkBalance[address(this)] += payment;
         delete s_requestIdToFulfillConfig[_requestId];
         emit DRCoordinator__RequestFulfilled(
             _requestId,
@@ -427,7 +434,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         _requireGasLimit(_callbackGasLimit, spec.gasLimit);
 
         // Check whether caller has enough LINK funds (payment amount calculated using all the _callbackGasLimit)
-        uint256 maxPayment = _calculatePaymentAmount(
+        uint96 maxPayment = _calculatePaymentAmount(
             PaymentPreFeeType.MAX,
             0,
             tx.gasprice,
@@ -436,14 +443,8 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             spec.fulfillmentFee,
             spec.feeType
         );
-        _requireLinkAllowance(LINK.allowance(msg.sender, address(this)), maxPayment);
-        _requireLinkBalance(LINK.balanceOf(msg.sender), maxPayment);
-        _requireLinkTransferFrom(
-            LINK.transferFrom(msg.sender, address(this), spec.payment),
-            msg.sender,
-            address(this),
-            spec.payment
-        );
+        _requireLinkBalance(maxPayment, s_consumerToLinkBalance[msg.sender]);
+        s_consumerToLinkBalance[msg.sender] -= spec.payment;
 
         // Initialise the fulfill configuration
         FulfillConfig memory fulfillConfig;
@@ -452,7 +453,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         fulfillConfig.callbackAddr = callbackAddr;
         fulfillConfig.fulfillmentFee = spec.fulfillmentFee;
         fulfillConfig.minConfirmations = _callbackMinConfirmations;
-        uint48 gasLimit = _callbackGasLimit + s_gasAfterPaymentCalculation;
+        uint48 gasLimit = _callbackGasLimit + GAS_AFTER_PAYMENT_CALCULATION;
         fulfillConfig.gasLimit = gasLimit;
         fulfillConfig.feeType = spec.feeType;
         fulfillConfig.callbackFunctionId = _req.callbackFunctionId;
@@ -498,10 +499,6 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     /* ========== PRIVATE VIEW FUNCTIONS ========== */
 
-    function _availableFunds() private view returns (uint256) {
-        return LINK.balanceOf(address(this));
-    }
-
     function _calculatePaymentAmount(
         PaymentPreFeeType _paymentPreFeeType,
         uint48 _startGas,
@@ -510,7 +507,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         uint48 _gasLimit,
         uint96 _fulfillmentFee,
         FeeType _feeType
-    ) private view returns (uint256) {
+    ) private view returns (uint96) {
         // NB: parameters accept 0 to allow estimation calls
         uint256 weiPerUnitLink = _getFeedData();
         uint256 paymentPreFee = 0;
@@ -518,7 +515,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             paymentPreFee = (1e18 * _weiPerUnitGas * _gasLimit) / weiPerUnitLink;
         } else if (_paymentPreFeeType == PaymentPreFeeType.SPOT) {
             paymentPreFee =
-                (1e18 * _weiPerUnitGas * (s_gasAfterPaymentCalculation + _startGas - gasleft())) /
+                (1e18 * _weiPerUnitGas * (GAS_AFTER_PAYMENT_CALCULATION + _startGas - gasleft())) /
                 weiPerUnitLink;
         } else {
             revert DRCoordinator__PaymentPreFeeTypeUnsupported(_paymentPreFeeType);
@@ -540,7 +537,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             // Amount can't be > LINK total supply
             revert DRCoordinator__PaymentAfterFeeIsGtLinkTotalSupply(paymentAfterFee);
         }
-        return paymentAfterFee;
+        return uint96(paymentAfterFee);
     }
 
     // TODO: it currently calculates the 'weiPerUnitLink' via a single feed (LINK / TKN). Add a 2-hops feed support
@@ -607,15 +604,18 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         _requireSpecGasLimit(_gasLimit);
     }
 
-    function _requireLinkAllowance(uint256 _allowance, uint256 _payment) private pure {
-        if (_allowance < _payment) {
-            revert DRCoordinator__LinkAllowanceIsInsufficient(_allowance, _payment);
+    function _requireLinkAllowance(uint96 _amount, uint96 _allowance) private pure {
+        if (_allowance < _amount) {
+            revert DRCoordinator__LinkAllowanceIsInsufficient(_amount, _allowance);
         }
     }
 
-    function _requireLinkBalance(uint256 _balance, uint256 _payment) private pure {
-        if (_balance < _payment) {
-            revert DRCoordinator__LinkBalanceIsInsufficient(_balance, _payment);
+    function _requireLinkBalance(uint96 _amount, uint96 _balance) private pure {
+        if (_balance == 0) {
+            revert DRCoordinator__LinkBalanceIsZero();
+        }
+        if (_balance < _amount) {
+            revert DRCoordinator__LinkBalanceIsInsufficient(_amount, _balance);
         }
     }
 
@@ -628,7 +628,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     function _requireLinkTransfer(
         bool _success,
         address _to,
-        uint256 _amount
+        uint96 _amount
     ) private pure {
         if (!_success) {
             revert DRCoordinator__LinkTransferFailed(_to, _amount);
@@ -639,7 +639,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         bool _success,
         address _from,
         address _to,
-        uint256 _payment
+        uint96 _payment
     ) private pure {
         if (!_success) {
             revert DRCoordinator__LinkTransferFromFailed(_from, _to, _payment);

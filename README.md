@@ -21,22 +21,22 @@ Chainlink Spring '22 hackaton
 
     - `fallback`:
 
-      - Pros: slightly less TOML jobspec invasive (no need to add an extra `ethabiencode`). Leverages off-chain, no extra `abi.encode()` on-chain.
+      - Pros: slightly cheaper (-2.4% at least), less TOML jobspec invasive (no need to add an extra `ethabiencode`). Leverages off-chain, no extra `abi.encode()` on-chain.
       - Cons: feels hacky. Any con of using `fallback`.
 
     - `fulfillData`:
       - Pros: any pro of using a method instead of the fallback one. Can use `recordChainlinkFulfillment(requestId)`.
-      - Cons: slithgly more expensive (as it requires an extra `abi.encodePacked()`, which is affected by the data size). Requires adding an extra TOML jobspec task (i.e. `ethabiencode`). Nonetheless, DRCoordinator already forces you to create a new TOML jobspec, as the following fields/properties have to be amended: `minContractPaymentLinkJuels` (directrequest field), `gasLimit` (from `ethtx` task), `minConfirmations` (from `ethtx` task).
+      - Cons: slithgly more expensive (+1.4% at least, as it requires an extra `abi.encodePacked()`, which is affected by the data size). Requires adding an extra TOML jobspec task (i.e. `ethabiencode`). Nonetheless, DRCoordinator already forces you to create a new TOML jobspec, as the following fields/properties have to be amended: `minContractPaymentLinkJuels` (directrequest field), `gasLimit` (from `ethtx` task), `minConfirmations` (from `ethtx` task).
 
   - Add support for a subscription model, like `VRFCoordinatorV2.sol`.
   - Support `cancelRequest` for consumers. Easier to implement on subscription model. Not having it implemented is not that severe due to the ridiculous low LINK amount of the initial payment (it could be that claiming it costs more than the refunded LINK).
   - Improve the existing tests, e.g few integration tests should be moved into a unit test suite, add more unit tests, test more edge cases, run a fuzzer. Also run a proper SC audit.
   - Adding NatSpec.
-  - Consider storing the config (e.g. `fallbackWeiPerUnitLink`, `gasAfterPaymentCalculation`, `stalenessSeconds`) in a struct.
+  - Consider storing the config (e.g. `fallbackWeiPerUnitLink`, `gasAfterPaymentCalculation`, `stalenessSeconds`) in a struct (evaluate management cost).
   - Add support for calculating the `weiPerUnitLink` via `LINK / USD` + `TKN / USD` on networks where the `LINK / TKN` price feed is not available yet.
+  - Re-evaluate each event emitted (and any missing one), its topics, etc. during the testing phase (incl. plug-in monitoring).
+  - Improve the tooling (i.e. tasks).
   - Consider integrating Keepers for keeping up-to-date `fallbackWeiPerUnitLink` (this is tricky, as `performUpkeep()` is an external public function).
-  - Improve the tooling, and scripting.
-  - Monitoring.
 
 ## FAQs
 

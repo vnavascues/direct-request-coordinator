@@ -63,7 +63,6 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     // Deploy DRCoordinator
     const description = "Testing DRCoordinator";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
-    const gasAfterPaymentCalculation = BigNumber.from("33285");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = true;
     const chainlinkFlags = mockFlags.address;
@@ -75,7 +74,6 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         context.mockV3Aggregator.address,
         description,
         fallbackWeiPerUnitLink,
-        gasAfterPaymentCalculation,
         stalenessSeconds,
         isSequencerDependant,
         sequencerFlag,

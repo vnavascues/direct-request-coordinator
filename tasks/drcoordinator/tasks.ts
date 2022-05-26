@@ -18,7 +18,6 @@ import {
   pause,
   setDescription,
   setFallbackWeiPerUnitLink,
-  setGasAfterPaymentCalculation,
   setSha1,
   setStalenessSeconds,
   setupDRCoordinatorAfterDeploy,
@@ -30,7 +29,7 @@ import {
   validateConfigurationOracleAddr,
   verifyConsumer,
   verifyDRCoordinator,
-  withdraw,
+  withdrawFunds,
 } from "./methods";
 import type { Spec } from "./types";
 import { BetterSet } from "../../libs/better-set";
@@ -163,12 +162,6 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
   .addParam("description", "The contract description", "", types.string)
   .addParam("fallbackweiperunitlink", "The fallback amount of network TKN wei per LINK", undefined, typeBignumber)
   .addParam(
-    "gasafterpaymentcalc",
-    "The amount of wei used by the contract after sending the response to the consumer",
-    undefined,
-    typeBignumber,
-  )
-  .addParam(
     "stalenessseconds",
     "The number of seconds after which the feed answer is considered stale",
     undefined,
@@ -209,7 +202,6 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
       signer,
       taskArguments.description,
       taskArguments.fallbackweiperunitlink,
-      taskArguments.gasafterpaymentcalc,
       taskArguments.stalenessseconds,
       overrides,
     );
@@ -229,7 +221,6 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
       addressLinkTknFeed,
       taskArguments.description,
       taskArguments.fallbackweiperunitlink,
-      taskArguments.gasafterpaymentcalc,
       taskArguments.stalenessseconds,
       isSequencerDependant,
       sequencerOfflineFlag,
@@ -316,6 +307,7 @@ task("drcoordinator:detail", "Log the DRCoordinator storage")
     const drCoordinator = await getDRCoordinator(hre, taskArguments.address, TaskExecutionMode.PROD);
 
     await logDRCoordinatorDetail(
+      hre,
       drCoordinator,
       {
         detail: true,
@@ -449,7 +441,6 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
   )
   .addOptionalParam("description", "The new 'description'", undefined, types.string)
   .addOptionalParam("fallbackweiperunitlink", "The new 'fallbackWeiPerUnitLink'", undefined, typeBignumber)
-  .addOptionalParam("gasafterpaymentcalc", "The new 'gasAfterPaymentCalculation'", undefined, types.int)
   .addOptionalParam("owner", "The new 'owner'", undefined, typeAddress)
   .addOptionalParam("pause", "Pause or unpause the contract", undefined, types.boolean)
   .addOptionalParam("sha1", "The new 'sha1'", undefined, typeBytes(20))
@@ -475,11 +466,6 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
     // Set fallbackWeiPerUnitLink
     if (taskArguments.fallbackweiperunitlink) {
       await setFallbackWeiPerUnitLink(drCoordinator, signer, taskArguments.fallbackweiperunitlink, overrides);
-    }
-
-    // Set gasAfterPaymentCalculation
-    if (taskArguments.gasafterpaymentcalc) {
-      await setGasAfterPaymentCalculation(drCoordinator, signer, taskArguments.gasafterpaymentcalc, overrides);
     }
 
     // Transfer ownerwhip
@@ -515,12 +501,6 @@ task("drcoordinator:verify", "Verify a DRCoordinator on an Etherscan-like block 
   .addParam("description", "The contract description", undefined, types.string)
   .addParam("fallbackweiperunitlink", "The fallback amount of TKN wei per LINK", undefined, typeBignumber)
   .addParam(
-    "gasafterpaymentcalc",
-    "The amount of wei used by the contract after sending the response to the consumer",
-    undefined,
-    typeBignumber,
-  )
-  .addParam(
     "stalenessseconds",
     "The number of seconds after which the feed answer is considered stale",
     undefined,
@@ -540,7 +520,6 @@ task("drcoordinator:verify", "Verify a DRCoordinator on an Etherscan-like block 
       addressLinkTknFeed,
       taskArguments.description,
       taskArguments.fallbackweiperunitlink,
-      taskArguments.gasafterpaymentcalc,
       taskArguments.stalenessseconds,
       isSequencerDependant,
       sequencerOfflineFlag,
@@ -579,10 +558,10 @@ task("drcoordinator:withdraw", "Withdraw LINK in the contract")
     );
 
     if (taskArguments.granular) {
-      await withdraw(drCoordinator, signer, taskArguments.payee, taskArguments.amount, overrides);
+      await withdrawFunds(drCoordinator, signer, taskArguments.payee, taskArguments.amount, overrides);
     } else {
-      const availableFunds = await drCoordinator.connect(signer).availableFunds();
-      await withdraw(drCoordinator, signer, taskArguments.payee, availableFunds, overrides);
+      const availableFunds = await drCoordinator.connect(signer).availableFunds(drCoordinator.address);
+      await withdrawFunds(drCoordinator, signer, taskArguments.payee, availableFunds, overrides);
     }
 
     logger.info("*** Withdraw task finished successfully ***");
