@@ -25,7 +25,7 @@ export interface Configuration {
   fulfillmentFee: string;
   gasLimit: number;
   minConfirmations: number;
-  oracleAddr: string;
+  operator: string;
   payment: string;
 }
 

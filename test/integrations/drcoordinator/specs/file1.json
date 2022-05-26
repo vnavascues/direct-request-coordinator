@@ -14,7 +14,7 @@
       "fulfillmentFee": "100000000000000000",
       "gasLimit": 500000,
       "minConfirmations": 2,
-      "oracleAddr": "0xdf25c593b2372C8dAB7F6f81C695f6FE489579F7",
+      "operator": "0xdf25c593b2372C8dAB7F6f81C695f6FE489579F7",
       "payment": "10000000000000000"
     }
   }

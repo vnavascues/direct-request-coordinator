@@ -17,7 +17,7 @@
       "fulfillmentFee": "1100",
       "gasLimit": 1000000,
       "minConfirmations": 3,
-      "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "operator": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
       "payment": "5000000000000000"
     }
   },
@@ -39,7 +39,7 @@
       "fulfillmentFee": "1100",
       "gasLimit": 1000000,
       "minConfirmations": 3,
-      "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "operator": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
       "payment": "5000000000000000"
     }
   },
@@ -58,7 +58,7 @@
       "fulfillmentFee": "1100",
       "gasLimit": 500000,
       "minConfirmations": 3,
-      "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "operator": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
       "payment": "1000000000000000"
     }
   },
@@ -77,7 +77,7 @@
       "fulfillmentFee": "25000000000000000",
       "gasLimit": 500000,
       "minConfirmations": 3,
-      "oracleAddr": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "operator": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
       "payment": "1000000000000000"
     }
   }

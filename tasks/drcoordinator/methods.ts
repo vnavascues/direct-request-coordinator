@@ -260,7 +260,7 @@ export async function getDRCoordinator(
 }
 
 export async function getSpecConfigurationConverted(configuration: Configuration): Promise<ConfigurationConverted> {
-  const operator = configuration.oracleAddr;
+  const operator = configuration.operator;
   const specId = convertJobIdToBytes32(configuration.externalJobId);
   const key = generateSpecKey(operator, specId);
 
@@ -506,7 +506,7 @@ export async function setCodeOnSpecContractAddresses(hre: HardhatRuntimeEnvironm
 
   let contractAddresses: string[] = [];
   configurations.forEach((configuration: Configuration) => {
-    contractAddresses = contractAddresses.concat([configuration.oracleAddr]);
+    contractAddresses = contractAddresses.concat([configuration.operator]);
   });
   for (const address of contractAddresses) {
     await setAddressCode(hre, address, DUMMY_SET_CODE_BYTES);
@@ -765,7 +765,7 @@ export function validateConfiguration(configuration: Configuration): void {
   validateConfigurationFulfillmentFee(configuration.fulfillmentFee, configuration.feeType);
   validateConfigurationGasLimit(configuration.gasLimit);
   validateConfigurationMinConfirmations(configuration.minConfirmations);
-  validateConfigurationOracleAddr(configuration.oracleAddr);
+  validateConfigurationOperator(configuration.operator);
   validateConfigurationPayment(configuration.payment);
 }
 
@@ -815,14 +815,14 @@ export function validateConfigurationGasLimit(gasLimit: number): void {
   }
 }
 
-export function validateConfigurationOracleAddr(oracleAddr: string): void {
+export function validateConfigurationOperator(operator: string): void {
   if (
-    !ethers.utils.isAddress(oracleAddr) ||
-    oracleAddr !== ethers.utils.getAddress(oracleAddr) ||
-    oracleAddr === ethers.constants.AddressZero
+    !ethers.utils.isAddress(operator) ||
+    operator !== ethers.utils.getAddress(operator) ||
+    operator === ethers.constants.AddressZero
   ) {
     throw new Error(
-      `Invalid 'oracleAddr': ${oracleAddr}. Expected format is a checksum Ethereum address (can't be the Zero address)`,
+      `Invalid 'operator': ${operator}. Expected format is a checksum Ethereum address (can't be the Zero address)`,
     );
   }
 }

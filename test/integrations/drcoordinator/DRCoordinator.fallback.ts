@@ -87,7 +87,7 @@ export function testFallback(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -115,10 +115,10 @@ export function testFallback(signers: Signers, context: Context): void {
         spec.minConfirmations,
         FulfillMode.FALLBACK,
       );
-    // 5. Query the OracleRequest event from Operator.sol
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    // 5. Query the operatorRequest event from Operator.sol
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     // 6. Withdraw consumer funds
     const availableFunds = await context.drCoordinator
       .connect(signers.externalCaller)
@@ -176,7 +176,7 @@ export function testFallback(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -205,9 +205,9 @@ export function testFallback(signers: Signers, context: Context): void {
         FulfillMode.FALLBACK,
       );
     // 5. Prepare fulfillOracleRequest2 arguments
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     const callbackFunctionId = "0x5e9b81e1";
     const result = BigNumber.from("777");
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, true]);
@@ -253,7 +253,7 @@ export function testFallback(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -282,9 +282,9 @@ export function testFallback(signers: Signers, context: Context): void {
         FulfillMode.FALLBACK,
       );
     // 5. Prepare fulfillOracleRequest2 arguments
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     const callbackFunctionId = "0x5e9b81e1";
     const result = BigNumber.from("777");
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, false]);
@@ -331,7 +331,7 @@ export function testFallback(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -360,9 +360,9 @@ export function testFallback(signers: Signers, context: Context): void {
         FulfillMode.FALLBACK,
       );
     // 5. Prepare fulfillOracleRequest2 arguments
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     const callbackFunctionId = "0xf43c62ab";
     const result = "0x";
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, result]);
@@ -409,7 +409,7 @@ export function testFallback(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -447,9 +447,9 @@ export function testFallback(signers: Signers, context: Context): void {
         FulfillMode.FALLBACK,
       );
     // 5. Prepare fulfillOracleRequest2 arguments
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     const result = BigNumber.from("777");
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "uint256", "bool"], [requestId, result, false]);
     const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();

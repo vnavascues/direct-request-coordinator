@@ -26,7 +26,7 @@ import {
   unpause,
   updateSpecs,
   validateConfigurationExternalJobId,
-  validateConfigurationOracleAddr,
+  validateConfigurationOperator,
   verifyConsumer,
   verifyDRCoordinator,
   withdrawFunds,
@@ -319,7 +319,7 @@ task("drcoordinator:detail", "Log the DRCoordinator storage")
   });
 
 task("drcoordinator:generate-key", "Generate the Spec key")
-  .addParam("oracleaddr", "The oracle contract address", undefined, typeAddress)
+  .addParam("operator", "The Operator contract address", undefined, typeAddress)
   .addOptionalParam(
     "externaljobid",
     "The Job Specification ID that the request will be created for (as UUIDv4)",
@@ -332,7 +332,7 @@ task("drcoordinator:generate-key", "Generate the Spec key")
       throw new Error(`Either 'externaljobid' or 'specid' task argument is required`);
     }
 
-    validateConfigurationOracleAddr(taskArguments.oracleaddr);
+    validateConfigurationOperator(taskArguments.operator);
 
     let specId: string;
     if (taskArguments.externaljobid) {
@@ -342,7 +342,7 @@ task("drcoordinator:generate-key", "Generate the Spec key")
     } else {
       specId = taskArguments.specid;
     }
-    const key = generateSpecKey(taskArguments.oracleaddr, specId);
+    const key = generateSpecKey(taskArguments.operator, specId);
     logger.info(`key: ${key}`);
   });
 

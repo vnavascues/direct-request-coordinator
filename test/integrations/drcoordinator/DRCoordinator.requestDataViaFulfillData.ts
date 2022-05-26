@@ -25,7 +25,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
   it("reverts when DRCoordinator is paused", async function () {
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
-    const oracle = context.operator.address;
+    const operator = context.operator.address;
     const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -41,14 +41,14 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
     ).to.be.revertedWith("Pausable: paused");
   });
 
-  it("reverts when oracle is not a contract", async function () {
+  it("reverts when operator is not a contract", async function () {
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
-    const oracle = ethers.constants.AddressZero;
+    const operator = ethers.constants.AddressZero;
     const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -63,14 +63,14 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
     ).to.be.revertedWith("DRCoordinator__OperatorIsNotAContract");
   });
 
   it("reverts when specId is zero", async function () {
     // Arrange
     const specId = "0x0000000000000000000000000000000000000000000000000000000000000000";
-    const oracle = context.operator.address;
+    const operator = context.operator.address;
     const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -85,14 +85,14 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
     ).to.be.revertedWith("DRCoordinator__SpecIdIsZero");
   });
 
   it("reverts when callbackAddr is not a contract", async function () {
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
-    const oracle = context.operator.address;
+    const operator = context.operator.address;
     const callbackAddr = ethers.constants.AddressZero;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -107,14 +107,14 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
     ).to.be.revertedWith("DRCoordinator__CallbackAddrIsNotAContract");
   });
 
   it("reverts when callbackAddr is DRCoordinator address", async function () {
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
-    const oracle = context.operator.address;
+    const operator = context.operator.address;
     const callbackAddr = context.drCoordinator.address;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -129,14 +129,14 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
     ).to.be.revertedWith("DRCoordinator__CallbackAddrIsDRCoordinator");
   });
 
   it("reverts when Spec is not inserted", async function () {
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
-    const oracle = context.operator.address;
+    const operator = context.operator.address;
     const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -148,11 +148,11 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     const callbackMinConfirmations = 3;
 
     // Act & Assert
-    const expectedKey = generateSpecKey(oracle, specId);
+    const expectedKey = generateSpecKey(operator, specId);
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
     ).to.be.revertedWith(`DRCoordinator__SpecIsNotInserted("${expectedKey}")`);
   });
 
@@ -162,7 +162,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     const maxRequestConfirmations = await context.drCoordinator.MAX_REQUEST_CONFIRMATIONS();
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
       spec.configuration.minConfirmations = maxRequestConfirmations;
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
@@ -170,7 +170,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     const spec = fileSpecMap.get(key) as SpecConverted;
     await context.drCoordinator.connect(signers.owner).setSpec(key, spec);
     // 2. Prepare DRCoordinator.requestDataViaFulfillData() args
-    const oracle = context.operator.address;
+    const operator = context.operator.address;
     const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -184,7 +184,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, spec.gasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, spec.gasLimit, callbackMinConfirmations, chainlinkRequest),
     ).to.be.revertedWith(
       `DRCoordinator__MinConfirmationsIsGtSpecMinConfirmations(${callbackMinConfirmations}, ${spec.minConfirmations})`,
     );
@@ -195,14 +195,14 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
     const spec = fileSpecMap.get(key) as SpecConverted;
     await context.drCoordinator.connect(signers.owner).setSpec(key, spec);
     // 2. Prepare DRCoordinator.requestDataViaFulfillData() args
-    const oracle = context.operator.address;
+    const operator = context.operator.address;
     const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
     const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
@@ -216,7 +216,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestDataViaFulfillData(oracle, callbackGasLimit, spec.minConfirmations, chainlinkRequest),
+        .requestDataViaFulfillData(operator, callbackGasLimit, spec.minConfirmations, chainlinkRequest),
     ).to.be.revertedWith(`DRCoordinator__GasLimitIsGtSpecGasLimit(${callbackGasLimit}, ${spec.gasLimit})`);
   });
 
@@ -225,7 +225,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -252,7 +252,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -297,7 +297,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -362,7 +362,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -434,7 +434,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];

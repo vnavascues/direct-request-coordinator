@@ -115,7 +115,7 @@ Task parameters:
 
 | Required? |     Name      |                                Description                                |  Type   | Depends On | Options | Defaults to |
 | :-------: | :-----------: | :-----------------------------------------------------------------------: | :-----: | :--------: | :-----: | :---------: |
-|    ✅     |  oracleaddr   |                        The oracle contract address                        | address |            |         |             |
+|    ✅     |   operator    |                      The `Operator` contract address                      | address |            |         |             |
 |           | externaljobid | The Job Specification ID that the request will be created for (as UUIDv4) | UUIDv4  |            |         |             |
 |           |    specid     |                       The job spec ID (as bytes32)                        | bytes32 |            |         |             |
 
@@ -123,13 +123,13 @@ Example calls:
 
 ```sh
 yarn hardhat drcoordinator:generate-key \
---oracleaddr 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
+--operator 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
 --externaljobid 235bbeca-65f3-44b7-ba8b-3af501e43622
 ```
 
 ```sh
 yarn hardhat drcoordinator:generate-key \
---oracleaddr 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
+--operator 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
 --specid 0x3233356262656361363566333434623762613862336166353031653433363232
 ```
 

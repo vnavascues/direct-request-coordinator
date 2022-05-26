@@ -27,7 +27,7 @@ export function testCancelRequest(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -61,10 +61,10 @@ export function testCancelRequest(signers: Signers, context: Context): void {
           gasPrice: weiPerUnitGas,
         },
       );
-    // 5. Query the OracleRequest event from Operator.sol
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { cancelExpiration } = eventOracleRequest.args;
+    // 5. Query the operatorRequest event from Operator.sol
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { cancelExpiration } = eventoperatorRequest.args;
     const fiveMinutesTs = 60 * 5;
     await increaseTo(cancelExpiration.add(BigNumber.from(fiveMinutesTs)));
 
@@ -82,7 +82,7 @@ export function testCancelRequest(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -116,10 +116,10 @@ export function testCancelRequest(signers: Signers, context: Context): void {
           gasPrice: weiPerUnitGas,
         },
       );
-    // 5. Query the OracleRequest event from Operator.sol
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    // 5. Query the operatorRequest event from Operator.sol
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     const fiveMinutesTs = 60 * 5;
     await increaseTo(cancelExpiration.add(BigNumber.from(fiveMinutesTs)));
 
@@ -136,7 +136,7 @@ export function testCancelRequest(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -170,10 +170,10 @@ export function testCancelRequest(signers: Signers, context: Context): void {
           gasPrice: weiPerUnitGas,
         },
       );
-    // 5. Query the OracleRequest event from Operator.sol
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    // 5. Query the operatorRequest event from Operator.sol
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     const fiveMinutesTs = 60 * 5;
     await increaseTo(cancelExpiration.add(BigNumber.from(fiveMinutesTs)));
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
@@ -205,7 +205,7 @@ export function testCancelRequest(signers: Signers, context: Context): void {
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
     specs.forEach(spec => {
-      spec.configuration.oracleAddr = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
     });
     const fileSpecMap = await getSpecConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -239,10 +239,10 @@ export function testCancelRequest(signers: Signers, context: Context): void {
           gasPrice: weiPerUnitGas,
         },
       );
-    // 5. Query the OracleRequest event from Operator.sol
-    const filterOracleRequest = context.operator.filters.OracleRequest();
-    const [eventOracleRequest] = await context.operator.queryFilter(filterOracleRequest);
-    const { requestId, cancelExpiration } = eventOracleRequest.args;
+    // 5. Query the operatorRequest event from Operator.sol
+    const filteroperatorRequest = context.operator.filters.OracleRequest();
+    const [eventoperatorRequest] = await context.operator.queryFilter(filteroperatorRequest);
+    const { requestId, cancelExpiration } = eventoperatorRequest.args;
     const fiveMinutesTs = 60 * 5;
     await increaseTo(cancelExpiration.add(BigNumber.from(fiveMinutesTs)));
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
