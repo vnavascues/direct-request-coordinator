@@ -1,0 +1,44 @@
+# BE AWARE BUG: 'minConfirmations' on 'ethtx' task must be replaced by a stringified number.
+# https://github.com/smartcontractkit/chainlink/issues/6680
+type = "directrequest"
+schemaVersion = 1
+# Replace (1 of 4) with DRCoordinator.sol address
+requesters = [
+    "0x0000000000000000000000000000000000000000"
+]
+minContractPaymentLinkJuels = "5000000000000000" # Replace (2 of 4) with initial LINK payment amount
+name = "Sportsdataio Get Schedule v1.0.0 DRCoordinator fulfillData"
+contractAddress = "0x0000000000000000000000000000000000000000" # Replace (3 o 4) with Operator.sol address
+maxTaskDuration = "0s"
+observationSource = """
+    decode_log          [type="ethabidecodelog"
+                         abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+                         data="$(jobRun.logData)"
+                         topics="$(jobRun.logTopics)"]
+
+    decode_cbor         [type="cborparse" data="$(decode_log.data)"]
+
+    merge_req_params    [type="merge" left="{\\"gameIds\\": null}" right="$(decode_cbor)"]
+
+    sportsdataio_lp     [type="bridge"
+                         name="sportsdataio_lp"
+                         requestData="{\\"data\\": {\\"endpoint\\": \\"schedule\\",\\"market\\": $(merge_req_params.market), \\"leagueId\\": $(merge_req_params.leagueId), \\"date\\": $(merge_req_params.date), \\"gameIds\\": $(merge_req_params.gameIds)}}"]
+
+    parse_result        [type="jsonparse" data="$(sportsdataio_lp)" path="result"]
+
+    encode_result       [type="ethabiencode"
+                         abi="(bytes32 _requestId, bytes32[] _result)"
+                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_result\\": $(parse_result)}"]
+
+    encode_data         [type="ethabiencode"
+                         abi="(bytes32 _requestId, bytes calldata _data)"
+                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_data\\": $(encode_result)}"]
+
+    encode_tx           [type="ethabiencode"
+                         abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
+                         data="{\\"requestId\\": $(decode_log.requestId),\\"payment\\": $(decode_log.payment),\\"callbackAddress\\": $(decode_log.callbackAddr),\\"callbackFunctionId\\": $(decode_log.callbackFunctionId),\\"expiration\\": $(decode_log.cancelExpiration),\\"data\\": $(encode_data)}"]
+
+    submit_tx           [type="ethtx" to="0x0000000000000000000000000000000000000000" data="$(encode_tx)" minConfirmations="$(decode_cbor.minConfirmations)" gasLimit="$(decode_cbor.gasLimit)"] // Replace (4 o 4) with Operator.sol address
+
+    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_result -> encode_data -> encode_tx -> submit_tx
+"""
