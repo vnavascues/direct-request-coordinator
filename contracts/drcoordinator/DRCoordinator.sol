@@ -306,21 +306,15 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             );
     }
 
-    // TODO: put stuff in requries
     function cancelRequest(
         bytes32 _requestId,
         uint256 _expiration,
         FulfillMode _fulfillMode
     ) external {
-        // Via fallback - callbackFunctionId
-        // Via fulfillData - fulfillData
         FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
-        if (fulfillConfig.msgSender == address(0)) {
-            revert DRCoordinator__RequestIsNotPending();
-        }
-        if (fulfillConfig.msgSender != msg.sender) {
-            revert DRCoordinator__CallerIsNotRequester();
-        }
+        _requireRequestNotPending(fulfillConfig.msgSender);
+        _requireRequester(fulfillConfig.msgSender);
+
         bytes4 callbackFunctionId;
         if (_fulfillMode == FulfillMode.FULFILL_DATA) {
             callbackFunctionId = this.fulfillData.selector;
@@ -594,10 +588,16 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         }
     }
 
+    function _requireRequester(address _msgSender) private view {
+        if (_msgSender != msg.sender) {
+            revert DRCoordinator__CallerIsNotRequester();
+        }
+    }
+
     /* ========== PRIVATE PURE FUNCTIONS ========== */
 
     function _generateSpecKey(address _operator, bytes32 _specId) private pure returns (bytes32) {
-        // (operator, specId) composite key allows storing N specs with the same externalJobID but different Operator.sol
+        // (operator, specId) composite key allows storing N specs with the same externalJobID but different operator
         return keccak256(abi.encodePacked(_operator, _specId));
     }
 
@@ -665,6 +665,12 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     function _requireMinConfirmations(uint8 _minConfirmations, uint8 _specMinConfirmations) private pure {
         if (_minConfirmations > _specMinConfirmations) {
             revert DRCoordinator__MinConfirmationsIsGtSpecMinConfirmations(_minConfirmations, _specMinConfirmations);
+        }
+    }
+
+    function _requireRequestNotPending(address _msgSender) private pure {
+        if (_msgSender == address(0)) {
+            revert DRCoordinator__RequestIsNotPending();
         }
     }
 
