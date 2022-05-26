@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
-import { FulfillMode } from "./DRCoordinator.sol";
-import { FulfillChainlinkExternalRequestBase } from "./FulfillChainlinkExternalRequestBase.sol";
-import { IDRCoordinator } from "./IDRCoordinator.sol";
-import { console } from "hardhat/console.sol";
+import { Chainlink, DRCoordinatorConsumer, IDRCoordinator, FulfillMode } from "./DRCoordinatorConsumer.sol";
 
-contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
+contract DRCConsumerSportsdataio is DRCoordinatorConsumer {
     using Chainlink for Chainlink.Request;
 
     struct GameCreateMlb {
@@ -29,11 +25,25 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
 
     event FundsWithdrawn(address payee, uint256 amount);
 
-    constructor(address _link) {
+    constructor(
+        address _link,
+        address _drCoordinator,
+        address _operator
+    ) {
         _setChainlinkToken(_link);
+        _setDRCoordinator(_drCoordinator);
+        _setOperator(_operator);
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
+
+    function cancelRequest(
+        bytes32 _requestId,
+        uint256 _expiration,
+        FulfillMode _fulfillMode
+    ) external {
+        s_drCoordinator.cancelRequest(_requestId, _expiration, _fulfillMode);
+    }
 
     function fulfillSchedule(bytes32 _requestId, bytes32[] memory _result)
         external
@@ -71,8 +81,6 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
     }
 
     function requestSchedule(
-        address _drCoordinator,
-        address _oracle,
         bytes32 _specId,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
@@ -81,9 +89,7 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
         uint256 _date,
         FulfillMode _fulfillMode
     ) external {
-        Chainlink.Request memory req;
-        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
-        req.initialize(_specId, address(this), this.fulfillSchedule.selector);
+        Chainlink.Request memory req = buildDRCoordinatorRequest(_specId, this.fulfillSchedule.selector);
 
         // NB: sportsdata EA specific
         req.addUint("market", _market);
@@ -92,15 +98,15 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
 
         bytes32 requestId;
         if (_fulfillMode == FulfillMode.FALLBACK) {
-            requestId = IDRCoordinator(_drCoordinator).requestDataViaFallback(
-                _oracle,
+            requestId = s_drCoordinator.requestDataViaFallback(
+                address(s_operator),
                 _callbackGasLimit,
                 _callbackMinConfirmations,
                 req
             );
         } else if (_fulfillMode == FulfillMode.FULFILL_DATA) {
-            requestId = IDRCoordinator(_drCoordinator).requestDataViaFulfillData(
-                _oracle,
+            requestId = s_drCoordinator.requestDataViaFulfillData(
+                address(s_operator),
                 _callbackGasLimit,
                 _callbackMinConfirmations,
                 req
@@ -108,7 +114,15 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
         } else {
             revert FulfillModeUnsupported(_fulfillMode);
         }
-        _addChainlinkExternalRequest(_drCoordinator, requestId);
+        _addChainlinkExternalRequest(address(s_drCoordinator), requestId);
+    }
+
+    function setDRCoordinator(address _drCoordinator) external {
+        _setDRCoordinator(_drCoordinator);
+    }
+
+    function setOperator(address _operator) external {
+        _setOperator(_operator);
     }
 
     function withdraw(address payable _payee, uint256 _amount) external {
@@ -116,12 +130,8 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }
 
-    function withdrawFunds(
-        address _drCoordinator,
-        address _payee,
-        uint96 _amount
-    ) external {
-        IDRCoordinator(_drCoordinator).withdrawFunds(_payee, _amount);
+    function withdrawFunds(address _payee, uint96 _amount) external {
+        s_drCoordinator.withdrawFunds(_payee, _amount);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */

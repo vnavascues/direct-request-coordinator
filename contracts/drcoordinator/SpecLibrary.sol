@@ -8,7 +8,7 @@ enum FeeType {
 
 struct Spec {
     bytes32 specId; // 32 bytes
-    address oracle; // 20 bytes
+    address operator; // 20 bytes
     uint96 payment; // 1e27 < 2^96 = 12 bytes
     uint8 minConfirmations; // 200 < 2^8 = 1 byte
     uint48 gasLimit; // < 2.81 * 10^14 = 6 bytes

@@ -14,14 +14,14 @@ interface IDRCoordinator {
     ) external;
 
     function requestDataViaFallback(
-        address _oracle,
+        address _operator,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external returns (bytes32);
 
     function requestDataViaFulfillData(
-        address _oracle,
+        address _operator,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req

@@ -212,8 +212,8 @@ export async function deployDRCoordinator(
   };
 }
 
-export function generateSpecKey(oracle: string, specId: string): string {
-  return ethers.utils.keccak256(ethers.utils.solidityPack(["address", "bytes32"], [oracle, specId]));
+export function generateSpecKey(operator: string, specId: string): string {
+  return ethers.utils.keccak256(ethers.utils.solidityPack(["address", "bytes32"], [operator, specId]));
 }
 
 export async function getDRCoordinator(
@@ -260,9 +260,9 @@ export async function getDRCoordinator(
 }
 
 export async function getSpecConfigurationConverted(configuration: Configuration): Promise<ConfigurationConverted> {
-  const oracle = configuration.oracleAddr;
+  const operator = configuration.oracleAddr;
   const specId = convertJobIdToBytes32(configuration.externalJobId);
-  const key = generateSpecKey(oracle, specId);
+  const key = generateSpecKey(operator, specId);
 
   return {
     feeType: configuration.feeType,
@@ -270,7 +270,7 @@ export async function getSpecConfigurationConverted(configuration: Configuration
     gasLimit: configuration.gasLimit,
     key,
     minConfirmations: configuration.minConfirmations,
-    oracle,
+    operator,
     payment: BigNumber.from(configuration.payment),
     specId,
   };
@@ -305,7 +305,7 @@ export async function getSpecMap(
 ): Promise<Map<string, SpecConverted>> {
   const specMap: Map<string, SpecConverted> = new Map();
   for (const key of keys) {
-    const [specId, oracle, payment, minConfirmations, gasLimit, fulfillmentFee, feeType] = await drCoordinator
+    const [specId, operator, payment, minConfirmations, gasLimit, fulfillmentFee, feeType] = await drCoordinator
       .connect(signer)
       .getSpec(key);
     const spec = {
@@ -314,7 +314,7 @@ export async function getSpecMap(
       gasLimit,
       key,
       minConfirmations,
-      oracle,
+      operator,
       payment,
       specId,
     };

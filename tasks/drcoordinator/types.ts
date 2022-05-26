@@ -35,7 +35,7 @@ export interface ConfigurationConverted {
   gasLimit: number;
   key: string;
   minConfirmations: number;
-  oracle: string;
+  operator: string;
   payment: BigNumber;
   specId: string;
 }

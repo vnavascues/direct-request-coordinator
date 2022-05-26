@@ -64,7 +64,7 @@ export function testRequestDataViaFallback(signers: Signers, context: Context): 
       context.drCoordinator
         .connect(signers.externalCaller)
         .requestDataViaFulfillData(oracle, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
-    ).to.be.revertedWith("DRCoordinator__OracleIsNotAContract");
+    ).to.be.revertedWith("DRCoordinator__OperatorIsNotAContract");
   });
 
   it("reverts when specId is zero", async function () {

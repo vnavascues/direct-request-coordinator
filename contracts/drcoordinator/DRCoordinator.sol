@@ -11,7 +11,6 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IExternalFulfillment } from "./IExternalFulfillment.sol";
 import { FeeType, Spec, SpecLibrary } from "./SpecLibrary.sol";
-import "hardhat/console.sol";
 
 // NB: enum placed outside due to Slither bug https://github.com/crytic/slither/issues/1166
 enum PaymentPreFeeType {
@@ -60,7 +59,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     string private s_description;
     mapping(address => uint96) private s_consumerToLinkBalance; /* address */ /* LINK */
     mapping(bytes32 => FulfillConfig) private s_requestIdToFulfillConfig; /* requestId */ /* FulfillConfig */
-    SpecLibrary.Map private s_keyToSpec; /* keccak256(abi.encodePacked(oracle, specId)) */ /* Spec */
+    SpecLibrary.Map private s_keyToSpec; /* keccak256(abi.encodePacked(operator, specId)) */ /* Spec */
 
     error DRCoordinator__ArraysLengthIsNotEqual();
     error DRCoordinator__CallbackAddrIsDRCoordinator();
@@ -85,7 +84,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         uint8 maxRequestConfirmations
     );
     error DRCoordinator__MinConfirmationsIsGtSpecMinConfirmations(uint8 minConfirmations, uint8 specMinConfirmations);
-    error DRCoordinator__OracleIsNotAContract();
+    error DRCoordinator__OperatorIsNotAContract();
     error DRCoordinator__PaymentAfterFeeIsGtLinkTotalSupply(uint256 paymentAfterFee);
     error DRCoordinator__PaymentIsGtLinkTotalSupply();
     error DRCoordinator__PaymentIsZero();
@@ -179,21 +178,21 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     function requestDataViaFallback(
-        address _oracle,
+        address _operator,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external whenNotPaused nonReentrant returns (bytes32) {
-        return _requestData(_oracle, _callbackGasLimit, _callbackMinConfirmations, _req, FulfillMode.FALLBACK);
+        return _requestData(_operator, _callbackGasLimit, _callbackMinConfirmations, _req, FulfillMode.FALLBACK);
     }
 
     function requestDataViaFulfillData(
-        address _oracle,
+        address _operator,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external whenNotPaused nonReentrant returns (bytes32) {
-        return _requestData(_oracle, _callbackGasLimit, _callbackMinConfirmations, _req, FulfillMode.FULFILL_DATA);
+        return _requestData(_operator, _callbackGasLimit, _callbackMinConfirmations, _req, FulfillMode.FULFILL_DATA);
     }
 
     function removeSpec(bytes32 _key) external onlyOwner whenNotPaused {
@@ -432,7 +431,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     function _requestData(
-        address _oracle,
+        address _operator,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req,
@@ -441,10 +440,10 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         // Validate params
         bytes32 specId = _req.id;
         address callbackAddr = _req.callbackAddress;
-        _requireOracle(_oracle);
+        _requireOperator(_operator);
         _requireSpecId(specId);
         _requireCallbackAddr(callbackAddr);
-        bytes32 key = _generateSpecKey(_oracle, specId);
+        bytes32 key = _generateSpecKey(_operator, specId);
         _requireSpecIsInserted(key, s_keyToSpec.isInserted(key));
         Spec memory spec = s_keyToSpec.getSpec(key);
         _requireMinConfirmations(_callbackMinConfirmations, spec.minConfirmations);
@@ -488,7 +487,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         // _req.add("minConfirmations", Strings.toString(spec.minConfirmations));
 
         // Send an Operator request, and store the fulfill configuration by 'requestId'
-        bytes32 requestId = sendOperatorRequestTo(_oracle, _req, uint256(spec.payment));
+        bytes32 requestId = sendOperatorRequestTo(_operator, _req, uint256(spec.payment));
         s_requestIdToFulfillConfig[requestId] = fulfillConfig;
 
         // In case of "external request" (i.e. requester !== callbackAddr) notify the fulfillment contract about the
@@ -505,7 +504,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
 
     function _setSpec(bytes32 _key, Spec calldata _spec) private {
         _requireSpecId(_spec.specId);
-        _requireOracle(_spec.oracle);
+        _requireOperator(_spec.operator);
         _requireSpecPayment(_spec.payment);
         _requireSpecMinConfirmations(_spec.minConfirmations);
         _requireSpecGasLimit(_spec.gasLimit);
@@ -589,17 +588,17 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         }
     }
 
-    function _requireOracle(address _oracle) private view {
-        if (!_oracle.isContract()) {
-            revert DRCoordinator__OracleIsNotAContract();
+    function _requireOperator(address _operator) private view {
+        if (!_operator.isContract()) {
+            revert DRCoordinator__OperatorIsNotAContract();
         }
     }
 
     /* ========== PRIVATE PURE FUNCTIONS ========== */
 
-    function _generateSpecKey(address _oracle, bytes32 _specId) private pure returns (bytes32) {
-        // (oracle, specId) composite key allows storing N specs with the same externalJobID but different Operator.sol
-        return keccak256(abi.encodePacked(_oracle, _specId));
+    function _generateSpecKey(address _operator, bytes32 _specId) private pure returns (bytes32) {
+        // (operator, specId) composite key allows storing N specs with the same externalJobID but different Operator.sol
+        return keccak256(abi.encodePacked(_operator, _specId));
     }
 
     function _requireEqualLength(uint256 _length1, uint256 _length2) private pure {

@@ -3,6 +3,7 @@ pragma solidity 0.8.13;
 
 import { LinkTokenInterface } from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
+import { OperatorInterface } from "@chainlink/contracts/src/v0.8/interfaces/OperatorInterface.sol";
 import { FulfillMode, IDRCoordinator } from "./IDRCoordinator.sol";
 
 contract DRCoordinatorConsumer {
@@ -10,6 +11,7 @@ contract DRCoordinatorConsumer {
 
     LinkTokenInterface internal LINK;
     IDRCoordinator internal s_drCoordinator;
+    OperatorInterface internal s_operator;
 
     mapping(bytes32 => address) private s_pendingRequests;
 
@@ -91,7 +93,7 @@ contract DRCoordinatorConsumer {
 
     /**
      * @notice Allows a request to be cancelled if it has not been fulfilled
-     * @dev Requires keeping track of the expiration value emitted from the oracle contract.
+     * @dev Requires keeping track of the expiration value emitted from the operator contract.
      * Deletes the request from the `pendingRequests` mapping.
      * Emits ChainlinkCancelled event.
      * @param _requestId The request ID
@@ -135,5 +137,13 @@ contract DRCoordinatorConsumer {
      */
     function _setDRCoordinator(address _drCoordinator) internal {
         s_drCoordinator = IDRCoordinator(_drCoordinator);
+    }
+
+    /**
+     * @notice Sets the Operator address
+     * @param _operator The address of the Operator contract
+     */
+    function _setOperator(address _operator) internal {
+        s_operator = OperatorInterface(_operator);
     }
 }

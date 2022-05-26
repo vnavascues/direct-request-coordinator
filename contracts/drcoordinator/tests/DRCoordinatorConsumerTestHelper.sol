@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
-import { FulfillMode } from "../DRCoordinator.sol";
-import { FulfillChainlinkExternalRequestBase } from "../FulfillChainlinkExternalRequestBase.sol";
-import { IDRCoordinator } from "../IDRCoordinator.sol";
-import { console } from "hardhat/console.sol";
+import { Chainlink, DRCoordinatorConsumer, IDRCoordinator, FulfillMode } from "../DRCoordinatorConsumer.sol";
 
-contract DRCoordinatorConsumerTestHelper is FulfillChainlinkExternalRequestBase {
+contract DRCoordinatorConsumerTestHelper is DRCoordinatorConsumer {
     using Chainlink for Chainlink.Request;
 
     error FulfillModeUnsupported(FulfillMode fulfillmode);
