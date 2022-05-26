@@ -78,7 +78,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     error DRCoordinator__LinkTransferFailed(address to, uint96 amount);
     error DRCoordinator__LinkTransferFromFailed(address from, address to, uint96 payment);
     error DRCoordinator__LinkWeiPriceIsZero();
-    error DRCoordinator__MinConfirmationsIsGtMaxRequesetConfirmations(
+    error DRCoordinator__MinConfirmationsIsGtMaxRequestConfirmations(
         uint8 minConfirmations,
         uint8 maxRequestConfirmations
     );
@@ -101,7 +101,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         bytes32 indexed requestId,
         bool success,
         address indexed callbackAddr,
-        bytes4 callbackFunctionSignature,
+        bytes4 callbackFunctionId,
         uint256 payment
     );
     event DRCoordinator__SetChainlinkExternalRequestFailed(
@@ -650,12 +650,11 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
         if (_minConfirmations > _specMinConfirmations) {
             revert DRCoordinator__MinConfirmationsIsGtSpecMinConfirmations(_minConfirmations, _specMinConfirmations);
         }
-        _requireSpecMinConfirmations(_minConfirmations);
     }
 
     function _requireSpecMinConfirmations(uint8 _minConfirmations) private pure {
         if (_minConfirmations > MAX_REQUEST_CONFIRMATIONS) {
-            revert DRCoordinator__MinConfirmationsIsGtMaxRequesetConfirmations(
+            revert DRCoordinator__MinConfirmationsIsGtMaxRequestConfirmations(
                 _minConfirmations,
                 MAX_REQUEST_CONFIRMATIONS
             );

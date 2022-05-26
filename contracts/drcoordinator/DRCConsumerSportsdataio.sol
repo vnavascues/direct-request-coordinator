@@ -35,10 +35,6 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
 
     /* ========== EXTERNAL FUNCTIONS ========== */
 
-    function approve(address _drCoordinator, uint96 _amount) external {
-        LINK.approve(_drCoordinator, _amount);
-    }
-
     function fulfillSchedule(bytes32 _requestId, bytes32[] memory _result)
         external
         recordChainlinkFulfillment(_requestId)
@@ -120,10 +116,12 @@ contract DRCConsumerSportsdataio is FulfillChainlinkExternalRequestBase {
         _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
     }
 
-    /* ========== EXTERNAL VIEW FUNCTIONS ========== */
-
-    function availableFunds() external view returns (uint256) {
-        return LINK.balanceOf(address(this));
+    function withdrawFunds(
+        address _drCoordinator,
+        address _payee,
+        uint96 _amount
+    ) external {
+        IDRCoordinator(_drCoordinator).withdrawFunds(_payee, _amount);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */

@@ -8,6 +8,8 @@ import { testCalculateSpotPaymentAmount } from "./DRCoordinator.calculateSpotPay
 import { testFallback } from "./DRCoordinator.fallback";
 import { testFulfillData } from "./DRCoordinator.fulfillData";
 import { testGetFeedData } from "./DRCoordinator.getFeedData";
+import { testRequestDataViaFallback } from "./DRCoordinator.requestDataViaFallback";
+import { testRequestDataViaFulfillData } from "./DRCoordinator.requestDataViaFulfillData";
 
 import type {
   DRCoordinator,
@@ -36,7 +38,7 @@ export interface Signers {
   requester: SignerWithAddress;
 }
 
-describe.only("DRCoordinator", () => {
+describe("DRCoordinator", () => {
   if (["1", "true"].includes(process.env.HARDHAT_FORKING_ENABLED as string)) {
     throw new Error(
       `Disable the forking mode. Set HARDHAT_FORKING_ENABLED env var to false before running the test suite`,
@@ -119,4 +121,6 @@ describe.only("DRCoordinator", () => {
   describe("testFallback()", () => testFallback(signers, context));
   describe("testFulfillData()", () => testFulfillData(signers, context));
   describe("testGetFeedData()", () => testGetFeedData(signers, context));
+  describe("testRequestDataViaFallback()", () => testRequestDataViaFallback(signers, context));
+  describe("testRequestDataViaFulfillData()", () => testRequestDataViaFulfillData(signers, context));
 });

@@ -24,10 +24,6 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
 
     /* ========== EXTERNAL FUNCTIONS ========== */
 
-    function approve(address _drCoordinator, uint96 _amount) external {
-        LINK.approve(_drCoordinator, _amount);
-    }
-
     // Function signature: 0xf43c62ab
     function fulfillNothing(bytes32 _requestId, bytes calldata _result)
         external
@@ -61,25 +57,7 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
         req.initialize(_specId, address(this), this.fulfillNothing.selector);
 
-        bytes32 requestId;
-        if (_fulfillMode == FulfillMode.FALLBACK) {
-            requestId = IDRCoordinator(_drCoordinator).requestDataViaFallback(
-                _oracle,
-                _callbackGasLimit,
-                _callbackMinConfirmations,
-                req
-            );
-        } else if (_fulfillMode == FulfillMode.FULFILL_DATA) {
-            requestId = IDRCoordinator(_drCoordinator).requestDataViaFulfillData(
-                _oracle,
-                _callbackGasLimit,
-                _callbackMinConfirmations,
-                req
-            );
-        } else {
-            revert FulfillModeUnsupported(_fulfillMode);
-        }
-        _addChainlinkExternalRequest(_drCoordinator, requestId);
+        _requestUint256(_drCoordinator, _oracle, _callbackGasLimit, _callbackMinConfirmations, _fulfillMode, req);
     }
 
     function requestUint256(
@@ -94,6 +72,60 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
         req.initialize(_specId, address(this), this.fulfillUint256.selector);
 
+        _requestUint256(_drCoordinator, _oracle, _callbackGasLimit, _callbackMinConfirmations, _fulfillMode, req);
+    }
+
+    function requestUint256Externally(
+        address _drCoordinator,
+        address _oracle,
+        bytes32 _specId,
+        uint48 _callbackGasLimit,
+        uint8 _callbackMinConfirmations,
+        address _callbackAddr,
+        bytes4 _callbackFunctionId,
+        FulfillMode _fulfillMode
+    ) external {
+        Chainlink.Request memory req;
+        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
+        req.initialize(_specId, _callbackAddr, _callbackFunctionId);
+
+        _requestUint256(_drCoordinator, _oracle, _callbackGasLimit, _callbackMinConfirmations, _fulfillMode, req);
+    }
+
+    function withdraw(address payable _payee, uint256 _amount) external {
+        emit FundsWithdrawn(_payee, _amount);
+        _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
+    }
+
+    function withdrawFunds(
+        address _drCoordinator,
+        address _payee,
+        uint96 _amount
+    ) external {
+        IDRCoordinator(_drCoordinator).withdrawFunds(_payee, _amount);
+    }
+
+    /* ========== EXTERNAL PURE FUNCTIONS ========== */
+
+    function initializeChainlinkRequest(
+        bytes32 _specId,
+        address _callbackAddr,
+        bytes4 _callbackFuncSelector
+    ) external pure returns (Chainlink.Request memory) {
+        Chainlink.Request memory req;
+        return req.initialize(_specId, _callbackAddr, _callbackFuncSelector);
+    }
+
+    /* ========== PRIVATE FUNCTIONS ========== */
+
+    function _requestUint256(
+        address _drCoordinator,
+        address _oracle,
+        uint48 _callbackGasLimit,
+        uint8 _callbackMinConfirmations,
+        FulfillMode _fulfillMode,
+        Chainlink.Request memory req
+    ) private {
         bytes32 requestId;
         if (_fulfillMode == FulfillMode.FALLBACK) {
             requestId = IDRCoordinator(_drCoordinator).requestDataViaFallback(
@@ -115,18 +147,7 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
         _addChainlinkExternalRequest(_drCoordinator, requestId);
     }
 
-    function withdraw(address payable _payee, uint256 _amount) external {
-        emit FundsWithdrawn(_payee, _amount);
-        _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
-    }
-
-    function withdrawFunds(
-        address _drCoordinator,
-        address _payee,
-        uint96 _amount
-    ) external {
-        IDRCoordinator(_drCoordinator).withdrawFunds(_payee, _amount);
-    }
+    /* ========== PRIVATE PURE FUNCTIONS ========== */
 
     function _requireLinkTransfer(
         bool _success,
