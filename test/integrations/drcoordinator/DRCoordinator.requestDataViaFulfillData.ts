@@ -26,9 +26,9 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
     const oracle = context.operator.address;
-    const callbackAddr = context.drCoordinatorConsumer1TH.address;
+    const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       specId,
       callbackAddr,
       callbackFunctionId,
@@ -49,9 +49,9 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
     const oracle = ethers.constants.AddressZero;
-    const callbackAddr = context.drCoordinatorConsumer1TH.address;
+    const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       specId,
       callbackAddr,
       callbackFunctionId,
@@ -71,9 +71,9 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // Arrange
     const specId = "0x0000000000000000000000000000000000000000000000000000000000000000";
     const oracle = context.operator.address;
-    const callbackAddr = context.drCoordinatorConsumer1TH.address;
+    const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       specId,
       callbackAddr,
       callbackFunctionId,
@@ -95,7 +95,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     const oracle = context.operator.address;
     const callbackAddr = ethers.constants.AddressZero;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       specId,
       callbackAddr,
       callbackFunctionId,
@@ -117,7 +117,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     const oracle = context.operator.address;
     const callbackAddr = context.drCoordinator.address;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       specId,
       callbackAddr,
       callbackFunctionId,
@@ -137,9 +137,9 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // Arrange
     const specId = "0x3233356262656361363566333434623762613862336166353031653433363232";
     const oracle = context.operator.address;
-    const callbackAddr = context.drCoordinatorConsumer1TH.address;
+    const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       specId,
       callbackAddr,
       callbackFunctionId,
@@ -171,9 +171,9 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await context.drCoordinator.connect(signers.owner).setSpec(key, spec);
     // 2. Prepare DRCoordinator.requestDataViaFulfillData() args
     const oracle = context.operator.address;
-    const callbackAddr = context.drCoordinatorConsumer1TH.address;
+    const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       spec.specId,
       callbackAddr,
       callbackFunctionId,
@@ -203,9 +203,9 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await context.drCoordinator.connect(signers.owner).setSpec(key, spec);
     // 2. Prepare DRCoordinator.requestDataViaFulfillData() args
     const oracle = context.operator.address;
-    const callbackAddr = context.drCoordinatorConsumer1TH.address;
+    const callbackAddr = context.drCoordinatorConsumerTH.address;
     const callbackFunctionId = "0x5e9b81e1";
-    const chainlinkRequest = await context.drCoordinatorConsumer1TH.initializeChainlinkRequest(
+    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
       spec.specId,
       callbackAddr,
       callbackFunctionId,
@@ -234,7 +234,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
 
     // Act & Assert
     await expect(
-      context.drCoordinatorConsumer1TH
+      context.drCoordinatorConsumerTH
         .connect(signers.externalCaller)
         .requestUint256(
           context.drCoordinator.address,
@@ -272,11 +272,11 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, consumerBalance);
+      .addFunds(context.drCoordinatorConsumerTH.address, consumerBalance);
 
     // Act & Assert
     await expect(
-      context.drCoordinatorConsumer1TH
+      context.drCoordinatorConsumerTH
         .connect(signers.externalCaller)
         .requestUint256(
           context.drCoordinator.address,
@@ -316,18 +316,18 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const operatorLinkBalanceBefore = await context.linkToken.balanceOf(context.operator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
 
     // Act & Assert
     const expectedRequestId = "0x794239b5b2c74a8b53870f56a1a752b8fbe7e27f61d08f72a707159d2f44239a";
     await expect(
-      context.drCoordinatorConsumer1TH
+      context.drCoordinatorConsumerTH
         .connect(signers.externalCaller)
         .requestUint256(
           context.drCoordinator.address,
@@ -352,8 +352,8 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore,
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore.sub(spec.payment),
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore.sub(spec.payment),
     );
   });
 
@@ -381,12 +381,12 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const operatorLinkBalanceBefore = await context.linkToken.balanceOf(context.operator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
     // 4. Set code on the fulfillment contract address
     const callbackAddr = context.linkToken.address; // NB: hardhat evm 'hardhat_setCode' does not work
@@ -395,7 +395,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // Act & Assert
     const expectedRequestId = "0x794239b5b2c74a8b53870f56a1a752b8fbe7e27f61d08f72a707159d2f44239a";
     await expect(
-      context.drCoordinatorConsumer1TH
+      context.drCoordinatorConsumerTH
         .connect(signers.externalCaller)
         .requestUint256Externally(
           context.drCoordinator.address,
@@ -424,8 +424,8 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore,
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore.sub(spec.payment),
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore.sub(spec.payment),
     );
   });
 
@@ -453,12 +453,12 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const operatorLinkBalanceBefore = await context.linkToken.balanceOf(context.operator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
     // 4. Deploy a compatible fulfillment contract
     const genericFulfillmentTHFactory = await ethers.getContractFactory("GenericFulfillmentTestHelper");
@@ -471,7 +471,7 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     // Act & Assert
     const expectedRequestId = "0x794239b5b2c74a8b53870f56a1a752b8fbe7e27f61d08f72a707159d2f44239a";
     await expect(
-      context.drCoordinatorConsumer1TH
+      context.drCoordinatorConsumerTH
         .connect(signers.externalCaller)
         .requestUint256Externally(
           context.drCoordinator.address,
@@ -500,8 +500,8 @@ export function testRequestDataViaFulfillData(signers: Signers, context: Context
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore,
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore.sub(spec.payment),
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore.sub(spec.payment),
     );
   });
 }

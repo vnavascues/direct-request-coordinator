@@ -7,7 +7,7 @@ import { FulfillChainlinkExternalRequestBase } from "../FulfillChainlinkExternal
 import { IDRCoordinator } from "../IDRCoordinator.sol";
 import { console } from "hardhat/console.sol";
 
-contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase {
+contract DRCoordinatorConsumerTestHelper is FulfillChainlinkExternalRequestBase {
     using Chainlink for Chainlink.Request;
 
     error FulfillModeUnsupported(FulfillMode fulfillmode);
@@ -23,6 +23,15 @@ contract DRCoordinatorConsumer1TestHelper is FulfillChainlinkExternalRequestBase
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
+
+    function cancelRequest(
+        address _drCoordinator,
+        bytes32 _requestId,
+        uint256 _expiration,
+        FulfillMode _fulfillMode
+    ) external {
+        IDRCoordinator(_drCoordinator).cancelRequest(_requestId, _expiration, _fulfillMode);
+    }
 
     // Function signature: 0xf43c62ab
     function fulfillNothing(bytes32 _requestId, bytes calldata _result)

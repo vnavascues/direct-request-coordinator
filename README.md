@@ -28,7 +28,6 @@ Chainlink Spring '22 hackaton
       - Cons: slithgly more expensive (+1.4% at least, as it requires an extra `abi.encodePacked()`, which is affected by the data size). Requires adding an extra TOML jobspec task (i.e. `ethabiencode`). Nonetheless, DRCoordinator already forces you to create a new TOML jobspec, as the following fields/properties have to be amended: `minContractPaymentLinkJuels` (directrequest field), `gasLimit` (from `ethtx` task), `minConfirmations` (from `ethtx` task).
 
   - Add support for a more versatile subscription model, like `VRFCoordinatorV2.sol`.
-  - Support `cancelRequest` for consumers. Easier to implement on subscription model. Not having it implemented is not that severe due to the ridiculous low LINK amount of the initial payment (it could be that claiming it costs more than the refunded LINK).
   - Improve the existing tests, e.g few integration tests should be moved into a unit test suite, add more unit tests, test more edge cases, run a fuzzer. Also run a proper SC audit.
     - Improve the dev experience implementing a `DRCoordinatorConsumer` contract. The existing one showcase how little it needs from `ChainlinkClient.sol`, however it inherits from `FulfillChainlinkExternalRequestBase` (which has another purpose). For instance `Chainlink.Request` library could be inherited, adding a `buildOperatorRequestToDRCoordinator` (storing its address), etc.
   - Adding NatSpec.

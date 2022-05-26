@@ -25,6 +25,7 @@ enum FulfillMode {
     FULFILL_DATA
 }
 
+// TODO: notes, all the FulfillMode logic is gonna be removed once either fallback or fulfillData is chosen
 contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, ReentrancyGuard, ChainlinkClient {
     using Address for address;
     using Chainlink for Chainlink.Request;
@@ -64,6 +65,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     error DRCoordinator__ArraysLengthIsNotEqual();
     error DRCoordinator__CallbackAddrIsDRCoordinator();
     error DRCoordinator__CallbackAddrIsNotAContract();
+    error DRCoordinator__CallerIsNotRequester();
     error DRCoordinator__FallbackMsgDataIsInvalid();
     error DRCoordinator__FeedAnswerIsNotGtZero(int256 answer);
     error DRCoordinator__FeeTypeIsUnsupported(FeeType feeType);
@@ -89,6 +91,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     error DRCoordinator__PaymentIsZero();
     error DRCoordinator__PaymentPreFeeIsLtePayment(uint256 paymentPreFee, uint96 payment);
     error DRCoordinator__PaymentPreFeeTypeUnsupported(PaymentPreFeeType paymentPreFeeType);
+    error DRCoordinator__RequestIsNotPending();
     error DRCoordinator__SpecIsNotInserted(bytes32 key);
     error DRCoordinator__SpecIdIsZero();
     error DRCoordinator__SpecKeysArraysIsEmpty();
@@ -304,15 +307,29 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
             );
     }
 
-    // TODO: pull FulfillConfig from s_requestIdToFulfillConfig via requestId, check and amend s_consumerToLinkBalance
-    // balances.
+    // TODO: put stuff in requries
     function cancelRequest(
         bytes32 _requestId,
-        uint256 _payment,
-        bytes4 _callbackFunctionSignature,
-        uint256 _expiration
-    ) external onlyOwner {
-        cancelChainlinkRequest(_requestId, _payment, _callbackFunctionSignature, _expiration);
+        uint256 _expiration,
+        FulfillMode _fulfillMode
+    ) external {
+        // Via fallback - callbackFunctionId
+        // Via fulfillData - fulfillData
+        FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
+        if (fulfillConfig.msgSender == address(0)) {
+            revert DRCoordinator__RequestIsNotPending();
+        }
+        if (fulfillConfig.msgSender != msg.sender) {
+            revert DRCoordinator__CallerIsNotRequester();
+        }
+        bytes4 callbackFunctionId;
+        if (_fulfillMode == FulfillMode.FULFILL_DATA) {
+            callbackFunctionId = this.fulfillData.selector;
+        } else {
+            callbackFunctionId = fulfillConfig.callbackFunctionId;
+        }
+        s_consumerToLinkBalance[msg.sender] += fulfillConfig.payment;
+        cancelChainlinkRequest(_requestId, fulfillConfig.payment, callbackFunctionId, _expiration);
     }
 
     function getDescription() external view returns (string memory) {

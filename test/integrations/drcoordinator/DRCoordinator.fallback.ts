@@ -103,9 +103,9 @@ export function testFallback(signers: Signers, context: Context): void {
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     // 4. Make consumer call DRCoordinator.requestData()
-    await context.drCoordinatorConsumer1TH
+    await context.drCoordinatorConsumerTH
       .connect(signers.deployer)
       .requestUint256(
         context.drCoordinator.address,
@@ -122,10 +122,10 @@ export function testFallback(signers: Signers, context: Context): void {
     // 6. Withdraw consumer funds
     const availableFunds = await context.drCoordinator
       .connect(signers.externalCaller)
-      .availableFunds(context.drCoordinatorConsumer1TH.address);
-    await context.drCoordinatorConsumer1TH
+      .availableFunds(context.drCoordinatorConsumerTH.address);
+    await context.drCoordinatorConsumerTH
       .connect(signers.deployer)
-      .withdrawFunds(context.drCoordinator.address, context.drCoordinatorConsumer1TH.address, availableFunds);
+      .withdrawFunds(context.drCoordinator.address, context.drCoordinatorConsumerTH.address, availableFunds);
     // 7. Prepare fulfillOracleRequest2 args
     const callbackFunctionId = "0x5e9b81e1";
     const result = BigNumber.from("777");
@@ -133,8 +133,8 @@ export function testFallback(signers: Signers, context: Context): void {
     const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
 
     // Act & Assert
@@ -154,7 +154,7 @@ export function testFallback(signers: Signers, context: Context): void {
           },
         ),
     )
-      .to.not.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256")
+      .to.not.emit(context.drCoordinatorConsumerTH, "RequestFulfilledUint256")
       .to.not.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled");
     expect(
       await context.drCoordinator.connect(signers.externalCaller).availableFunds(context.drCoordinator.address),
@@ -166,8 +166,8 @@ export function testFallback(signers: Signers, context: Context): void {
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore,
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore,
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore,
     );
   });
 
@@ -192,9 +192,9 @@ export function testFallback(signers: Signers, context: Context): void {
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     // 4. Make consumer call DRCoordinator.requestData()
-    await context.drCoordinatorConsumer1TH
+    await context.drCoordinatorConsumerTH
       .connect(signers.deployer)
       .requestUint256(
         context.drCoordinator.address,
@@ -215,8 +215,8 @@ export function testFallback(signers: Signers, context: Context): void {
     const expectedPayment = BigNumber.from("62482599721760627");
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
 
     // Act & Assert
@@ -237,14 +237,14 @@ export function testFallback(signers: Signers, context: Context): void {
         ),
     )
       .to.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled")
-      .withArgs(requestId, false, context.drCoordinatorConsumer1TH.address, callbackFunctionId, expectedPayment)
-      .to.not.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256");
+      .withArgs(requestId, false, context.drCoordinatorConsumerTH.address, callbackFunctionId, expectedPayment)
+      .to.not.emit(context.drCoordinatorConsumerTH, "RequestFulfilledUint256");
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore.sub(expectedPayment),
     );
   });
 
@@ -269,9 +269,9 @@ export function testFallback(signers: Signers, context: Context): void {
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     // 4. Make consumer call DRCoordinator.requestData()
-    await context.drCoordinatorConsumer1TH
+    await context.drCoordinatorConsumerTH
       .connect(signers.deployer)
       .requestUint256(
         context.drCoordinator.address,
@@ -292,8 +292,8 @@ export function testFallback(signers: Signers, context: Context): void {
     const expectedPayment = BigNumber.from("63539309845697304");
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
 
     // Act & Assert
@@ -313,16 +313,16 @@ export function testFallback(signers: Signers, context: Context): void {
           },
         ),
     )
-      .to.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledUint256")
+      .to.emit(context.drCoordinatorConsumerTH, "RequestFulfilledUint256")
       .withArgs(requestId, result)
       .to.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled")
-      .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionId, expectedPayment);
+      .withArgs(requestId, true, context.drCoordinatorConsumerTH.address, callbackFunctionId, expectedPayment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore.sub(expectedPayment),
     );
   });
 
@@ -347,9 +347,9 @@ export function testFallback(signers: Signers, context: Context): void {
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     // 4. Make consumer call DRCoordinator.requestData()
-    await context.drCoordinatorConsumer1TH
+    await context.drCoordinatorConsumerTH
       .connect(signers.deployer)
       .requestNothing(
         context.drCoordinator.address,
@@ -370,8 +370,8 @@ export function testFallback(signers: Signers, context: Context): void {
     const expectedPayment = BigNumber.from("63883595386453197");
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
 
     // Act & Assert
@@ -391,16 +391,16 @@ export function testFallback(signers: Signers, context: Context): void {
           },
         ),
     )
-      .to.emit(context.drCoordinatorConsumer1TH, "RequestFulfilledNothing")
+      .to.emit(context.drCoordinatorConsumerTH, "RequestFulfilledNothing")
       .withArgs(requestId, result)
       .to.emit(context.drCoordinator, "DRCoordinator__RequestFulfilled")
-      .withArgs(requestId, true, context.drCoordinatorConsumer1TH.address, callbackFunctionId, expectedPayment);
+      .withArgs(requestId, true, context.drCoordinatorConsumerTH.address, callbackFunctionId, expectedPayment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore.sub(expectedPayment),
     );
   });
 
@@ -425,7 +425,7 @@ export function testFallback(signers: Signers, context: Context): void {
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
     await context.drCoordinator
       .connect(signers.deployer)
-      .addFunds(context.drCoordinatorConsumer1TH.address, maxPaymentAmount);
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
     // 4. Deploy a compatible fulfillment contract
     const genericFulfillmentTHFactory = await ethers.getContractFactory("GenericFulfillmentTestHelper");
     const genericFulfillmentTH = (await genericFulfillmentTHFactory
@@ -434,7 +434,7 @@ export function testFallback(signers: Signers, context: Context): void {
     await genericFulfillmentTH.deployTransaction.wait();
     const externalCallbackFunctionId = "0x7c1f72a0"; // 'fulfillUint256(bytes32,uint256)' function signature
     // 5. Make consumer call DRCoordinator.requestData()
-    await context.drCoordinatorConsumer1TH
+    await context.drCoordinatorConsumerTH
       .connect(signers.deployer)
       .requestUint256Externally(
         context.drCoordinator.address,
@@ -456,8 +456,8 @@ export function testFallback(signers: Signers, context: Context): void {
     const expectedPayment = BigNumber.from("63466954223968006");
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
-    const drCoordinatorConsumer1THBalanceBefore = await context.drCoordinator.availableFunds(
-      context.drCoordinatorConsumer1TH.address,
+    const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
+      context.drCoordinatorConsumerTH.address,
     );
 
     // Act & Assert
@@ -485,8 +485,8 @@ export function testFallback(signers: Signers, context: Context): void {
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(expectedPayment),
     );
-    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumer1TH.address)).to.equal(
-      drCoordinatorConsumer1THBalanceBefore.sub(expectedPayment),
+    expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
+      drCoordinatorConsumerTHBalanceBefore.sub(expectedPayment),
     );
   });
 }

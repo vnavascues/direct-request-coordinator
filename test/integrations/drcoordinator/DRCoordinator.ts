@@ -3,6 +3,7 @@ import type { Fixture } from "ethereum-waffle";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 
+import { testCancelRequest } from "./DRCoordinator.cancelRequest";
 import { testCalculateMaxPaymentAmount } from "./DRCoordinator.calculateMaxPaymentAmount";
 import { testCalculateSpotPaymentAmount } from "./DRCoordinator.calculateSpotPaymentAmount";
 import { testFallback } from "./DRCoordinator.fallback";
@@ -13,7 +14,7 @@ import { testRequestDataViaFulfillData } from "./DRCoordinator.requestDataViaFul
 
 import type {
   DRCoordinator,
-  DRCoordinatorConsumer1TestHelper,
+  DRCoordinatorConsumerTestHelper,
   LinkToken,
   MockV3Aggregator,
   Operator,
@@ -21,7 +22,7 @@ import type {
 
 export interface Context {
   drCoordinator: DRCoordinator;
-  drCoordinatorConsumer1TH: DRCoordinatorConsumer1TestHelper;
+  drCoordinatorConsumerTH: DRCoordinatorConsumerTestHelper;
   linkToken: LinkToken;
   mockV3Aggregator: MockV3Aggregator;
   operator: Operator;
@@ -107,17 +108,18 @@ describe("DRCoordinator", () => {
     await context.drCoordinator.connect(signers.deployer).transferOwnership(signers.owner.address);
     await context.drCoordinator.connect(signers.owner).acceptOwnership();
 
-    // Deploy DRCoordinatorConsumer1TestHelper
-    const drCoordinatorConsumer1THFactory = await ethers.getContractFactory("DRCoordinatorConsumer1TestHelper");
-    const drCoordinatorConsumer1TH = (await drCoordinatorConsumer1THFactory
+    // Deploy DRCoordinatorConsumerTestHelper
+    const drCoordinatorConsumerTHFactory = await ethers.getContractFactory("DRCoordinatorConsumerTestHelper");
+    const drCoordinatorConsumerTH = (await drCoordinatorConsumerTHFactory
       .connect(signers.deployer)
-      .deploy(linkToken.address)) as DRCoordinatorConsumer1TestHelper;
-    await drCoordinatorConsumer1TH.deployTransaction.wait();
-    context.drCoordinatorConsumer1TH = drCoordinatorConsumer1TH;
+      .deploy(linkToken.address)) as DRCoordinatorConsumerTestHelper;
+    await drCoordinatorConsumerTH.deployTransaction.wait();
+    context.drCoordinatorConsumerTH = drCoordinatorConsumerTH;
   });
 
   describe("testCalculateMaxPaymentAmount()", () => testCalculateMaxPaymentAmount(signers, context));
   describe("testCalculateSpotPaymentAmount()", () => testCalculateSpotPaymentAmount(signers, context));
+  describe("testCancelRequest()", () => testCancelRequest(signers, context));
   describe("testFallback()", () => testFallback(signers, context));
   describe("testFulfillData()", () => testFulfillData(signers, context));
   describe("testGetFeedData()", () => testGetFeedData(signers, context));
