@@ -18,16 +18,16 @@ observationSource = """
 
     decode_cbor         [type="cborparse" data="$(decode_log.data)"]
 
-    btc                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"]
-    btc_parse           [type="jsonparse" path="USD" data="$(btc)"]
+    btc                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=$(decode_cbor.quote)"]
+    btc_parse           [type="jsonparse" path="$(decode_cbor.quote)" data="$(btc)"]
     btc_multiply        [type="multiply" input="$(btc_parse)", times="1000000"]
 
-    eth                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD"]
-    eth_parse           [type="jsonparse" path="USD" data="$(eth)"]
+    eth                 [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=$(decode_cbor.quote)"]
+    eth_parse           [type="jsonparse" path="$(decode_cbor.quote)" data="$(eth)"]
     eth_multiply        [type="multiply" input="$(eth_parse)", times="1000000"]
 
-    link                [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD"]
-    link_parse          [type="jsonparse" path="USD" data="$(link)"]
+    link                [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=$(decode_cbor.quote)"]
+    link_parse          [type="jsonparse" path="$(decode_cbor.quote)" data="$(link)"]
     link_multiply       [type="multiply" input="$(link_parse)", times="1000000"]
 
     encode_data         [type="ethabiencode"
