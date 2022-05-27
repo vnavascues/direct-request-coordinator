@@ -5,6 +5,7 @@ import hash from "object-hash";
 
 import { DEFAULT_BATCH_SIZE, FeeType, TaskExecutionMode, TaskName } from "./constants";
 import {
+  addFunds,
   addSpecs,
   deleteSpecs,
   deployDRCoordinator,
@@ -27,8 +28,8 @@ import {
   updateSpecs,
   validateConfigurationExternalJobId,
   validateConfigurationOperator,
-  verifyConsumer,
   verifyDRCoordinator,
+  verifyDRCoordinatorConsumer,
   withdrawFunds,
 } from "./methods";
 import type { Spec } from "./types";
@@ -40,7 +41,6 @@ import {
   convertJobIdToBytes32,
   getNetworkLinkAddress,
   getNetworkLinkTknFeedAddress,
-  transfer as transferLink,
   validateLinkAddressFunds,
 } from "../../utils/chainlink";
 import { LinkToken } from "../../src/types";
@@ -230,15 +230,11 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
 
 task("drcoordinator:deploy-consumer")
   .addParam("name", "The consumer contract name", undefined, types.string)
+  .addParam("drcoordinator", "The DRCoordinator contract address", undefined, typeAddress)
+  .addParam("operator", "The Operator contract address", undefined, typeAddress)
   // Configuration after deployment
-  .addFlag("fund", "Top-up the consumer contract with LINK from the signer's wallet right after deployment")
-  .addOptionalParam(
-    "amount",
-    "The amount of LINK (wei) to fund the contract after deployment",
-    undefined,
-    typeBignumber,
-  )
-  .addOptionalParam("approveto", "Approve the amount to the specific address", undefined, typeAddress)
+  .addFlag("fund", "Top-up the consumer balance with LINK from the signer's wallet right after deployment")
+  .addOptionalParam("amount", "The amount of LINK (wei) to fund the balance after deployment", undefined, typeBignumber)
   // Verification
   .addFlag("verify", "Verify the contract on Etherscan after deployment")
   // Gas customisation
@@ -259,6 +255,8 @@ task("drcoordinator:deploy-consumer")
 
     // Get LINK address (by network)
     const addressLink = getNetworkLinkAddress(hre.network);
+    const addressDRCoordinator = taskArguments.drcoordinator as string;
+    const addressOperator = taskArguments.operator as string;
 
     // Custom validations
     if (taskArguments.fund) {
@@ -270,31 +268,25 @@ task("drcoordinator:deploy-consumer")
 
     // Deploy
     const consumerFactory = await hre.ethers.getContractFactory(taskArguments.name);
-    const consumer = await consumerFactory.deploy(addressLink, overrides);
+    const consumer = await consumerFactory.deploy(addressLink, addressDRCoordinator, addressOperator, overrides);
     logger.info(`${taskArguments.name} deployed to: ${consumer.address} | Tx hash: ${consumer.deployTransaction.hash}`);
     await consumer.deployTransaction.wait(getNumberOfConfirmations(hre.network.config.chainId));
 
-    // Fund Consumer with LINK
+    // Fund DRCoordinatorConsumer balance with LINK
     if (taskArguments.fund) {
       const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
       const linkToken = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLink)) as LinkToken;
-      await transferLink(linkToken, signer, consumer.address as string, taskArguments.amount as BigNumber, overrides);
-      // Approve amount
-      if (taskArguments.approveto) {
-        await approveLink(
-          linkToken,
-          signer,
-          taskArguments.approveto as string,
-          taskArguments.amount as BigNumber,
-          overrides,
-        );
-      }
+      const amount = taskArguments.amount as BigNumber;
+      // Approve LINK
+      await approveLink(linkToken, signer, addressDRCoordinator, amount, overrides);
+      // Add funds
+      await addFunds(addressDRCoordinator, linkToken, signer, consumer.address, amount, overrides);
     }
     if (!taskArguments.verify) return;
 
     // Verify
     // NB: contract verification request may fail if the contract address does not have bytecode. Wait until it's mined
-    await verifyConsumer(hre, consumer.address, addressLink);
+    await verifyDRCoordinatorConsumer(hre, consumer.address, addressLink, addressDRCoordinator, addressOperator);
   });
 
 task("drcoordinator:detail", "Log the DRCoordinator storage")

@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
 import * as path from "path";
 
 import type { Signers, Context } from "./DRCoordinator";

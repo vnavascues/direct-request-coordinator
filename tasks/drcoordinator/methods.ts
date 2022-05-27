@@ -896,20 +896,6 @@ function validateExternalAdapter(adapter: null | ExternalAdapter): void {
   }
 }
 
-export async function verifyConsumer(
-  hre: HardhatRuntimeEnvironment,
-  address: string,
-  addressLink: string,
-  contract?: string,
-): Promise<void> {
-  setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
-  await hre.run("verify:verify", {
-    address,
-    constructorArguments: [addressLink],
-    contract,
-  });
-}
-
 export async function verifyDRCoordinator(
   hre: HardhatRuntimeEnvironment,
   drCoordinator: string,
@@ -935,6 +921,22 @@ export async function verifyDRCoordinator(
       sequencerOfflineFlag,
       addressChainlinkFlags,
     ],
+  });
+}
+
+export async function verifyDRCoordinatorConsumer(
+  hre: HardhatRuntimeEnvironment,
+  address: string,
+  addressLink: string,
+  addressDRCoordinator: string,
+  addressOperator: string,
+  contract?: string,
+): Promise<void> {
+  setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
+  await hre.run("verify:verify", {
+    address,
+    constructorArguments: [addressLink, addressDRCoordinator, addressOperator],
+    contract,
   });
 }
 
