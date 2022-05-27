@@ -200,7 +200,7 @@ yarn hardhat drcoordinator:deploy \
 --gasprice 72
 ```
 
-### Deploy a DRCoordinator Consumer
+### Deploy a DRCoordinatorConsumer
 
 [DRCConsumerCryptocompare](../../contracts/drcoordinator/DRCConsumerCryptocompare.sol)
 
@@ -208,19 +208,20 @@ yarn hardhat drcoordinator:deploy \
 
 Task parameters:
 
-| Required? |      Name      |                                      Description                                       |   Type    |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :------------: | :------------------------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |      name      |                               The consumer contract name                               |  string   |                |                                                  |             |
-|           |      fund      | Top-up the consumer contract with LINK from the signer's wallet right after deployment |   Flag    |                |                                                  |   `false`   |
-|           |     amount     |             The amount of LINK (wei) to fund the contract after deployment             | BigNumber |                |                                                  |             |
-|           |   approveto    |      Approves the amount to the specific address (i.e. `address(DRCoordinator)`)       |  address  |                |                                                  |             |
-|           |     verify     |                     Verifies the contract on Etherscan at the end                      |   Flag    |                |                                                  |   `false`   |
-|           |      gas       |                   Allows customising the tx gas (legacy & EIP-1559)                    |   Flag    |                |                                                  |   `false`   |
-|           |      type      |                                      The tx type                                       |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |    gasprice    |                          The type 0 tx `gasPrice` (in `gwei`)                          |   float   | --gas --type 0 |                                                  |             |
-|           |   gasmaxfee    |                        The type 0 tx `maxFeePerGas` (in `gwei`)                        |   float   | --gas --type 2 |                                                  |             |
-|           | gasmaxpriority |                       The type 0 tx `gasmaxpriority` (in `gwei`)                       |   float   | --gas --type 2 |                                                  |             |
-|           |    network     |                                Hardhat `network` param                                 |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
+| Required? |      Name      |                                      Description                                      |   Type    |   Depends On   |                     Options                      | Defaults to |
+| :-------: | :------------: | :-----------------------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
+|    ✅     |      name      |                              The consumer contract name                               |  string   |                |                                                  |             |
+|    ✅     | drcoordinator  |                         The `DRCoordinator` contract address                          |  address  |                |                                                  |             |
+|    ✅     |    operator    |                            The `Operator` contract address                            |  address  |                |                                                  |             |
+|           |      fund      | Top-up the consumer balance with LINK from the signer's wallet right after deployment |   Flag    |                |                                                  |   `false`   |
+|           |     amount     |        The amount of LINK (wei) to fund the consumer balance after deployment         | BigNumber |                |                                                  |             |
+|           |     verify     |                     Verifies the contract on Etherscan at the end                     |   Flag    |                |                                                  |   `false`   |
+|           |      gas       |                   Allows customising the tx gas (legacy & EIP-1559)                   |   Flag    |                |                                                  |   `false`   |
+|           |      type      |                                      The tx type                                      |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |    gasprice    |                         The type 0 tx `gasPrice` (in `gwei`)                          |   float   | --gas --type 0 |                                                  |             |
+|           |   gasmaxfee    |                       The type 0 tx `maxFeePerGas` (in `gwei`)                        |   float   | --gas --type 2 |                                                  |             |
+|           | gasmaxpriority |                      The type 0 tx `gasmaxpriority` (in `gwei`)                       |   float   | --gas --type 2 |                                                  |             |
+|           |    network     |                                Hardhat `network` param                                |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
 
 Example calls:
 
@@ -374,6 +375,26 @@ Task parameters:
 |    ✅     | fallbackweiperunitlink |            The fallback amount of network TKN wei per LINK            | BigNumber |            |                                                  |             |
 |    ✅     |    stalenessseconds    | The number of seconds after which the feed answer is considered stale | BigNumber |            |                                                  |             |
 |    ✅     |        network         |                        Hardhat `network` param                        |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
+
+Example calls:
+
+```sh
+yarn hardhat drcoordinator:verify \
+--description beta-2 \
+--fallbackweiperunitlink "8000000000000000" \
+--stalenessseconds "86400" \
+--network eth-kovan
+```
+
+### Verify a DRCoordinatorConsumer
+
+Task parameters:
+
+| Required? |     Name      |             Description              |  Type   | Depends On | Options | Defaults to |
+| :-------: | :-----------: | :----------------------------------: | :-----: | :--------: | :-----: | :---------: |
+|    ✅     |     name      |      The consumer contract name      | string  |            |         |             |
+|    ✅     | drcoordinator | The `DRCoordinator` contract address | address |            |         |             |
+|    ✅     |   operator    |   The `Operator` contract address    | address |            |         |             |
 
 Example calls:
 
