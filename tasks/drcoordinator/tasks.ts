@@ -38,13 +38,14 @@ import {
   approve as approveLink,
   chainIdFlags,
   chainIdSequencerOfflineFlag,
+  convertBytes32ToJobId,
   convertJobIdToBytes32,
   getNetworkLinkAddress,
   getNetworkLinkTknFeedAddress,
+  MIN_CONSUMER_GAS_LIMIT,
   validateLinkAddressFunds,
 } from "../../utils/chainlink";
-import { LinkToken } from "../../src/types";
-import { MIN_CONSUMER_GAS_LIMIT } from "../../utils/chainlink";
+import { DRCoordinator, LinkToken } from "../../src/types";
 import { ChainId } from "../../utils/constants";
 import { getNumberOfConfirmations } from "../../utils/deployment";
 import { getGasOverridesFromTaskArgs } from "../../utils/gas-estimation";
@@ -156,6 +157,20 @@ task("drcoordinator:calculate-spot-amount", "Calculates the spot LINK amount for
       );
     logger.info(`spotPaymentAmount (Juels): ${maxPaymentAmount}`);
     logger.info(`spotPaymentAmount (LINK): ${ethers.utils.formatEther(maxPaymentAmount)}`);
+  });
+
+task("drcoordinator:jobid-to-bytes32", "Converts a UUID v4 to bytes32")
+  .addParam("jobid", "The external job ID", undefined, types.string)
+  .setAction(async function (taskArguments: TaskArguments) {
+    const hexStr = convertJobIdToBytes32(taskArguments.jobid as string);
+    logger.info(`bytes32: ${hexStr}`);
+  });
+
+task("drcoordinator:bytes32-to-jobid", "Converts bytes32 into a UUID v4")
+  .addParam("specid", "The job spec ID as bytes32", undefined, typeBytes(32))
+  .setAction(async function (taskArguments: TaskArguments) {
+    const hexStr = convertBytes32ToJobId(taskArguments.specid as string);
+    logger.info(`UUIDv4: ${hexStr}`);
   });
 
 task("drcoordinator:deploy", "Deploy a DRCoordinator")
@@ -274,13 +289,18 @@ task("drcoordinator:deploy-consumer")
 
     // Fund DRCoordinatorConsumer balance with LINK
     if (taskArguments.fund) {
+      // Approve LINK
       const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
       const linkToken = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLink)) as LinkToken;
       const amount = taskArguments.amount as BigNumber;
-      // Approve LINK
       await approveLink(linkToken, signer, addressDRCoordinator, amount, overrides);
       // Add funds
-      await addFunds(addressDRCoordinator, linkToken, signer, consumer.address, amount, overrides);
+      const drCoordinatorArtifact = await hre.artifacts.readArtifact("DRCoordinator");
+      const drCoordinator = (await hre.ethers.getContractAt(
+        drCoordinatorArtifact.abi,
+        addressDRCoordinator,
+      )) as DRCoordinator;
+      await addFunds(drCoordinator, signer, consumer.address, amount, overrides);
     }
     if (!taskArguments.verify) return;
 

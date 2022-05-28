@@ -1,10 +1,10 @@
 # Direct Request Coordinator
 
-A framework, contracts & job specs mgmt tools, that enable a requester to pay to a node-op as much LINK as required to cover the gas used on fulfillment, plus some profit margin set by the node-op.
+A framework, contracts & job specs mgmt tools, that enable a requester to pay to a node-op only as much LINK is required to cover the gas used on fulfillment, plus some profit margin set by the node-op.
 
 ## Inspiration
 
-Chainlink provides a wide variety of products and services. The market demand has reasonably caused that few of them evolve more than others. Unfortunately, the Direct Request model is lagging and it requires a revision if it is the product supposed to power the next wave of blockchain adoption.
+Chainlink provides a wide variety of products and services. The market demand has reasonably caused that few of them evolve more than others. Unfortunately, the Direct Request model is lagging and its supporting tooling requires updating to help it to power the next wave of blockchain adoption.
 
 The main problem Direct Request has is its pricing model. It is innacurate, prone to human error, time consuming, exponentially complex the more layers node operators have (i.e. jobs -> dynamic results -> nodes -> networks, and fulfillment contracts), and unbearable on volatile market and gas spike events. Chainlink node operators seek for profit, and Direct Request jobs do not seem nowadays very appealing to deal with, nor profitable for the time spent on them.
 
@@ -22,11 +22,11 @@ And I thought, what if...:
 - Node operators didn't have to worry about dynamic result sizes, gas limit fine tuning, defensive pricing, gas & token prices and conversions, gas spikes, and market volatility?
 - Node operators had a framework to manage this?
 
-Well, these were the motivations behind presenting Direct Request Coordinator on the Spring '22 Hackaton. OK;LG.
+Well, these were the motivations behind presenting Direct Request Coordinator (aka, Dr. Coordinator) on the Spring '22 Hackaton. OK;LG.
 
 ## What it does
 
-A framework composed by contracts and job spec management tools, that enable a data requester to pay to a node operator as much LINK as required to cover the gas costs incurred by the data delivery, plus some profit margin set by the node operator on that particular job. More detail on each feature below:
+A framework composed of contracts and job spec management tools, that enable a data requester to pay to a node operator as much LINK as required to cover the gas costs incurred by the data delivery, plus some profit margin set by the node operator on that particular job. More detail on each feature below:
 
 ### Feature Contracts
 

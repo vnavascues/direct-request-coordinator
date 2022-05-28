@@ -1,4 +1,4 @@
-# Direct Request Coordinator (DRCoordinator)
+# DRCoordinator Tasks
 
 ## Call scripts & generators
 
@@ -84,6 +84,36 @@ yarn hardhat drcoordinator:calculate-spot-amount \
 --fulfillmentfee "1100" \
 --feetype "1" \
 --network eth-kovan
+```
+
+### Convert an externalJobID (UUID v4) into a specId (bytes32)
+
+Task parameters:
+
+| Required? | Name  |     Description     |  Type  | Options | Defaults to |
+| :-------: | :---: | :-----------------: | :----: | :-----: | :---------: |
+|    ✅     | jobid | The `externalJobID` | uuidv4 |         |             |
+
+Example calls:
+
+```sh
+yarn hardhat drcoordinator:jobid-to-bytes32 \
+--jobid cc677638-fe1b-4741-9bdf-8dd1d777a6a0
+```
+
+### Convert a specId (bytes32) to an externalJobID (UUID v4)
+
+Task parameters:
+
+| Required? |  Name  | Description  |  Type   | Options | Defaults to |
+| :-------: | :----: | :----------: | :-----: | :-----: | :---------: |
+|    ✅     | specid | The `specId` | bytes32 |         |             |
+
+Example calls:
+
+```sh
+yarn hardhat drcoordinator:bytes32-to-jobid \
+--specid 0x3266363836376532393037353438636661393138643564323931646139346365
 ```
 
 ### Detail
@@ -228,18 +258,19 @@ Example calls:
 ```sh
 yarn hardhat drcoordinator:deploy-consumer \
 --name DRCConsumerCryptoCompare \
---fund \
---amount "3000000000000000000" \
+--drcoordinator 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
+--operator 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
 --verify \
 --network eth-kovan
 ```
 
 ```sh
 yarn hardhat drcoordinator:deploy-consumer \
---name DRCConsumerSportsdataio \
+--name DRCConsumerCryptoCompare \
+--drcoordinator 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
+--operator 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
 --fund \
 --amount "3000000000000000000" \
---approveto 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
 --verify \
 --network eth-kovan
 ```
