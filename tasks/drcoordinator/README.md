@@ -44,7 +44,7 @@ yarn hardhat drcoordinator:calculate-max-amount \
 ### Calculate spot LINK payment amount
 
 More estimates than calculate with precision. It does not take into account the gas incurrend by `Operator::fulfillRequest2`
-nor `DRCoordinator::fallback` or `DRCoordiantor::fulfillData`. All of them are affected, among other things, by the data size and fulfillment function.
+nor `DRCoordinator::fallback` or `DRCoordinator::fulfillData`. All of them are affected, among other things, by the data size and fulfillment function.
 Therefore it is needed to fine tune `startGas`.
 
 Task parameters:
@@ -118,7 +118,7 @@ yarn hardhat drcoordinator:bytes32-to-jobid \
 
 ### Detail
 
-Log the detail of a DRCoordiantor
+Log the detail of a DRCoordinator
 
 Task parameters:
 
@@ -277,7 +277,7 @@ yarn hardhat drcoordinator:deploy-consumer \
 
 ### Import a specs file
 
-Create, update & delete (CUD) specs in the DRCoordiantor storage.
+Create, update & delete (CUD) specs in the DRCoordinator storage.
 
 NB: the forking mode requires `HARDHAT_FORKING_ENABLED=true` and `HARDHAT_FORKING_URL=<provider_url>` in the .env file.
 

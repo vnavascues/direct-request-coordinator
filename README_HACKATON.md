@@ -1,6 +1,6 @@
 # Direct Request Coordinator
 
-A framework, contracts & job specs mgmt tools, that enable a requester to pay to a node-op only as much LINK is required to cover the gas used on fulfillment, plus some profit margin set by the node-op.
+A framework, contracts & job spec mgmt tools, that enable a requester to pay to a node-op only as much LINK is required to cover the gas used on fulfillment, plus some profit margin set by the node-op.
 
 ## Inspiration
 
@@ -30,7 +30,7 @@ A framework composed of contracts and job spec management tools, that enable a d
 
 ### Feature Contracts
 
-[DRCoordinator.sol](./contracts/drcoordinator/DRCoordinator.sol):
+[DRCoordinator.sol](https://github.com/vnavascues/direct-request-coordinator/tree/main/contracts/drcoordinator/DRCoordinator.sol):
 
 - It is owned by the node operator. Only one per network is required (no inconvenient having more).
 - Interfaces a consumer with 1..N oracle contracts (`Operator`).
@@ -39,29 +39,29 @@ A framework composed of contracts and job spec management tools, that enable a d
 - It leverages the network LINK / TKN Price Feed to calculate the MAX (worst-case scenario using all the `gasLimit` on fulfillment) & SPOT (gas used on fulfillment) LINK payment amounts. It takes into account too whether the answer is stale and any L2 Sequencer Health Flag.
 - It allows to fulfill requests on contracts that are not the requester (i.e. `callbackAddress !== msg.sender`).
 
-[DRCoordinatorConsumer.sol](./contracts/drcoordinator/DRCoordinatorConsumer.sol):
+[DRCoordinatorConsumer.sol](https://github.com/vnavascues/direct-request-coordinator/tree/main/contracts/drcoordinator/DRCoordinatorConsumer.sol):
 
 - It is the `ChainlinkClient` equivalent (used on standard consumer contracts):
 - It is the parent contract for `DRCoordinator` consumers.
 - It provides methods for building, tracking and cancelling `DRCoordinator` requests (to be fulfilled either in the consumer itself on in another contract).
 - It stores the `LINK`, `Operator` and `DRCoordinator` interfaces
 
-[FulfillChainlinkExternalRequestCompatible.sol](./contracts/drcoordinator/FulfillChainlinkExternalRequestCompatible.sol):
+[FulfillChainlinkExternalRequestCompatible.sol](https://github.com/vnavascues/direct-request-coordinator/tree/main/contracts/drcoordinator/FulfillChainlinkExternalRequestCompatible.sol):
 
 - It is the contract to be inherited by a fulfillment contract that it isn't the requester (aka. split consumer pattern, `callbackAddress !== msg.sender`).
 - It enables 1..N `DRCoordinator` (access controlled) to notify it about the upcoming external fulfillments.
 
 ### Example Contracts
 
-[DRCConsumerCryptoCompare](./contracts/drcoordinator/DRCConsumerCryptoCompare.sol):
+[DRCConsumerCryptoCompare](https://github.com/vnavascues/direct-request-coordinator/tree/main/contracts/drcoordinator/DRCConsumerCryptoCompare.sol):
 
 - A CrytpoCompare API consumer
-- Requires [TOML job spec (fulfillment via fallback())](./specs-toml/drcoordinator/cryptocompare-get-prices-fallback.toml) or [TOML job spec (fulfillment via fulfillData())](./specs-toml/drcoordinator/cryptocompare-get-prices-fulfilldata.toml)
+- Requires [TOML job spec (fulfillment via fallback())](https://github.com/vnavascues/direct-request-coordinator/tree/main/specs-toml/drcoordinator/cryptocompare-get-prices-fallback.toml) or [TOML job spec (fulfillment via fulfillData())](https://github.com/vnavascues/direct-request-coordinator/tree/main/specs-toml/drcoordinator/cryptocompare-get-prices-fulfilldata.toml)
 
-[DRCConsumerSportsdataio](./contracts/drcoordinator/DRCConsumerSportsdataio.sol):
+[DRCConsumerSportsdataio](https://github.com/vnavascues/direct-request-coordinator/tree/main/contracts/drcoordinator/DRCConsumerSportsdataio.sol):
 
 - A Sportsdataio API consumer
-- Requires [TOML job spec (fulfillment via fallback())](./specs-toml/drcoordinator/sportsdataio-get-schedule-v1.0.0-fallback.toml) or [TOML job spec (fulfillment via fulfillData())](./specs-toml/drcoordinator/sportsdataio-get-schedule-v1.0.0-fulfilldata.toml)
+- Requires [TOML job spec (fulfillment via fallback())](https://github.com/vnavascues/direct-request-coordinator/tree/main/specs-toml/drcoordinator/sportsdataio-get-schedule-v1.0.0-fallback.toml) or [TOML job spec (fulfillment via fulfillData())](https://github.com/vnavascues/direct-request-coordinator/tree/main/specs-toml/drcoordinator/sportsdataio-get-schedule-v1.0.0-fulfilldata.toml)
 
 ### Management Tools
 
@@ -78,26 +78,26 @@ A set of Hardhat tasks that allow:
 
 ### Example specs
 
-[TOML Job Specs](./specs-toml/drcoordinator/)
+[TOML Job Specs](https://github.com/vnavascues/direct-request-coordinator/tree/main/specs-toml/drcoordinator/)
 
-[JSON Specs](./specs/)
+[JSON Specs](https://github.com/vnavascues/direct-request-coordinator/tree/main/specs/)
 
 ## How I built it
 
 ### Stack
 
 This framework uses Solidity, TypeScript, Hardhat, ethers.js, TypeChain, Waffle/Mocha/Chai, Chainlink contracts, OpenZeppelin contracts, and Slither.
-It just needs a copy of the [.env.example](./.env.example) with a `PRIVATE_KEY` and the provider's API key (Alchemy or Infura depending on the network). Optionally, the API key of the Etherscan-like explorer of the network if contract verification is needed.
+It just needs a copy of the [.env.example](https://github.com/vnavascues/direct-request-coordinator/tree/main/.env.example) with a `PRIVATE_KEY` and the provider's API key (Alchemy or Infura depending on the network). Optionally, the API key of the Etherscan-like explorer of the network if contract verification is needed.
 
 ### Scripts
 
-All the call and transaction scripts are [documented](./tasks/drcoordinator/README.md) Hardhat tasks with a big effort on the [task argument validations](./utils/task-arguments-validations.ts), [logging](./utils/logger.ts) and [error messaging](./utils/errors-list.ts). I also included quite a bit of Chainlink-related [tooling and utils](./utils/chainlink.ts).
+All the call and transaction scripts are [documented](https://github.com/vnavascues/direct-request-coordinator/tree/main/tasks/drcoordinator/README.md) Hardhat tasks with a big effort on the [task argument validations](https://github.com/vnavascues/direct-request-coordinator/tree/main/utils/task-arguments-validations.ts), [logging](https://github.com/vnavascues/direct-request-coordinator/tree/main/utils/logger.ts) and [error messaging](https://github.com/vnavascues/direct-request-coordinator/tree/main/utils/errors-list.ts). I also included quite a bit of Chainlink-related [tooling and utils](https://github.com/vnavascues/direct-request-coordinator/tree/main/utils/chainlink.ts).
 
 ### Contracts
 
-The [DRCoordinator.sol](./contracts/drcoordinator/DRCoordinator.sol) is a brand new contract that contains a slightly modified version of the [VRFCoordinatorV2](https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/VRFCoordinatorV2.sol) functions related with calculating the LINK payment amount. Ideally I'd like to have implemented at least its more versatile subscription model.
+The [DRCoordinator.sol](https://github.com/vnavascues/direct-request-coordinator/tree/main/contracts/drcoordinator/DRCoordinator.sol) is a brand new contract that contains a slightly modified version of the [VRFCoordinatorV2](https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/VRFCoordinatorV2.sol) functions related with calculating the LINK payment amount. Ideally I'd like to have implemented at least its more versatile subscription model.
 
-The [DRCoordinatorConsumer.sol](./contracts/drcoordinator/DRCoordinatorConsumer.sol) takes the essential and existing tooling from [ChainlinkClient](https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.7/ChainlinkClient.sol) (using `CustomError`), and adds specific one for `DRCoordinator` requests.
+The [DRCoordinatorConsumer.sol](https://github.com/vnavascues/direct-request-coordinator/tree/main/contracts/drcoordinator/DRCoordinatorConsumer.sol) takes the essential and existing tooling from [ChainlinkClient](https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.7/ChainlinkClient.sol) (using `CustomError`), and adds specific one for `DRCoordinator` requests.
 
 ## Challenges I ran into
 
@@ -121,11 +121,11 @@ I don't expect at all node operators rushing to adopt this framework and make it
 
 ## What's next for Direct Request Coordinator (DRCoordinator)
 
-You'll find on the repository a more [granular list](./README.md#whats-next-for-direct-request-coordinator) of improvements and topics to address.
+You'll find on the repository a more [granular list](https://github.com/vnavascues/direct-request-coordinator/tree/main/README.md#whats-next-for-direct-request-coordinator) of improvements and topics to address.
 A high level overview would be:
 
 - Business-wise, aligning it with the business interests with regards to pricing jobs, and it is well integrated with metrics.
-- Engineering-wise, making the contracts more secure, cheap/efficient, tested and documented. Also improving the tooling experience interacting with `DRCoordiantor` and Specs management.
+- Engineering-wise, making the contracts more secure, cheap/efficient, tested and documented. Also improving the tooling experience interacting with `DRCoordinator` and Specs management.
 - Chainlink ecosystem-wise, having other node operators and Chainlink Labs engineers trying it and having a thought how we can all improve the current Direct Request model.
 
 ## What I learned

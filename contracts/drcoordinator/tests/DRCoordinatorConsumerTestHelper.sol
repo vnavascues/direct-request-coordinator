@@ -59,7 +59,7 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorConsumer {
         FulfillMode _fulfillMode
     ) external {
         Chainlink.Request memory req;
-        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
+        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), this.fulfillNothing.selector);
 
         _requestUint256(_drCoordinator, _oracle, _callbackGasLimit, _callbackMinConfirmations, _fulfillMode, req);
@@ -74,7 +74,7 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorConsumer {
         FulfillMode _fulfillMode
     ) external {
         Chainlink.Request memory req;
-        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
+        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), this.fulfillUint256.selector);
 
         _requestUint256(_drCoordinator, _oracle, _callbackGasLimit, _callbackMinConfirmations, _fulfillMode, req);
@@ -91,7 +91,7 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorConsumer {
         FulfillMode _fulfillMode
     ) external {
         Chainlink.Request memory req;
-        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordiantor
+        // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, _callbackAddr, _callbackFunctionId);
 
         _requestUint256(_drCoordinator, _oracle, _callbackGasLimit, _callbackMinConfirmations, _fulfillMode, req);

@@ -318,7 +318,7 @@ yarn hardhat drcoordinator:detail \
 
 There is one item on `keys` and one `Spec`.
 
-### 5. Make a DRCoordiantor request
+### 5. Make a DRCoordinator request
 
 1. Open your [DRConsumerCryptoCompare](https://kovan.etherscan.io/address/0xc798dD4cCf60320271603639eaab324Bb7A95450#code) on Kovan Etherscan, go to Write Contract, and click Connect to Web3.
 
@@ -392,7 +392,7 @@ A more in detail look at the event emitted by `DRCoordinator` tell us that fulfi
   - From 5 LINK (initial balance) - 0.001 LINK (initial request payment amount, hold by the `Operator`) - 0.1725 LINK (fulfillment payment amount)
 - DRCoordinator: 172514761526913608 (0.1725 LINK)
 
-Logging again the `DRCoordiantor` detail, we'll see its balance (4.999 LINK), and its profit (0.1725 LINK).
+Logging again the `DRCoordinator` detail, we'll see its balance (4.999 LINK), and its profit (0.1725 LINK).
 
 ```sh
 yarn hardhat drcoordinator:detail \
