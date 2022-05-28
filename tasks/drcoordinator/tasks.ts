@@ -106,7 +106,7 @@ task("drcoordinator:calculate-max-amount", "Calculates the max LINK amount for t
   });
 
 // NB: this method has limitations. It does not take into account the gas incurrend by
-// Operator::fulfillRequest2 nor DRCoordinator::fallback or DRCoordiantor::fulfillData
+// Operator::fulfillRequest2 nor DRCoordinator::fallback or DRCoordinator::fulfillData
 // All of them are affected, among other things, by the data size and fulfillment function.
 // Therefore it is needed to fine tune 'startgas'
 task("drcoordinator:calculate-spot-amount", "Calculates the spot LINK amount for the given params")

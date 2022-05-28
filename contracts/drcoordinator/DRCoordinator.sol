@@ -285,7 +285,7 @@ contract DRCoordinator is TypeAndVersionInterface, ConfirmedOwner, Pausable, Ree
     }
 
     // NB: this method has limitations. It does not take into account the gas incurrend by Operator::fulfillRequest2
-    // nor DRCoordinator::fallback or DRCoordiantor::fulfillData. All of them are affected, among other things,
+    // nor DRCoordinator::fallback or DRCoordinator::fulfillData. All of them are affected, among other things,
     // by the data size and fulfillment function. Therefore it is needed to fine tune 'startGas'
     function calculateSpotPaymentAmount(
         uint48 _startGas,
