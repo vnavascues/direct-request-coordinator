@@ -59,12 +59,9 @@ contract DRCConsumerCryptoCompare is DRCoordinatorConsumer {
         bytes32 _specId,
         uint48 _callbackGasLimit,
         uint8 _callbackMinConfirmations,
-        FulfillMode _fulfillMode,
-        string calldata _quote
+        FulfillMode _fulfillMode
     ) external {
         Chainlink.Request memory req = buildDRCoordinatorRequest(_specId, this.fulfillPrices.selector);
-
-        req.add("quote", _quote);
 
         bytes32 requestId;
         if (_fulfillMode == FulfillMode.FALLBACK) {
