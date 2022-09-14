@@ -54,14 +54,14 @@ export function getType2GasParamsFromTaskArgs(taskArguments: TaskArguments, unit
 }
 
 export function getTxTypeGasParamsFromTaskArgs(taskArguments: TaskArguments) {
-  taskArguments.type ??
+  taskArguments.txtype ??
     throwNewError(
-      `Task argument 'type' is required. Supported values are: ${formatNumericEnumValuesPretty(
+      `Task argument 'txtype' is required. Supported values are: ${formatNumericEnumValuesPretty(
         TxType as unknown as Record<string, number>,
       )}.`,
     );
   let gasParams: TxType0GasParams | TxType2GasParams;
-  switch (Number(taskArguments.type)) {
+  switch (Number(taskArguments.txtype)) {
     case TxType.TYPE_0:
       gasParams = getType0GasParamsFromTaskArgs(taskArguments);
       break;
@@ -69,7 +69,7 @@ export function getTxTypeGasParamsFromTaskArgs(taskArguments: TaskArguments) {
       gasParams = getType2GasParamsFromTaskArgs(taskArguments);
       break;
     default:
-      throw new Error(`Unsupported transaction type: ${taskArguments.type}`);
+      throw new Error(`Unsupported 'txtype': ${taskArguments.txtype}`);
   }
   return gasParams;
 }
@@ -78,16 +78,16 @@ export async function checkNetworkTxTypeSupport(
   taskArguments: TaskArguments,
   hre: HardhatRuntimeEnvironment,
 ): Promise<void> {
-  taskArguments.type ??
+  taskArguments.txtype ??
     throwNewError(
-      `Task argument 'type' is required. Supported values are: ${formatNumericEnumValuesPretty(
+      `Task argument 'txtype' is required. Supported values are: ${formatNumericEnumValuesPretty(
         TxType as unknown as Record<string, number>,
       )}.`,
     );
 
   const gasEstimate = await hre.ethers.provider.getFeeData();
-  const errorMsg = `Unsupported tx type: ${taskArguments.type} on network: ${hre.network.name} (ID: ${hre.network.config.chainId}).`;
-  switch (Number(taskArguments.type)) {
+  const errorMsg = `Unsupported 'txtype': ${taskArguments.txtype} on network: ${hre.network.name} (ID: ${hre.network.config.chainId}).`;
+  switch (Number(taskArguments.txtype)) {
     case TxType.TYPE_0:
       gasEstimate.gasPrice ?? throwNewError(errorMsg);
       break;
@@ -96,7 +96,7 @@ export async function checkNetworkTxTypeSupport(
       gasEstimate.maxPriorityFeePerGas ?? throwNewError(errorMsg);
       break;
     default:
-      throw new Error(`Unsupported transaction type: ${taskArguments.type}`);
+      throw new Error(`Unsupported 'txtype': ${taskArguments.txtype}`);
   }
 }
 

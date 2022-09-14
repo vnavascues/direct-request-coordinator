@@ -4,48 +4,54 @@ import { BigNumber, ethers } from "ethers";
 import { readFileSync } from "fs";
 import type { HardhatRuntimeEnvironment, TaskArguments } from "hardhat/types";
 
+import { BetterSet } from "../../libs/better-set";
+import type { DRCoordinator } from "../../src/types";
+import {
+  convertJobIdToBytes32,
+  getLinkBalanceOf,
+  getNetworkLinkAddress,
+  getNetworkLinkAddressDeployingOnHardhat,
+  getNetworkLinkTknFeedAddress,
+} from "../../utils/chainlink";
+import {
+  LINK_TOTAL_SUPPLY,
+  MIN_CONSUMER_GAS_LIMIT,
+  chainIdFlags,
+  chainIdSequencerOfflineFlag,
+} from "../../utils/chainlink-constants";
+import { ChainId } from "../../utils/constants";
+import { getNumberOfConfirmations, getOverrides, isAddressAContract } from "../../utils/deployment";
+import { formatNumericEnumValuesPretty } from "../../utils/enums";
+import { impersonateAccount, setAddressCode } from "../../utils/hre";
+import { logger } from "../../utils/logger";
+import { reSemVer, reUUID } from "../../utils/regex";
+import type { Overrides } from "../../utils/types";
+import { setChainVerifyApiKeyEnv } from "../../utils/verification";
 import {
   ChainlinkNodeId,
   DUMMY_SET_CODE_BYTES,
   ExternalAdapterId,
   FeeType,
-  MAX_PERMIRYAD_FULFILLMENT_FEE,
+  MAX_PERMIRYAD_FEE,
   MAX_REQUEST_CONFIRMATIONS,
+  PERMIRYAD,
+  PaymentType,
   TaskExecutionMode,
   TaskName,
 } from "./constants";
 import {
   Configuration,
   ConfigurationConverted,
+  ConsumersConverted,
+  DRCoordinatorLogConfig,
   DeployData,
   Description,
-  DRCoordinatorLogConfig,
   ExternalAdapter,
-  Spec,
+  SpecAuthorizedConsumersConverted,
   SpecConverted,
+  SpecItem,
+  SpecItemConverted,
 } from "./types";
-import { BetterSet } from "../../libs/better-set";
-import type { DRCoordinator } from "../../src/types";
-import { ChainId } from "../../utils/constants";
-import {
-  chainIdFlags,
-  chainIdSequencerOfflineFlag,
-  convertJobIdToBytes32,
-  getLinkBalanceOf,
-  getNetworkLinkAddress,
-  getNetworkLinkAddressDeployingOnHardhat,
-  getNetworkLinkTknFeedAddress,
-  LINK_TOTAL_SUPPLY,
-  MIN_CONSUMER_GAS_LIMIT,
-} from "../../utils/chainlink";
-import { isAddressAContract, getNumberOfConfirmations } from "../../utils/deployment";
-import { formatNumericEnumValuesPretty } from "../../utils/enums";
-import { getGasOverridesFromTaskArgs } from "../../utils/gas-estimation";
-import { setAddressCode } from "../../utils/hre";
-import { logger } from "../../utils/logger";
-import { reSemVer, reUUID } from "../../utils/regex";
-import type { Overrides } from "../../utils/types";
-import { setChainVerifyApiKeyEnv } from "../../utils/verification";
 
 export async function addFunds(
   drCoordinator: DRCoordinator,
@@ -66,10 +72,34 @@ export async function addFunds(
   }
 }
 
+export async function addSpecAuthorizedConsumers(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  key: string,
+  specAuthorizedConsumers: SpecAuthorizedConsumersConverted,
+  overrides: Overrides,
+  specToIndexMap?: Map<string, number>,
+): Promise<void> {
+  const indexToKey: Record<number, string> = {};
+  if (specToIndexMap) {
+    indexToKey[specToIndexMap.get(key) as number] = key;
+  }
+  const logObj = { "file indeces": indexToKey, key, specAuthorizedConsumers };
+  let tx: ContractTransaction;
+  try {
+    tx = await drCoordinator.connect(signer).addSpecAuthorizedConsumers(key, specAuthorizedConsumers, overrides);
+    logger.info(logObj, `addSpecAuthorizedConsumers() | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObj).error(error, `addSpecAuthorizedConsumers() failed due to:`);
+    throw error;
+  }
+}
+
 export async function addSpecs(
   drCoordinator: DRCoordinator,
   signer: ethers.Wallet | SignerWithAddress,
-  fileSpecMap: Map<string, SpecConverted>,
+  fileSpecMap: Map<string, SpecItemConverted>,
   keysToAddSet: Set<string>,
   isBatchMode: boolean,
   overrides: Overrides,
@@ -81,14 +111,14 @@ export async function addSpecs(
   const specToIndexMap = new Map(Array.from([...fileSpecMap.keys()].entries()).map(([idx, key]) => [key, idx]));
   if (isBatchMode) {
     const keys = [...keysToAddSet];
-    const fileSPecs = keys.map(key => fileSpecMap.get(key) as SpecConverted);
+    const fileSpecs = keys.map(key => (fileSpecMap.get(key) as SpecItemConverted).specConverted);
     const chunkSize = batchSize || keys.length;
     for (let i = 0; i < keys.length; i += chunkSize) {
       await setSpecs(
         drCoordinator,
         signer,
         keys.slice(i, i + chunkSize),
-        fileSPecs.slice(i, i + chunkSize),
+        fileSpecs.slice(i, i + chunkSize),
         overrides,
         `Added in batch (${i}, ${i + chunkSize - 1})`,
         specToIndexMap,
@@ -96,25 +126,60 @@ export async function addSpecs(
     }
   } else {
     for (const key of keysToAddSet) {
-      const fileSpec = fileSpecMap.get(key) as SpecConverted;
-      await setSpec(drCoordinator, signer, key, fileSpec, overrides, "Added", specToIndexMap);
+      const fileSpec = fileSpecMap.get(key) as SpecItemConverted;
+      await setSpec(drCoordinator, signer, key, fileSpec.specConverted, overrides, "Added", specToIndexMap);
     }
   }
 }
 
-export function checkSpecsIntegrity(specs: Spec[], chainId: ChainId): void {
+export async function addSpecsAuthorizedConsumers(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  keys: string[],
+  specsAuthorizedConsumers: SpecAuthorizedConsumersConverted[],
+  overrides: Overrides,
+  specToIndexMap?: Map<string, number>,
+): Promise<void> {
+  const indexToKey: Record<number, string> = {};
+  if (specToIndexMap) {
+    keys.forEach(key => (indexToKey[specToIndexMap.get(key) as number] = key));
+  }
+  const logObj = { "file indeces": indexToKey, keys, specsAuthorizedConsumers };
+  let tx: ContractTransaction;
+  try {
+    tx = await drCoordinator.connect(signer).addSpecsAuthorizedConsumers(keys, specsAuthorizedConsumers, overrides);
+    logger.info(logObj, `addSpecsAuthorizedConsumers() | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObj).error(error, `addSpecsAuthorizedConsumers() failed due to:`);
+    throw error;
+  }
+}
+
+export function checkSpecsIntegrity(specs: SpecItem[], chainId: ChainId): void {
   if (!Array.isArray(specs)) {
     throw new Error(`Invalid specs file data format. Expected an array of Spec items`);
   }
   // Validate specs
   const jsonValues = Object.values(specs);
-  for (const [idx, { description, configuration }] of jsonValues.entries()) {
+  const keySet = new Set<string>();
+  for (const [idx, { description, configuration, consumers }] of jsonValues.entries()) {
     try {
       validateDescription(description, chainId);
       validateConfiguration(configuration);
+      validateConsumers(consumers);
     } catch (error) {
       throw new Error(`Invalid entry at index ${idx}: ${JSON.stringify(specs[idx])}. Reason: ${error}`);
     }
+    const specId = convertJobIdToBytes32(configuration.externalJobId);
+    const key = generateSpecKey(configuration.operator, specId);
+    if (keySet.has(key)) {
+      throw new Error(
+        `Invalid entry at index ${idx}: ${JSON.stringify(specs[idx])}. ` +
+          `Reason: there already is a Spec in the file with the same 'externalJobId' and 'oracle'`,
+      );
+    }
+    keySet.add(key);
   }
 }
 
@@ -150,6 +215,55 @@ export async function deleteSpecs(
   }
 }
 
+export async function deleteSpecsAuthorizedConsumers(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  fileSpecMap: Map<string, SpecItemConverted>,
+  specAuthorizedConsumerToRemoveMap: Map<string, SpecAuthorizedConsumersConverted>,
+  keysToRemove: string[],
+  isBatchMode: boolean,
+  overrides: Overrides,
+  batchSize?: number,
+): Promise<void> {
+  // Perform the additions
+  logger.info(
+    `${
+      keysToRemove.length
+        ? `deleting specs' authorized consumers into DRCoordinator  ...`
+        : `no specs' authorized consumers to delete into DRCoordinator`
+    }`,
+  );
+  if (!keysToRemove.length) return;
+
+  const specToIndexMap = new Map(Array.from([...fileSpecMap.keys()].entries()).map(([idx, key]) => [key, idx]));
+  if (isBatchMode) {
+    const fileConsumers = keysToRemove.map(key => specAuthorizedConsumerToRemoveMap.get(key) as ConsumersConverted);
+    const chunkSize = batchSize || keysToRemove.length;
+    for (let i = 0; i < keysToRemove.length; i += chunkSize) {
+      await removeSpecsAuthorizedConsumers(
+        drCoordinator,
+        signer,
+        keysToRemove.slice(i, i + chunkSize),
+        fileConsumers.slice(i, i + chunkSize),
+        overrides,
+        specToIndexMap,
+      );
+    }
+  } else {
+    for (const key of keysToRemove) {
+      const fileAuthorizedConsumers = specAuthorizedConsumerToRemoveMap.get(key) as SpecAuthorizedConsumersConverted;
+      await removeSpecAuthorizedConsumers(
+        drCoordinator,
+        signer,
+        key,
+        fileAuthorizedConsumers,
+        overrides,
+        specToIndexMap,
+      );
+    }
+  }
+}
+
 export async function deployDRCoordinator(
   hre: HardhatRuntimeEnvironment,
   signer: ethers.Wallet | SignerWithAddress,
@@ -163,20 +277,28 @@ export async function deployDRCoordinator(
   const chainId = hre.network.config.chainId as number;
   chainIdSequencerOfflineFlag.get(chainId);
   let addressLink: string;
-  let addressLinkTknFeed: string;
+  let isMultiPriceFeedDependant: boolean;
+  let addressPriceFeed1: string;
+  let addressPriceFeed2: string;
   let isSequencerDependant: boolean;
   let sequencerOfflineFlag: string;
   let addressChainlinkFlags: string;
   if (chainId === ChainId.HARDHAT) {
-    // TODO: deploy?
     addressLink = await getNetworkLinkAddressDeployingOnHardhat(hre); // ethers.constants.AddressZero;
-    addressLinkTknFeed = ethers.constants.AddressZero;
+    isMultiPriceFeedDependant = false;
+    // TODO: support addresses as an argument
+    addressPriceFeed1 = "0x3Af8C569ab77af5230596Acf0E8c2F9351d24C38"; // LINK / ETH on Ethereum
+    await setAddressCode(hre, addressPriceFeed1, DUMMY_SET_CODE_BYTES); // NB: bypass constructor checks
+    addressPriceFeed2 = ethers.constants.AddressZero;
     sequencerOfflineFlag = "";
     isSequencerDependant = false;
     addressChainlinkFlags = ethers.constants.AddressZero;
   } else {
+    // TODO: Support DRCoordinator 2-hop price feed functionality
     addressLink = getNetworkLinkAddress(hre.network);
-    addressLinkTknFeed = getNetworkLinkTknFeedAddress(hre.network);
+    isMultiPriceFeedDependant = false;
+    addressPriceFeed1 = getNetworkLinkTknFeedAddress(hre.network);
+    addressPriceFeed2 = ethers.constants.AddressZero;
     sequencerOfflineFlag = chainIdSequencerOfflineFlag.get(chainId) || "";
     isSequencerDependant = !!sequencerOfflineFlag;
     addressChainlinkFlags = chainIdFlags.get(chainId) || ethers.constants.AddressZero;
@@ -188,7 +310,9 @@ export async function deployDRCoordinator(
     .connect(signer)
     .deploy(
       addressLink,
-      addressLinkTknFeed,
+      isMultiPriceFeedDependant,
+      addressPriceFeed1,
+      addressPriceFeed2,
       description,
       fallbackWeiPerUnitLink,
       stalenessSeconds,
@@ -205,15 +329,17 @@ export async function deployDRCoordinator(
   return {
     drCoordinator,
     addressLink,
-    addressLinkTknFeed,
+    isMultiPriceFeedDependant,
+    addressPriceFeed1,
+    addressPriceFeed2,
     isSequencerDependant,
     sequencerOfflineFlag,
     addressChainlinkFlags,
   };
 }
 
-export function generateSpecKey(operator: string, specId: string): string {
-  return ethers.utils.keccak256(ethers.utils.solidityPack(["address", "bytes32"], [operator, specId]));
+export function generateSpecKey(operatorAddr: string, specId: string): string {
+  return ethers.utils.keccak256(ethers.utils.solidityPack(["address", "bytes32"], [operatorAddr, specId]));
 }
 
 export async function getDRCoordinator(
@@ -259,26 +385,40 @@ export async function getDRCoordinator(
   return drCoordinator;
 }
 
+export async function getSpecAuthorizedConsumersMap(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  keys: string[],
+): Promise<Map<string, SpecAuthorizedConsumersConverted>> {
+  const specAuthorizedConsumersConvertedMap: Map<string, SpecAuthorizedConsumersConverted> = new Map([]);
+  for (const key of keys) {
+    const authorizedConsumers = await drCoordinator.connect(signer).getSpecAuthorizedConsumers(key);
+    specAuthorizedConsumersConvertedMap.set(key, authorizedConsumers);
+  }
+  return specAuthorizedConsumersConvertedMap;
+}
+
 export async function getSpecConfigurationConverted(configuration: Configuration): Promise<ConfigurationConverted> {
   const operator = configuration.operator;
   const specId = convertJobIdToBytes32(configuration.externalJobId);
   const key = generateSpecKey(operator, specId);
-
   return {
+    fee: BigNumber.from(configuration.fee),
     feeType: configuration.feeType,
-    fulfillmentFee: BigNumber.from(configuration.fulfillmentFee),
     gasLimit: configuration.gasLimit,
     key,
     minConfirmations: configuration.minConfirmations,
     operator,
     payment: BigNumber.from(configuration.payment),
+    paymentType: configuration.paymentType,
     specId,
   };
 }
 
-export async function getSpecConvertedMap(specs: Spec[]): Promise<Map<string, SpecConverted>> {
-  const specConvertedMap: Map<string, SpecConverted> = new Map();
-  for (const [idx, { configuration }] of specs.entries()) {
+export async function getSpecItemConvertedMap(specs: SpecItem[]): Promise<Map<string, SpecItemConverted>> {
+  const specItemConvertedMap: Map<string, SpecItemConverted> = new Map();
+  for (const [idx, { configuration, consumers }] of specs.entries()) {
+    // Process the spec configuration
     let configurationConverted: ConfigurationConverted;
     try {
       configurationConverted = await getSpecConfigurationConverted(configuration);
@@ -290,12 +430,13 @@ export async function getSpecConvertedMap(specs: Spec[]): Promise<Map<string, Sp
       );
       throw error;
     }
-    const specConverted: SpecConverted = {
-      ...configurationConverted,
-    };
-    specConvertedMap.set(specConverted.key, specConverted);
+    // Process the spec consumers
+    specItemConvertedMap.set(configurationConverted.key, {
+      specConverted: configurationConverted,
+      specAuthorizedConsumers: consumers,
+    });
   }
-  return specConvertedMap;
+  return specItemConvertedMap;
 }
 
 export async function getSpecMap(
@@ -303,34 +444,78 @@ export async function getSpecMap(
   signer: ethers.Wallet | SignerWithAddress,
   keys: string[],
 ): Promise<Map<string, SpecConverted>> {
-  const specMap: Map<string, SpecConverted> = new Map();
+  const specConvertedMap: Map<string, SpecConverted> = new Map();
   for (const key of keys) {
-    const [specId, operator, payment, minConfirmations, gasLimit, fulfillmentFee, feeType] = await drCoordinator
+    const { specId, operator, payment, paymentType, fee, feeType, gasLimit, minConfirmations } = await drCoordinator
       .connect(signer)
       .getSpec(key);
     const spec = {
+      fee,
       feeType,
-      fulfillmentFee,
       gasLimit,
       key,
       minConfirmations,
       operator,
       payment,
+      paymentType,
       specId,
     };
-    specMap.set(key, spec);
+    specConvertedMap.set(key, spec);
   }
-  return specMap;
+  return specConvertedMap;
 }
 
 export function hasSpecDifferences(fileSpec: SpecConverted, drcSpec: SpecConverted): boolean {
   return (
+    !fileSpec.fee.eq(drcSpec.fee) ||
     fileSpec.feeType !== drcSpec.feeType ||
-    !fileSpec.fulfillmentFee.eq(drcSpec.fulfillmentFee) ||
     fileSpec.gasLimit !== drcSpec.gasLimit ||
     fileSpec.minConfirmations !== drcSpec.minConfirmations ||
-    !fileSpec.payment.eq(drcSpec.payment)
+    fileSpec.payment !== drcSpec.payment ||
+    fileSpec.paymentType !== drcSpec.paymentType
   );
+}
+
+export async function insertSpecsAuthorizedConsumers(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  fileSpecMap: Map<string, SpecItemConverted>,
+  specAuthorizedConsumerToAddMap: Map<string, SpecAuthorizedConsumersConverted>,
+  keysToAdd: string[],
+  isBatchMode: boolean,
+  overrides: Overrides,
+  batchSize?: number,
+): Promise<void> {
+  // Perform the additions
+  logger.info(
+    `${
+      keysToAdd.length
+        ? `adding specs' authorized consumers into DRCoordinator  ...`
+        : `no specs' authorized consumers to add into DRCoordinator`
+    }`,
+  );
+  if (!keysToAdd.length) return;
+
+  const specToIndexMap = new Map(Array.from([...fileSpecMap.keys()].entries()).map(([idx, key]) => [key, idx]));
+  if (isBatchMode) {
+    const fileConsumers = keysToAdd.map(key => specAuthorizedConsumerToAddMap.get(key) as ConsumersConverted);
+    const chunkSize = batchSize || keysToAdd.length;
+    for (let i = 0; i < keysToAdd.length; i += chunkSize) {
+      await addSpecsAuthorizedConsumers(
+        drCoordinator,
+        signer,
+        keysToAdd.slice(i, i + chunkSize),
+        fileConsumers.slice(i, i + chunkSize),
+        overrides,
+        specToIndexMap,
+      );
+    }
+  } else {
+    for (const key of keysToAdd) {
+      const fileAuthorizedConsumers = specAuthorizedConsumerToAddMap.get(key) as SpecAuthorizedConsumersConverted;
+      await addSpecAuthorizedConsumers(drCoordinator, signer, key, fileAuthorizedConsumers, overrides, specToIndexMap);
+    }
+  }
 }
 
 export async function logDRCoordinatorDetail(
@@ -354,12 +539,15 @@ export async function logDRCoordinatorDetail(
       chainlinkFlags = await drCoordinator.connect(signer).CHAINLINK_FLAGS();
     }
     const addressLink = await drCoordinator.connect(signer).LINK();
-    const addressLinkTknFeed = await drCoordinator.connect(signer).LINK_TKN_FEED();
+    // TODO: pull feed names and log them
+    const isMultiPriceFeedDependant = await drCoordinator.connect(signer).IS_MULTI_PRICE_FEED_DEPENDANT();
+    const addressPriceFeed1 = await drCoordinator.connect(signer).PRICE_FEED_1();
+    const addressPriceFeed2 = await drCoordinator.connect(signer).PRICE_FEED_2();
     const gasAfterPaymentCalculation = await drCoordinator.connect(signer).GAS_AFTER_PAYMENT_CALCULATION();
     const fallbackWeiPerUnitLink = await drCoordinator.connect(signer).getFallbackWeiPerUnitLink();
+    const permiryadFeeFactor = await drCoordinator.connect(signer).getPermiryadFeeFactor();
     const stalenessSeconds = await drCoordinator.connect(signer).getStalenessSeconds();
-    const sha1 = await drCoordinator.connect(signer).getSha1();
-    const linkBalance = await getLinkBalanceOf(hre, drCoordinator.address, addressLink);
+    const linkBalance = await getLinkBalanceOf(hre, signer, drCoordinator.address, addressLink);
     const linkProfit = await drCoordinator.connect(signer).availableFunds(drCoordinator.address);
     logger.info(
       {
@@ -371,15 +559,17 @@ export async function logDRCoordinatorDetail(
         balance: `${ethers.utils.formatUnits(linkBalance)} LINK`,
         profit: `${ethers.utils.formatUnits(linkProfit)} LINK`,
         LINK: addressLink,
-        LINK_TKN_FEED: addressLinkTknFeed,
+        IS_MULTI_PRICE_FEED_DEPENDANT: isMultiPriceFeedDependant,
+        PRICE_FEED_1: addressPriceFeed1,
+        PRICE_FEED_2: addressPriceFeed2,
         MAX_REQUEST_CONFIRMATIONS: `${maxRequestConfirmations}`,
         IS_SEQUENCER_DEPENDANT: isSequencerPendant,
         FLAG_SEQUENCER_OFFLINE: flagsSequencerOffline,
         CHAINLINK_FLAGS: chainlinkFlags,
         GAS_AFTER_PAYMENT_CALCULATION: `${gasAfterPaymentCalculation}`,
         fallbackWeiPerUnitLink: `${fallbackWeiPerUnitLink}`,
+        permiryadFeeFactor: `${permiryadFeeFactor}`,
         stalenessSeconds: `${stalenessSeconds}`,
-        sha1: sha1,
       },
       "detail:",
     );
@@ -394,6 +584,12 @@ export async function logDRCoordinatorDetail(
     const keys = await drCoordinator.connect(signer).getSpecMapKeys();
     const specMap = await getSpecMap(drCoordinator, signer, keys);
     logger.info([...specMap.values()], `specs:`);
+  }
+
+  if (logConfig.authconsumers) {
+    const keys = await drCoordinator.connect(signer).getSpecMapKeys();
+    const specAuthorizedConsumersMap = await getSpecAuthorizedConsumersMap(drCoordinator, signer, keys);
+    logger.info([...specAuthorizedConsumersMap.values()], `authconsumers:`);
   }
 }
 
@@ -443,7 +639,7 @@ export async function pause(
   }
 }
 
-export function parseAndCheckSpecsFile(filePath: string, chainId: ChainId): Spec[] {
+export function parseAndCheckSpecsFile(filePath: string, chainId: ChainId): SpecItem[] {
   // Read and parse the specs JSON file
   const specs = parseSpecsFile(filePath);
   // Validate specs file
@@ -452,10 +648,10 @@ export function parseAndCheckSpecsFile(filePath: string, chainId: ChainId): Spec
   return specs;
 }
 
-export function parseSpecsFile(filePath: string): Spec[] {
-  let specs: Spec[];
+export function parseSpecsFile(filePath: string): SpecItem[] {
+  let specs: SpecItem[];
   try {
-    specs = JSON.parse(readFileSync(filePath, "utf-8")) as Spec[];
+    specs = JSON.parse(readFileSync(filePath, "utf-8")) as SpecItem[];
   } catch (error) {
     logger.error(error, `unexpected error reading file: ${filePath}. Make sure the JSON file exists`);
     throw error;
@@ -482,6 +678,30 @@ export async function removeSpec(
   }
 }
 
+export async function removeSpecAuthorizedConsumers(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  key: string,
+  specAuthorizedConsumers: SpecAuthorizedConsumersConverted,
+  overrides: Overrides,
+  specToIndexMap?: Map<string, number>,
+): Promise<void> {
+  const indexToKey: Record<number, string> = {};
+  if (specToIndexMap) {
+    indexToKey[specToIndexMap.get(key) as number] = key;
+  }
+  const logObj = { "file indeces": indexToKey, key, specAuthorizedConsumers };
+  let tx: ContractTransaction;
+  try {
+    tx = await drCoordinator.connect(signer).removeSpecAuthorizedConsumers(key, specAuthorizedConsumers, overrides);
+    logger.info(logObj, `removeSpecAuthorizedConsumers() | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObj).error(error, `removeSpecAuthorizedConsumers() failed due to:`);
+    throw error;
+  }
+}
+
 export async function removeSpecs(
   drCoordinator: DRCoordinator,
   signer: ethers.Wallet | SignerWithAddress,
@@ -501,8 +721,32 @@ export async function removeSpecs(
   }
 }
 
-export async function setCodeOnSpecContractAddresses(hre: HardhatRuntimeEnvironment, specs: Spec[]): Promise<void> {
-  const configurations = specs.map((spec: Spec) => spec.configuration);
+export async function removeSpecsAuthorizedConsumers(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  keys: string[],
+  specsAuthorizedConsumers: SpecAuthorizedConsumersConverted[],
+  overrides: Overrides,
+  specToIndexMap?: Map<string, number>,
+): Promise<void> {
+  const indexToKey: Record<number, string> = {};
+  if (specToIndexMap) {
+    keys.forEach(key => (indexToKey[specToIndexMap.get(key) as number] = key));
+  }
+  const logObj = { "file indeces": indexToKey, keys, specsAuthorizedConsumers };
+  let tx: ContractTransaction;
+  try {
+    tx = await drCoordinator.connect(signer).removeSpecsAuthorizedConsumers(keys, specsAuthorizedConsumers, overrides);
+    logger.info(logObj, `removeSpecsAuthorizedConsumers() | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObj).error(error, `removeSpecsAuthorizedConsumers() failed due to:`);
+    throw error;
+  }
+}
+
+export async function setCodeOnSpecContractAddresses(hre: HardhatRuntimeEnvironment, specs: SpecItem[]): Promise<void> {
+  const configurations = specs.map((spec: SpecItem) => spec.configuration);
 
   let contractAddresses: string[] = [];
   configurations.forEach((configuration: Configuration) => {
@@ -549,20 +793,20 @@ export async function setFallbackWeiPerUnitLink(
   }
 }
 
-export async function setSha1(
+export async function setPermiryadFeeFactor(
   drCoordinator: DRCoordinator,
   signer: ethers.Wallet | SignerWithAddress,
-  sha1: string,
+  permiryadFeeFactor: BigNumber,
   overrides: Overrides,
 ): Promise<void> {
-  const logObj = { sha1 };
+  const logObj = { permiryadFeeFactor };
   let tx: ContractTransaction;
   try {
-    tx = await drCoordinator.connect(signer).setSha1(`0x${sha1}`, overrides);
-    logger.info(logObj, `setSha1() | Tx hash: ${tx.hash}`);
+    tx = await drCoordinator.connect(signer).setPermiryadFeeFactor(permiryadFeeFactor, overrides);
+    logger.info(logObj, `setPermiryadFeeFactor() | Tx hash: ${tx.hash}`);
     await tx.wait();
   } catch (error) {
-    logger.child(logObj).error(error, `setSha1() failed due to:`);
+    logger.child(logObj).error(error, `setPermiryadFeeFactor() failed due to:`);
     throw error;
   }
 }
@@ -643,7 +887,10 @@ export async function setupDRCoordinatorBeforeTask(
   logger.warn(
     `*** Running ${(taskName as string).toUpperCase()} on ${(taskArguments.mode as string).toUpperCase()} mode ***`,
   );
-
+  // Dryrun mode checks
+  if (taskArguments.mode === TaskExecutionMode.DRYRUN && hre.network.config.chainId !== ChainId.HARDHAT) {
+    throw new Error(`Task 'mode' '${taskArguments.mode}' (default) requires the Hardhat Network`);
+  }
   // Forking mode checks
   if (taskArguments.mode === TaskExecutionMode.FORKING && !hre.config.networks.hardhat.forking?.enabled) {
     throw new Error(
@@ -651,30 +898,43 @@ export async function setupDRCoordinatorBeforeTask(
         `Please, set HARDHAT_FORKING_ENABLED and your HARDHAT_FORKING_URL in the .env file`,
     );
   }
-
-  // Get tx overrides with gas params
-  let overrides: Overrides = {};
-  if (taskArguments.gas) {
-    overrides = await getGasOverridesFromTaskArgs(taskArguments, hre);
+  if (taskArguments.mode === TaskExecutionMode.FORKING && hre.network.config.chainId !== ChainId.HARDHAT) {
+    throw new Error(
+      `Task 'mode' '${taskArguments.mode}' must not pass a network, otherwise it will transact on it. ` +
+        `Please remove the '--network <network_name>' task argument`,
+    );
+  }
+  if (taskArguments.mode === TaskExecutionMode.FORKING && !taskArguments.apeaddress) {
+    throw new Error(`Task 'mode' '${taskArguments.mode}' requires the 'apeaddress' task argument`);
   }
 
+  // Get the contract method overrides
+  const overrides = await getOverrides(taskArguments, hre);
+
   // Instantiate the signer of the network
-  const [signer] = await hre.ethers.getSigners();
+  let [signer] = await hre.ethers.getSigners();
   logger.info(`signer address: ${signer.address}`);
 
   // Open and chec the specs file
-  let specs: undefined | Spec[];
+  let specs: undefined | SpecItem[];
   if (taskName === TaskName.IMPORT_FILE) {
     // Read and parse the specs JSON file
     logger.info(`parsing and checking specs file: ${taskArguments.filename}.json ...`);
-    const filePath = `./specs/${taskArguments.filename}.json`;
+    const filePath = `./jobs/drcoordinator-specs/${taskArguments.filename}.json`;
     specs = parseAndCheckSpecsFile(filePath, hre.network.config.chainId as ChainId);
+  }
+
+  // Execution mode setups
+  if ([TaskExecutionMode.FORKING].includes(taskArguments.mode)) {
+    logger.info(`impersonating signer address: ${taskArguments.apeaddress} ...`);
+    await impersonateAccount(hre, taskArguments.apeaddress);
+    signer = await hre.ethers.getSigner(taskArguments.apeaddress);
   }
 
   if (taskArguments.mode === TaskExecutionMode.DRYRUN) {
     if (taskName === TaskName.IMPORT_FILE) {
       logger.info("setting code in specs contract addresses ...");
-      await setCodeOnSpecContractAddresses(hre, specs as Spec[]);
+      await setCodeOnSpecContractAddresses(hre, specs as SpecItem[]);
     }
   }
 
@@ -684,7 +944,6 @@ export async function setupDRCoordinatorBeforeTask(
   await logDRCoordinatorDetail(hre, drCoordinator, { detail: true }, signer);
 
   // Check signer's role
-  // TODO: request owner
   return {
     drCoordinator,
     signer,
@@ -713,7 +972,7 @@ export async function updateSpecs(
   drCoordinator: DRCoordinator,
   signer: ethers.Wallet | SignerWithAddress,
   drcSpecMap: Map<string, SpecConverted>,
-  fileSpecMap: Map<string, SpecConverted>,
+  fileSpecMap: Map<string, SpecItemConverted>,
   keysToCheckSet: Set<string>,
   isBatchMode: boolean,
   overrides: Overrides,
@@ -723,8 +982,8 @@ export async function updateSpecs(
   // Classify specs to be updated by topic
   for (const key of keysToCheckSet) {
     const drcSpec = drcSpecMap.get(key) as SpecConverted;
-    const fileSpec = fileSpecMap.get(key) as SpecConverted;
-    if (hasSpecDifferences(fileSpec, drcSpec)) {
+    const fileSpec = fileSpecMap.get(key) as SpecItemConverted;
+    if (hasSpecDifferences(fileSpec.specConverted, drcSpec)) {
       keysToUpdateSet.add(key);
     }
   }
@@ -738,7 +997,7 @@ export async function updateSpecs(
   const specToIndexMap = new Map(Array.from([...fileSpecMap.keys()].entries()).map(([idx, key]) => [key, idx]));
   if (isBatchMode) {
     const keys = [...keysToUpdateSet];
-    const fileSpecs = keys.map(key => fileSpecMap.get(key) as SpecConverted);
+    const fileSpecs = keys.map(key => (fileSpecMap.get(key) as SpecItemConverted).specConverted);
     const chunkSize = batchSize || keys.length;
     for (let i = 0; i < keys.length; i += chunkSize) {
       await setSpecs(
@@ -753,20 +1012,80 @@ export async function updateSpecs(
     }
   } else {
     for (const key of keysToUpdateSet) {
-      const fileSpec = fileSpecMap.get(key) as SpecConverted;
-      await setSpec(drCoordinator, signer, key, fileSpec, overrides, "Updated", specToIndexMap);
+      const fileSpec = fileSpecMap.get(key) as SpecItemConverted;
+      await setSpec(drCoordinator, signer, key, fileSpec.specConverted, overrides, "Updated", specToIndexMap);
     }
   }
+}
+
+export async function updateSpecsAuthorizedConsumers(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  drcSpecAuthorizedConsumersMap: Map<string, SpecAuthorizedConsumersConverted>,
+  fileSpecMap: Map<string, SpecItemConverted>,
+  keysToAddSetRaw: Set<string>,
+  keysToCheckSet: Set<string>,
+  isBatchMode: boolean,
+  overrides: Overrides,
+  batchSize?: number,
+): Promise<void> {
+  const specAuthorizedConsumerToAddMap = new Map<string, SpecAuthorizedConsumersConverted>();
+  // Consumers to be added by Spec key (discard any with empty consumers array)
+  for (const key of keysToAddSetRaw) {
+    const authorizedConsumers = (fileSpecMap.get(key) as SpecItemConverted).specAuthorizedConsumers;
+    if (authorizedConsumers.length) {
+      // keysToAddSet.add(key);
+      specAuthorizedConsumerToAddMap.set(key, authorizedConsumers);
+    }
+  }
+  // Extend consumers to be added by Spec key, and get the ones to be removed by Spec key
+  const specAuthorizedConsumerToRemoveMap = new Map<string, SpecAuthorizedConsumersConverted>();
+  for (const key of keysToCheckSet) {
+    const fileConsumers = (fileSpecMap.get(key) as SpecItemConverted).specAuthorizedConsumers;
+    const drcAuthorizedConsumers = drcSpecAuthorizedConsumersMap.get(key) as SpecAuthorizedConsumersConverted;
+    const fileConsumersSet = new BetterSet(fileConsumers);
+    const drcAuthorizedConsumersSet = new BetterSet(drcAuthorizedConsumers);
+    const consumersToAddSet = fileConsumersSet.difference(drcAuthorizedConsumersSet);
+    if (consumersToAddSet.size) {
+      specAuthorizedConsumerToAddMap.set(key, [...consumersToAddSet]);
+    }
+    const consumersToRemoveSet = drcAuthorizedConsumersSet.difference(fileConsumersSet);
+    if (consumersToRemoveSet.size) {
+      specAuthorizedConsumerToRemoveMap.set(key, [...consumersToRemoveSet]);
+    }
+  }
+  const keysToAdd = [...specAuthorizedConsumerToAddMap.keys()];
+  const keysToRemove = [...specAuthorizedConsumerToRemoveMap.keys()];
+  await insertSpecsAuthorizedConsumers(
+    drCoordinator,
+    signer,
+    fileSpecMap,
+    specAuthorizedConsumerToAddMap,
+    keysToAdd,
+    isBatchMode,
+    overrides,
+    batchSize,
+  );
+  await deleteSpecsAuthorizedConsumers(
+    drCoordinator,
+    signer,
+    fileSpecMap,
+    specAuthorizedConsumerToRemoveMap,
+    keysToRemove,
+    isBatchMode,
+    overrides,
+    batchSize,
+  );
 }
 
 export function validateConfiguration(configuration: Configuration): void {
   validateConfigurationExternalJobId(configuration.externalJobId);
   validateConfigurationFeeType(configuration.feeType as FeeType);
-  validateConfigurationFulfillmentFee(configuration.fulfillmentFee, configuration.feeType);
+  validateConfigurationFee(configuration.feeType, configuration.fee);
   validateConfigurationGasLimit(configuration.gasLimit);
   validateConfigurationMinConfirmations(configuration.minConfirmations);
   validateConfigurationOperator(configuration.operator);
-  validateConfigurationPayment(configuration.payment);
+  validateConfigurationPayment(configuration.paymentType, configuration.payment);
 }
 
 export function validateConfigurationExternalJobId(externalJobId: string): void {
@@ -785,27 +1104,29 @@ export function validateConfigurationFeeType(feeType: FeeType): void {
   }
 }
 
-export function validateConfigurationFulfillmentFee(fulfillmentFee: string, feeType: FeeType): void {
-  if (
-    typeof fulfillmentFee !== "string" ||
-    !BigNumber.isBigNumber(BigNumber.from(fulfillmentFee)) ||
-    BigNumber.from(fulfillmentFee).lte("0") ||
-    BigNumber.from(fulfillmentFee).gt(LINK_TOTAL_SUPPLY)
-  ) {
-    throw new Error(
-      `Invalid 'fulfillmentFee': ${fulfillmentFee}. Expected an integer (as string) 0 < fulfillmentFee <= 1e27 (LINK total supply)`,
-    );
+export function validateConfigurationFee(feeType: FeeType, fee: string): void {
+  if (typeof fee !== "string" || !BigNumber.isBigNumber(BigNumber.from(fee)) || BigNumber.from(fee).lt("0")) {
+    throw new Error(`Invalid 'fee': ${fee}. Expected an integer (as string) 0 <= fee`);
   }
-
-  // NB: cross-validation for permyriad fee type. It can be personalised
-  if (feeType === FeeType.PERMIRYAD) {
-    if (BigNumber.from(fulfillmentFee).gt(MAX_PERMIRYAD_FULFILLMENT_FEE)) {
+  // NB: cross-validation against feeType
+  if (feeType === FeeType.FLAT) {
+    if (BigNumber.from(fee).gt(LINK_TOTAL_SUPPLY)) {
       throw new Error(
-        `Invalid 'fulfillmentFee' for PERMIRYAD fee type: ${fulfillmentFee}. ` +
-          `Expected an integer (as string) 0 < fulfillmentFee <= ${MAX_PERMIRYAD_FULFILLMENT_FEE.toNumber()}. ` +
-          `Consider bumping MAX_PERMIRYAD_FULFILLMENT_FEE in case of wanting a higher permyriad`,
+        `Invalid 'fee' for FLAT feeType: ${fee}. ` +
+          `Expected an integer (as string) 0 <= fee <= ${LINK_TOTAL_SUPPLY.toNumber()} (LINK total supply). `,
       );
     }
+  } else if (feeType === FeeType.PERMIRYAD) {
+    // NB: MAX_PERMIRYAD_FEE can be tweaked
+    if (BigNumber.from(fee).gt(MAX_PERMIRYAD_FEE)) {
+      throw new Error(
+        `Invalid 'fee' for PERMIRYAD feeType: ${fee}. ` +
+          `Expected an integer (as string) 0 <= fee <= ${MAX_PERMIRYAD_FEE.toNumber()}. ` +
+          `Consider bumping MAX_PERMIRYAD_FEE in case of wanting a higher permyriad`,
+      );
+    }
+  } else {
+    throw new Error(`Unsupported 'feeType': ${feeType}`);
   }
 }
 
@@ -832,25 +1153,65 @@ export function validateConfigurationMinConfirmations(minConfirmations: number):
     typeof minConfirmations !== "number" ||
     !Number.isInteger(minConfirmations) ||
     minConfirmations < 0 ||
-    BigNumber.from(minConfirmations).gt(MAX_REQUEST_CONFIRMATIONS)
+    minConfirmations > MAX_REQUEST_CONFIRMATIONS
   ) {
     throw new Error(
-      `Invalid 'minConfirmations': ${minConfirmations}. Expected an integer 0 < minConfirmations <= ${MAX_REQUEST_CONFIRMATIONS.toNumber()}`,
+      `Invalid 'minConfirmations': ${minConfirmations}. Expected an integer 0 < minConfirmations <= ${MAX_REQUEST_CONFIRMATIONS}`,
     );
   }
 }
 
-export function validateConfigurationPayment(payment: string): void {
+export function validateConfigurationPayment(paymentType: PaymentType, payment: string): void {
   if (
     typeof payment !== "string" ||
     !BigNumber.isBigNumber(BigNumber.from(payment)) ||
-    BigNumber.from(payment).lte("0") ||
-    BigNumber.from(payment).gt(LINK_TOTAL_SUPPLY)
+    BigNumber.from(payment).lt("0")
   ) {
+    throw new Error(`Invalid 'payment': ${payment}. Expected an integer (as string) 0 <= payment`);
+  }
+  // NB: cross-validation against feeType
+  if (paymentType === PaymentType.FLAT) {
+    if (BigNumber.from(payment).gt(LINK_TOTAL_SUPPLY)) {
+      throw new Error(
+        `Invalid 'payment' for FLAT PaymentType: ${payment}. ` +
+          `Expected an integer (as string) 0 < payment <= ${LINK_TOTAL_SUPPLY.toNumber()} (LINK total supply). `,
+      );
+    }
+  } else if (paymentType === PaymentType.PERMIRYAD) {
+    if (BigNumber.from(payment).gt(PERMIRYAD)) {
+      throw new Error(
+        `Invalid 'payment' for PERMIRYAD PaymentType: ${payment}. Expected an integer (as string) 0 < payment <= ${PERMIRYAD}`,
+      );
+    }
+  } else {
+    throw new Error(`Unsupported 'paymentType': ${PaymentType}`);
+  }
+}
+
+export function validateConsumers(consumers: string[]): void {
+  if (!Array.isArray(consumers)) {
     throw new Error(
-      `Invalid 'payment': ${payment}. Expected an integer (as string) 0 < payment <= 1e27 (LINK total supply)`,
+      `Invalid 'consumers': ${JSON.stringify(
+        consumers,
+      )}. Expected format is an array of checksum Ethereum addresses (can't be the Zero address)`,
     );
   }
+  const consumerSet = new Set<string>();
+  consumers.forEach(consumer => {
+    if (
+      !ethers.utils.isAddress(consumer) ||
+      consumer !== ethers.utils.getAddress(consumer) ||
+      consumer === ethers.constants.AddressZero
+    ) {
+      throw new Error(
+        `Invalid 'consumers' item: ${consumer}. Expected format is a checksum Ethereum address (can't be the Zero address)`,
+      );
+    }
+    if (consumerSet.has(consumer)) {
+      throw new Error(`Duplicated 'consumer' item: ${consumer}`);
+    }
+    consumerSet.add(consumer);
+  });
 }
 
 function validateDescription(description: Description, chainId: ChainId): void {
@@ -900,7 +1261,9 @@ export async function verifyDRCoordinator(
   hre: HardhatRuntimeEnvironment,
   drCoordinator: string,
   addressLink: string,
-  addressLinkTknFeed: string,
+  isMultiPriceFeedDependant: boolean,
+  addressPriceFeed1: string,
+  addressPriceFeed2: string,
   description: string,
   fallbackWeiPerUnitLink: BigNumber,
   stalenessSeconds: BigNumber,
@@ -913,7 +1276,9 @@ export async function verifyDRCoordinator(
     address: drCoordinator,
     constructorArguments: [
       addressLink,
-      addressLinkTknFeed,
+      isMultiPriceFeedDependant,
+      addressPriceFeed1,
+      addressPriceFeed2,
       description,
       fallbackWeiPerUnitLink,
       stalenessSeconds,
@@ -929,13 +1294,12 @@ export async function verifyDRCoordinatorConsumer(
   address: string,
   addressLink: string,
   addressDRCoordinator: string,
-  addressOperator: string,
   contract?: string,
 ): Promise<void> {
   setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
   await hre.run("verify:verify", {
     address,
-    constructorArguments: [addressLink, addressDRCoordinator, addressOperator],
+    constructorArguments: [addressLink, addressDRCoordinator],
     contract,
   });
 }

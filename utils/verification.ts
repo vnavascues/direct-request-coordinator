@@ -33,6 +33,7 @@ function getChainVerifyApiKeyEnv(chainId: ChainId): string {
     case ChainId.MATIC_MUMBAI:
       apiKey = process.env.POLYGONSCAN_API_KEY;
       break;
+    case ChainId.OPT_GOERLI:
     case ChainId.OPT_KOVAN:
     case ChainId.OPT_MAINNET:
       apiKey = process.env.OPTIMISTIC_ETHERSCAN_API_KEY;
@@ -65,6 +66,22 @@ export async function verifyByAddress(
   setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
   await hre.run("verify:verify", {
     address: addressContract,
+    contract,
+  });
+}
+
+// Verify a consumer contract whose constructor requires [LINK address,oracle contract address]
+export async function verifyStandardConsumer(
+  hre: HardhatRuntimeEnvironment,
+  addressContract: string,
+  addressLink: string,
+  addressOperator: string,
+  contract?: string,
+): Promise<void> {
+  setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
+  await hre.run("verify:verify", {
+    address: addressContract,
+    constructorArguments: [addressLink, addressOperator],
     contract,
   });
 }

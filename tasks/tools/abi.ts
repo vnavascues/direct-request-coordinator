@@ -1,12 +1,15 @@
 import { task, types } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";
+import path from "path";
 
-import { convertFunctionNametoSelector } from "../../utils/abi";
-import { logger } from "../../utils/logger";
+import { convertFunctionNametoSignature } from "../../utils/abi";
+import { logger as parentLogger } from "../../utils/logger";
 
-task("tools:abi:functionselector")
+const logger = parentLogger.child({ name: path.relative(process.cwd(), __filename) });
+
+task("tools:abi:functionsignature")
   .addParam("function", "The function name", undefined, types.string)
   .setAction(async function (taskArguments: TaskArguments) {
-    const hexStr = convertFunctionNametoSelector(taskArguments.function as string);
+    const hexStr = convertFunctionNametoSignature(taskArguments.function as string);
     logger.info(`bytes4: ${hexStr}`);
   });

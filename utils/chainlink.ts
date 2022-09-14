@@ -1,72 +1,21 @@
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { BigNumber, ethers } from "ethers";
 import type { ContractTransaction } from "@ethersproject/contracts";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import cbor from "cbor";
+import { BigNumber, ethers } from "ethers";
 import { HardhatRuntimeEnvironment, Network } from "hardhat/types";
+import path from "path";
 
+import type { ToolsChainlinkTestHelper } from "../src/types";
+import type { LinkToken } from "../src/types";
 import { getChecksumAddress } from "./addresses";
+import { RequestParamType, chainIdFastGasFeed, chainIdLink, chainIdLinkTknFeed } from "./chainlink-constants";
+import type { ChainlinkRequestParam as RequestParam } from "./chainlink-types";
 import { ChainId, chainIdTkn } from "./constants";
 import { throwNewError } from "./errors";
-import { logger } from "./logger";
+import { logger as parentLogger } from "./logger";
 import type { Overrides } from "./types";
-import type { LinkToken } from "../src/types";
 
-export const LINK_TOTAL_SUPPLY = BigNumber.from("10").pow("27");
-export const MIN_CONSUMER_GAS_LIMIT = 400_000; // From Operator.sol::MINIMUM_CONSUMER_GAS_LIMIT
-
-export const chainIdFlags: ReadonlyMap<ChainId, string> = new Map([
-  [ChainId.ARB_MAINNET, "0x3C14e07Edd0dC67442FA96f1Ec6999c57E810a83"],
-  [ChainId.ARB_RINKEBY, "0x491B1dDA0A8fa069bbC1125133A975BF4e85a91b"],
-]);
-
-//NB: don't make it readonly to allow dryrun deploys on the Hardhat network
-export const chainIdLink: Map<ChainId, string> = new Map([
-  [ChainId.ETH_MAINNET, "0x514910771AF9Ca656af840dff83E8264EcF986CA"],
-  [ChainId.ETH_RINKEBY, "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"],
-  [ChainId.ETH_GOERLI, "0x326c977e6efc84e512bb9c30f76e30c160ed06fb"],
-  [ChainId.OPT_MAINNET, "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6"],
-  [ChainId.RSK_MAINNET, "0x14AdaE34beF7ca957Ce2dDe5ADD97ea050123827"],
-  [ChainId.ETH_KOVAN, "0xa36085F69e2889c224210F603D836748e7dC0088"],
-  [ChainId.BSC_MAINNET, "0x404460C6A5EdE2D891e8297795264fDe62ADBB75"],
-  [ChainId.OPT_KOVAN, "0x4911b761993b9c8c0d14Ba2d86902AF6B0074F5B"],
-  [ChainId.BSC_TESTNET, "0x84b9B910527Ad5C03A9Ca831909E21e236EA7b06"],
-  [ChainId.XDAI_MAINNET, "0xE2e73A1c69ecF83F464EFCE6A5be353a37cA09b2"],
-  [ChainId.HECO_MAINNET, "0x9e004545c59D359F6B7BFB06a26390b087717b42"],
-  [ChainId.MATIC_MAINNET, "0xb0897686c545045aFc77CF20eC7A532E3120E0F1"],
-  [ChainId.FTM_MAINNET, "0x6F43FF82CCA38001B6699a8AC47A2d0E66939407"],
-  [ChainId.MOONBEAM_MOONRIVER, "0x8b12Ac23BFe11cAb03a634C1F117D64a7f2cFD3e"],
-  [ChainId.FTM_TESTNET, "0xfaFedb041c0DD4fA2Dc0d87a6B0979Ee6FA7af5F"],
-  [ChainId.ARB_MAINNET, "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4"],
-  [ChainId.AVAX_FUJI, "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846"],
-  [ChainId.AVAX_MAINNET, "0x5947BB275c521040051D82396192181b413227A3"],
-  [ChainId.MATIC_MUMBAI, "0x326C977E6efc84E512bB9C30f76E30c160eD06FB"],
-  [ChainId.ARB_RINKEBY, "0x615fBe6372676474d9e6933d310469c9b68e9726"],
-  [ChainId.ONE_MAINNET, "0x218532a12a389a4a92fC0C5Fb22901D1c19198aA"],
-  [ChainId.ONE_TESTNET, "0x8b12Ac23BFe11cAb03a634C1F117D64a7f2cFD3e"],
-]);
-
-export const chainIdLinkTknFeed: ReadonlyMap<ChainId, string> = new Map([
-  [ChainId.ETH_MAINNET, "0xDC530D9457755926550b59e8ECcdaE7624181557"],
-  [ChainId.ETH_RINKEBY, "0xFABe80711F3ea886C3AC102c81ffC9825E16162E"],
-  [ChainId.ETH_GOERLI, "0x464A1515ADc20de946f8d0DEB99cead8CEAE310d"],
-  [ChainId.ETH_KOVAN, "0x3Af8C569ab77af5230596Acf0E8c2F9351d24C38"],
-  [ChainId.BSC_MAINNET, "0xB38722F6A608646a538E882Ee9972D15c86Fc597"],
-  [ChainId.OPT_KOVAN, "0xB677bfBc9B09a3469695f40477d05bc9BcB15F50"],
-  [ChainId.BSC_TESTNET, "0x351Ff08FF5077d6E8704A4763836Fe187f074380"],
-  [ChainId.MATIC_MAINNET, "0x5787BefDc0ECd210Dfa948264631CD53E68F7802"],
-  [ChainId.FTM_MAINNET, "0x3FFe75E8EDA86F48e454e6bfb5F74d95C20744f4"],
-  [ChainId.MOONBEAM_MOONRIVER, "0x8b12Ac23BFe11cAb03a634C1F117D64a7f2cFD3e"],
-  [ChainId.FTM_TESTNET, "0xF549af21578Cfe2385FFD3488B3039fd9e52f006"],
-  [ChainId.ARB_MAINNET, "0xb7c8Fb1dB45007F98A68Da0588e1AA524C317f27"],
-  [ChainId.AVAX_FUJI, "0x79c91fd4F8b3DaBEe17d286EB11cEE4D83521775"],
-  [ChainId.AVAX_MAINNET, "0x1b8a25F73c9420dD507406C3A3816A276b62f56a"],
-  [ChainId.MATIC_MUMBAI, "0x12162c3E810393dEC01362aBf156D7ecf6159528"],
-  [ChainId.ARB_RINKEBY, "0x1a658fa1a5747d73D0AD674AF12851F7d74c998e"],
-]);
-
-export const chainIdSequencerOfflineFlag: ReadonlyMap<ChainId, string> = new Map([
-  [ChainId.ARB_MAINNET, "chainlink.flags.arbitrum-seq-offline"],
-  [ChainId.ARB_RINKEBY, "chainlink.flags.arbitrum-seq-offline"],
-]);
+const logger = parentLogger.child({ name: path.relative(process.cwd(), __filename) });
 
 export async function approve(
   linkToken: LinkToken,
@@ -108,6 +57,189 @@ export function convertJobIdToBytes32(jobId: string): string {
   return `0x${buffer.toString("hex")}`;
 }
 
+// NB: Calculates the buffer using the Chainlink.sol library
+export async function convertRequestParamsToCborBuffer(
+  toolsChainlinkTestHelper: ToolsChainlinkTestHelper,
+  requestParamsRaw: RequestParam[],
+  isSorted = true,
+): Promise<string> {
+  if (!Array.isArray(requestParamsRaw)) {
+    throw new Error(`Invalid request params format: ${requestParamsRaw}. Expected Array of objects`);
+  }
+  try {
+    await toolsChainlinkTestHelper.resetChainlinkRequest();
+  } catch (error) {
+    logger.error(error, "resetChainlinkRequest() failed due to:");
+    throw error;
+  }
+
+  // NB: by default it sorts params alphabetically by name via 'localCompare()'
+  const requestParams = isSorted ? requestParamsRaw.sort((a, b) => a.name.localeCompare(b.name)) : requestParamsRaw;
+
+  for (const { type, name, value, valueTypes } of requestParams) {
+    switch (type) {
+      case RequestParamType.ADDRESS:
+        if (!ethers.utils.isAddress(value as string) || value !== ethers.utils.getAddress(value as string)) {
+          throw new Error(
+            `Request param '${name}' of type '${type}' is not a valid Ethereum address (checksum): ${JSON.stringify(
+              value,
+            )}`,
+          );
+        }
+        await toolsChainlinkTestHelper.addBytes(
+          name,
+          ethers.utils.defaultAbiCoder.encode(["address"], [value as string]),
+        );
+        break;
+      case RequestParamType.ADDRESS_ARRAY: {
+        if (!Array.isArray(value)) {
+          throw new Error(`Request param '${name}' of type '${type}' is not an Array: ${JSON.stringify(value)}`);
+        }
+        value.forEach(address => {
+          // NB: addresses sent from contracts will be in lowercase, but bytes will be the same.
+          if (!ethers.utils.isAddress(address as string) || address !== ethers.utils.getAddress(address as string)) {
+            throw new Error(
+              `Request param '${name}' of type '${type}' is not a valid Ethereum address (checksum): ${JSON.stringify(
+                address,
+              )}`,
+            );
+          }
+        });
+        await toolsChainlinkTestHelper.addBytes(
+          name,
+          ethers.utils.defaultAbiCoder.encode(["address[]"], [value as string[]]),
+        );
+        break;
+      }
+      case RequestParamType.BUFFER:
+        if (!ethers.utils.isHexString(value)) {
+          throw new Error(
+            `Request param '${name}' of type '${type}' is not a valid hex string: ${JSON.stringify(value)}`,
+          );
+        }
+        await toolsChainlinkTestHelper.setBuffer(value as string);
+        break;
+      case RequestParamType.BYTES:
+        if (!Array.isArray(value)) {
+          throw new Error(
+            `Request param '${name}' of type '${type}' does not have and Array for 'value': ${JSON.stringify(value)}`,
+          );
+        }
+        if (!Array.isArray(valueTypes)) {
+          throw new Error(
+            `Request param '${name}' of type '${type}' does not have an Array for 'valueTypes': ${JSON.stringify(
+              valueTypes,
+            )}`,
+          );
+        }
+        await toolsChainlinkTestHelper.addBytes(name, ethers.utils.defaultAbiCoder.encode(valueTypes, value));
+        break;
+      case RequestParamType.BYTES_ENCODE:
+        if (!ethers.utils.isHexString(value)) {
+          throw new Error(
+            `Request param '${name}' of type '${type}' is not a valid hex string: ${JSON.stringify(value)}`,
+          );
+        }
+        await toolsChainlinkTestHelper.addBytes(name, value as string);
+        break;
+      case RequestParamType.INT:
+        await toolsChainlinkTestHelper.addInt(name, BigNumber.from(`${value}`));
+        break;
+      case RequestParamType.STRING:
+        await toolsChainlinkTestHelper.add(name, value as string);
+        break;
+      case RequestParamType.STRING_ARRAY:
+        await toolsChainlinkTestHelper.addStringArray(name, value as string[]);
+        break;
+      case RequestParamType.UINT:
+        await toolsChainlinkTestHelper.addUint(name, BigNumber.from(`${value}`));
+        break;
+      // NB: EXPERIMENTAL, implemented by me
+      case RequestParamType.INT_ARRAY:
+        await toolsChainlinkTestHelper.addIntArray(
+          name,
+          (value as number[]).map((n: number) => BigNumber.from(`${n}`)) as BigNumber[],
+        );
+        break;
+      // NB: EXPERIMENTAL, implemented by me
+      case RequestParamType.UINT_ARRAY:
+        await toolsChainlinkTestHelper.addUintArray(
+          name,
+          (value as number[]).map((n: number) => BigNumber.from(`${n}`)) as BigNumber[],
+        );
+        break;
+      default:
+        throw new Error(`Unsupported request parameter 'type': ${type}.`);
+    }
+  }
+  const reqBuffer = await toolsChainlinkTestHelper.req();
+  return reqBuffer.buf.buf;
+}
+
+// NB: Calculates the buffer using the CBOR library
+export async function convertRequestParamsToCborBufferExperimental(
+  requestParamsRaw: RequestParam[],
+  isSorted = true,
+): Promise<string> {
+  if (!Array.isArray(requestParamsRaw)) {
+    throw new Error(`Invalid request params format: ${requestParamsRaw}. Expected Array of objects`);
+  }
+  // NB: by default it sorts params alphabetically by name via 'localCompare()'
+  const requestParams = isSorted ? requestParamsRaw.sort((a, b) => a.name.localeCompare(b.name)) : requestParamsRaw;
+
+  let buffer = "0x";
+  for (const { type, name, value } of requestParams) {
+    const encodedName = cbor.encode(name);
+    let encodedValue;
+    let buff;
+    switch (type) {
+      case RequestParamType.STRING:
+      case RequestParamType.STRING_ARRAY:
+        encodedValue = cbor.encode(value);
+        break;
+      case RequestParamType.ADDRESS:
+        // NB: addresses sent from contracts will be in lowercase, but bytes will be the same.
+        if (!ethers.utils.isAddress(value as string) || value !== ethers.utils.getAddress(value as string)) {
+          throw new Error(
+            `Request param '${name}' of type '${type}' is not a valid Ethereum address (checksum): ${JSON.stringify(
+              value,
+            )}`,
+          );
+        }
+        // NB: and address encode packed is an address in lower case
+        buff = Buffer.from(`${ethers.utils.solidityPack(["address"], [value as string]).slice(2)}`, "hex");
+        encodedValue = cbor.encode(buff.toString("base64"));
+        break;
+      case RequestParamType.BYTES:
+        if (!ethers.utils.isHexString(value)) {
+          throw new Error(
+            `Request param '${name}' of type '${type}' is not a valid hex string: ${JSON.stringify(value)}`,
+          );
+        }
+        buff = Buffer.from(`${(value as string).slice(2)}`, "hex");
+        encodedValue = cbor.encode(buff.toString("base64"));
+        break;
+      case RequestParamType.INT:
+      case RequestParamType.UINT:
+        encodedValue = cbor.encode(BigInt(value as string));
+        break;
+      case RequestParamType.INT_ARRAY:
+      case RequestParamType.UINT_ARRAY:
+        encodedValue = cbor.encode((value as Array<number>).map((n: number) => BigInt(n)));
+        break;
+      default:
+        throw new Error(`Unsupported request parameter 'type': ${type}.`);
+    }
+    buffer += `${encodedName.toString("hex")}${encodedValue.toString("hex")}`;
+    // NB: Chainlink.sol appends "ff" on Arrays
+    if ([RequestParamType.STRING_ARRAY, RequestParamType.UINT_ARRAY, RequestParamType.INT_ARRAY].includes(type)) {
+      buffer += "ff";
+    }
+  }
+
+  return buffer;
+}
+
 export async function deployLinkTokenOnHardhat(hre: HardhatRuntimeEnvironment): Promise<LinkToken> {
   // Deploy LinkToken
   const linkTokenFactory = await hre.ethers.getContractFactory("LinkToken");
@@ -116,14 +248,34 @@ export async function deployLinkTokenOnHardhat(hre: HardhatRuntimeEnvironment): 
   return linkToken;
 }
 
+export async function getLinkTokenContract(hre: HardhatRuntimeEnvironment, addressLINK: string): Promise<LinkToken> {
+  const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
+  return hre.ethers.getContractAt(linkTokenArtifact.abi, addressLINK) as Promise<LinkToken>;
+}
+
 export async function getLinkBalanceOf(
   hre: HardhatRuntimeEnvironment,
+  signer: ethers.Wallet | SignerWithAddress,
   address: string,
   addressLINK: string,
 ): Promise<BigNumber> {
-  const linkTokenArtifact = await hre.artifacts.readArtifact("LinkToken");
-  const contractLINK = (await hre.ethers.getContractAt(linkTokenArtifact.abi, addressLINK)) as LinkToken;
-  return contractLINK.balanceOf(address);
+  const contractLINK = await getLinkTokenContract(hre, addressLINK);
+  return contractLINK.connect(signer).balanceOf(address);
+}
+
+// TODO: add missing supported networks
+// TODO: explore pulling the feed by description (aka name)
+export function getNetworkFastGasFeedAddress(network: Network): string {
+  const chainId = network.config.chainId;
+  let fastGasFeed = chainIdFastGasFeed.get(chainId as number);
+  fastGasFeed ??
+    throwNewError(
+      `Unsupported chain: ${network.name}. Unable to get Fast Gas / Wei feed address for chainId: ${chainId}.`,
+    );
+  fastGasFeed = getChecksumAddress(fastGasFeed as string);
+  logger.info(`Fast Gas / Wei feed address: ${fastGasFeed}`);
+
+  return fastGasFeed;
 }
 
 export function getNetworkLinkAddress(network: Network): string {
@@ -138,6 +290,18 @@ export function getNetworkLinkAddress(network: Network): string {
   return link;
 }
 
+export function getNetworkLinkAddressByChainId(chainId: ChainId, networkName: string): string {
+  let link = chainIdLink.get(chainId as number);
+  link =
+    link ??
+    throwNewError(`Unsupported chain: ${networkName}. Unable to get LinkToken address for chainId: ${chainId}.`);
+  link = getChecksumAddress(link);
+  logger.info(`LINK address: ${link}`);
+
+  return link;
+}
+
+// TODO: Support DRCoordinator 2-hop price feed functionality
 export function getNetworkLinkTknFeedAddress(network: Network): string {
   const chainId = network.config.chainId;
   let linkTknFeed = chainIdLinkTknFeed.get(chainId as number);
@@ -187,11 +351,12 @@ export async function transfer(
 
 export async function validateLinkAddressFunds(
   hre: HardhatRuntimeEnvironment,
+  signer: ethers.Wallet | SignerWithAddress,
   address: string,
   addressLINK: string,
   fundsLINK: BigNumber,
 ): Promise<void> {
-  const balance = await getLinkBalanceOf(hre, address, addressLINK);
+  const balance = await getLinkBalanceOf(hre, signer, address, addressLINK);
   if (balance.lt(fundsLINK)) {
     const fmtBalance = hre.ethers.utils.formatUnits(balance);
     const fmtFunds = hre.ethers.utils.formatUnits(fundsLINK);

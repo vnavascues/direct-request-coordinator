@@ -10,12 +10,14 @@
     },
     "configuration": {
       "externalJobId": "17f946d0-c3fb-47b1-91b8-195f4ec036dc",
+      "fee": "1100",
       "feeType": 1,
-      "fulfillmentFee": "1100",
       "gasLimit": 500000,
       "minConfirmations": 2,
       "operator": "0xdf25c593b2372C8dAB7F6f81C695f6FE489579F7",
-      "payment": "50000000000000000"
-    }
+      "payment": "1000",
+      "paymentType": 1
+    },
+    "consumers": []
   }
 ]

@@ -6,16 +6,16 @@
 
 Task parameters:
 
-| Required? |      Name      |                                           Description                                            |   Type    | Depends On |                     Options                      | Defaults to |
-| :-------: | :------------: | :----------------------------------------------------------------------------------------------: | :-------: | :--------: | :----------------------------------------------: | :---------: |
-|    ✅     |    address     |                                The DRCoordinator contract address                                |  address  |            |                                                  |             |
-|           | weiperunitgas  |                              The wei per unit of gas on the network                              |    int    |            |                                                  |             |
-|    ✅     |    payment     | The initial LINK payment amount in Juels (from `Spec.payment` and `minContractPaymentLinkJuels`) | BigNumber |            |                                                  |             |
-|    ✅     |    gaslimit    |                                 The transaction gasLimit in gwei                                 |    int    |            |                                                  |  `400000`   |
-|    ✅     | fulfillmentfee |                                       The fulfillment fee                                        | BigNumber |            |                                                  |             |
-|    ✅     |    feetype     |                                           The fee type                                           | BigNumber |            |           `0` (flat), `1` (permiryad)            |             |
-|           |    provider    |                         Uses the providers `gasPrice` as `weiPerUnitGas`                         |   Flag    |            |                                                  |   `false`   |
-|    ✅     |    network     |                                     Hardhat `network` param                                      |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |     Name      |                             Description                              |   Type    | Depends On |                     Options                      | Defaults to |
+| :-------: | :-----------: | :------------------------------------------------------------------: | :-------: | :--------: | :----------------------------------------------: | :---------: |
+|    ✅     |    address    |                  The DRCoordinator contract address                  |  address  |            |                                                  |             |
+|           | weiperunitgas |                The wei per unit of gas on the network                |    int    |            |                                                  |             |
+|    ✅     |    payment    | The initial LINK payment amount in Juels (in escrow in the Operator) | BigNumber |            |                                                  |             |
+|    ✅     |   gaslimit    |                   The transaction gasLimit in gwei                   |    int    |            |                                                  |  `400000`   |
+|    ✅     |    feetype    |                             The fee type                             | BigNumber |            |           `0` (flat), `1` (permiryad)            |             |
+|    ✅     |      fee      |                         The fulfillment fee                          | BigNumber |            |                                                  |             |
+|           |   provider    |           Uses the providers `gasPrice` as `weiPerUnitGas`           |   Flag    |            |                                                  |   `false`   |
+|    ✅     |    network    |                       Hardhat `network` param                        |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
@@ -25,8 +25,8 @@ yarn hardhat drcoordinator:calculate-max-amount \
 --weiperunitgas 25000000000 \
 --payment "50000000000000000" \
 --gaslimit 500000 \
---fulfillmentfee "1100" \
 --feetype "1" \
+--fee "1100" \
 --network eth-kovan
 ```
 
@@ -35,8 +35,8 @@ yarn hardhat drcoordinator:calculate-max-amount \
 --address 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
 --payment "7770000000000000000" \
 --gaslimit 500000 \
---fulfillmentfee "1500000000000000000" \
 --feetype "0" \
+--fee "1500000000000000000" \
 --provider \
 --network eth-kovan
 ```
@@ -49,17 +49,17 @@ Therefore it is needed to fine tune `startGas`.
 
 Task parameters:
 
-| Required? |      Name      |                                           Description                                            |   Type    | Depends On |                     Options                      | Defaults to |
-| :-------: | :------------: | :----------------------------------------------------------------------------------------------: | :-------: | :--------: | :----------------------------------------------: | :---------: |
-|    ✅     |    address     |                                The DRCoordinator contract address                                |  address  |            |                                                  |             |
-|    ✅     |    gaslimit    |                                 The transaction gasLimit in gwei                                 |    int    |            |                                                  |  `400000`   |
-|    ✅     |    startgas    |                                   The gasleft at the beginning                                   |    int    |            |                                                  |  `400000`   |
-|           | weiperunitgas  |                              The wei per unit of gas on the network                              |    int    |            |                                                  |             |
-|    ✅     |    payment     | The initial LINK payment amount in Juels (from `Spec.payment` and `minContractPaymentLinkJuels`) | BigNumber |            |                                                  |             |
-|    ✅     | fulfillmentfee |                                       The fulfillment fee                                        | BigNumber |            |                                                  |             |
-|    ✅     |    feetype     |                                           The fee type                                           | BigNumber |            |           `0` (flat), `1` (permiryad)            |             |
-|           |    provider    |                         Uses the providers `gasPrice` as `weiPerUnitGas`                         |   Flag    |            |                                                  |   `false`   |
-|    ✅     |    network     |                                     Hardhat `network` param                                      |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |     Name      |                             Description                              |   Type    | Depends On |                     Options                      | Defaults to |
+| :-------: | :-----------: | :------------------------------------------------------------------: | :-------: | :--------: | :----------------------------------------------: | :---------: |
+|    ✅     |    address    |                  The DRCoordinator contract address                  |  address  |            |                                                  |             |
+|    ✅     |   gaslimit    |                   The transaction gasLimit in gwei                   |    int    |            |                                                  |  `400000`   |
+|    ✅     |   startgas    |                     The gasleft at the beginning                     |    int    |            |                                                  |  `400000`   |
+|           | weiperunitgas |                The wei per unit of gas on the network                |    int    |            |                                                  |             |
+|    ✅     |    payment    | The initial LINK payment amount in Juels (in escrow in the Operator) | BigNumber |            |                                                  |             |
+|    ✅     |    feetype    |                             The fee type                             | BigNumber |            |           `0` (flat), `1` (permiryad)            |             |
+|    ✅     |      fee      |                         The fulfillment fee                          | BigNumber |            |                                                  |             |
+|           |   provider    |           Uses the providers `gasPrice` as `weiPerUnitGas`           |   Flag    |            |                                                  |   `false`   |
+|    ✅     |    network    |                       Hardhat `network` param                        |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
@@ -69,8 +69,8 @@ yarn hardhat drcoordinator:calculate-spot-amount \
 --startgas 500000 \
 --weiperunitgas 25000000000 \
 --payment "50000000000000000" \
---fulfillmentfee "1100" \
 --feetype "1" \
+--fee "1100" \
 --network eth-kovan
 ```
 
@@ -81,8 +81,8 @@ yarn hardhat drcoordinator:calculate-spot-amount \
 --startgas 350000 \
 --weiperunitgas 25000000000 \
 --payment "50000000000000000" \
---fulfillmentfee "1100" \
 --feetype "1" \
+--fee "1100" \
 --network eth-kovan
 ```
 
@@ -122,12 +122,13 @@ Log the detail of a DRCoordinator
 
 Task parameters:
 
-| Required? |  Name   |            Description             |  Type   | Depends On |                     Options                      | Defaults to |
-| :-------: | :-----: | :--------------------------------: | :-----: | :--------: | :----------------------------------------------: | :---------: |
-|    ✅     | address | The DRCoordinator contract address | address |            |                                                  |             |
-|           |  keys   |         Log the Spec keys          |  Flag   |            |                                                  |   `false`   |
-|           |  specs  |           Log each Spec            |  Flag   |            |                                                  |   `false`   |
-|    ✅     | network |      Hardhat `network` param       | string  |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |     Name      |            Description             |  Type   | Depends On |                     Options                      | Defaults to |
+| :-------: | :-----------: | :--------------------------------: | :-----: | :--------: | :----------------------------------------------: | :---------: |
+|    ✅     |    address    | The DRCoordinator contract address | address |            |                                                  |             |
+|           |     keys      |         Log the Spec keys          |  Flag   |            |                                                  |   `false`   |
+|           |     specs     |           Log each Spec            |  Flag   |            |                                                  |   `false`   |
+|           | authconsumers | Log each Spec authorized consumers |  Flag   |            |                                                  |   `false`   |
+|    ✅     |    network    |      Hardhat `network` param       | string  |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
@@ -136,6 +137,7 @@ yarn hardhat drcoordinator:detail \
 --address 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
 --keys \
 --specs \
+--authconsumers \
 --network eth-kovan
 ```
 
@@ -163,23 +165,6 @@ yarn hardhat drcoordinator:generate-key \
 --specid 0x3233356262656361363566333434623762613862336166353031653433363232
 ```
 
-### Generate the specs file SHA-1
-
-Task parameters:
-
-| Required? |   Name   |                           Description                            |  Type  | Depends On | Options | Defaults to |
-| :-------: | :------: | :--------------------------------------------------------------: | :----: | :--------: | :-----: | :---------: |
-|    ✅     | filename | The specs filename (without .json extension) in the specs folder | string |            |         |             |
-|           |  check   |              Check the integrity of the specs file               |  Flag  |            |         |   `false`   |
-
-Example calls:
-
-```sh
-yarn hardhat drcoordinator:generate-sha1 \
---filename local-demo2
---check
-```
-
 ## Transaction scripts
 
 ### Deploy DRCoordinator
@@ -188,20 +173,21 @@ yarn hardhat drcoordinator:generate-sha1 \
 
 Task parameters:
 
-| Required? |          Name          |                              Description                              |   Type    |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |      description       |                       The contract description                        |  string   |                |                                                  |    `''`     |
-|    ✅     | fallbackweiperunitlink |            The fallback amount of network TKN wei per LINK            | BigNumber |                |                                                  |             |
-|    ✅     |    stalenessseconds    | The number of seconds after which the feed answer is considered stale | BigNumber |                |                                                  |             |
-|           |         setup          |                 Configs the contract after deployment                 |   Flag    |                |                                                  |   `false`   |
-|           |         owner          |                 The address to transfer the ownership                 |   owner   |    --setup     |                                                  |             |
-|           |         verify         |             Verifies the contract on Etherscan at the end             |   Flag    |                |                                                  |   `false`   |
-|           |          gas           |           Allows customising the tx gas (legacy & EIP-1559)           |   Flag    |                |                                                  |   `false`   |
-|           |          type          |                              The tx type                              |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |        gasprice        |                 The type 0 tx `gasPrice` (in `gwei`)                  |   float   | --gas --type 0 |                                                  |             |
-|           |       gasmaxfee        |               The type 0 tx `maxFeePerGas` (in `gwei`)                |   float   | --gas --type 2 |                                                  |             |
-|           |     gasmaxpriority     |              The type 0 tx `gasmaxpriority` (in `gwei`)               |   float   | --gas --type 2 |                                                  |             |
-|           |        network         |                        Hardhat `network` param                        |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
+| Required? |          Name          |                              Description                              |   Type    |      Depends On      |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :-------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
+|    ✅     |      description       |                       The contract description                        |  string   |                      |                                                  |    `''`     |
+|    ✅     | fallbackweiperunitlink |            The fallback amount of network TKN wei per LINK            | BigNumber |                      |                                                  |             |
+|    ✅     |    stalenessseconds    | The number of seconds after which the feed answer is considered stale | BigNumber |                      |                                                  |             |
+|           |         setup          |                 Configs the contract after deployment                 |   Flag    |                      |                                                  |   `false`   |
+|           |         owner          |                 The address to transfer the ownership                 |  address  |       --setup        |                                                  |             |
+|           |         verify         |             Verifies the contract on Etherscan at the end             |   Flag    |                      |                                                  |   `false`   |
+|           |       overrides        |       Allows customising the tx overrides (ethers.js Overrides)       |   Flag    |                      |                                                  |   `false`   |
+|           |        gaslimit        |                           The tx `gasLimit`                           |    int    |     --overrides      |                                                  |             |
+|           |         txtype         |                              The tx type                              |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |        gasprice        |                 The type 0 tx `gasPrice` (in `gwei`)                  |   float   | --overrides --type 0 |                                                  |             |
+|           |       gasmaxfee        |               The type 0 tx `maxFeePerGas` (in `gwei`)                |   float   | --overrides --type 2 |                                                  |             |
+|           |     gasmaxpriority     |              The type 0 tx `gasmaxpriority` (in `gwei`)               |   float   | --overrides --type 2 |                                                  |             |
+|           |        network         |                        Hardhat `network` param                        |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
 
 Example calls:
 
@@ -225,8 +211,9 @@ yarn hardhat drcoordinator:deploy \
 --owner 0x0000000000000000000000000000000000000001 \
 --verify \
 --network eth-kovan \
---gas \
---type 0 \
+--overrides \
+--gaslimit 10000000 \
+--txtype 0 \
 --gasprice 72
 ```
 
@@ -238,20 +225,20 @@ yarn hardhat drcoordinator:deploy \
 
 Task parameters:
 
-| Required? |      Name      |                                      Description                                      |   Type    |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :------------: | :-----------------------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |      name      |                              The consumer contract name                               |  string   |                |                                                  |             |
-|    ✅     | drcoordinator  |                         The `DRCoordinator` contract address                          |  address  |                |                                                  |             |
-|    ✅     |    operator    |                            The `Operator` contract address                            |  address  |                |                                                  |             |
-|           |      fund      | Top-up the consumer balance with LINK from the signer's wallet right after deployment |   Flag    |                |                                                  |   `false`   |
-|           |     amount     |        The amount of LINK (wei) to fund the consumer balance after deployment         | BigNumber |                |                                                  |             |
-|           |     verify     |                     Verifies the contract on Etherscan at the end                     |   Flag    |                |                                                  |   `false`   |
-|           |      gas       |                   Allows customising the tx gas (legacy & EIP-1559)                   |   Flag    |                |                                                  |   `false`   |
-|           |      type      |                                      The tx type                                      |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |    gasprice    |                         The type 0 tx `gasPrice` (in `gwei`)                          |   float   | --gas --type 0 |                                                  |             |
-|           |   gasmaxfee    |                       The type 0 tx `maxFeePerGas` (in `gwei`)                        |   float   | --gas --type 2 |                                                  |             |
-|           | gasmaxpriority |                      The type 0 tx `gasmaxpriority` (in `gwei`)                       |   float   | --gas --type 2 |                                                  |             |
-|           |    network     |                                Hardhat `network` param                                |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
+| Required? |      Name      |                                      Description                                      |   Type    |      Depends On      |                     Options                      | Defaults to |
+| :-------: | :------------: | :-----------------------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
+|    ✅     |      name      |                              The consumer contract name                               |  string   |                      |                                                  |             |
+|    ✅     | drcoordinator  |                         The `DRCoordinator` contract address                          |  address  |                      |                                                  |             |
+|           |      fund      | Top-up the consumer balance with LINK from the signer's wallet right after deployment |   Flag    |                      |                                                  |   `false`   |
+|           |     amount     |        The amount of LINK (wei) to fund the consumer balance after deployment         | BigNumber |                      |                                                  |             |
+|           |     verify     |                     Verifies the contract on Etherscan at the end                     |   Flag    |                      |                                                  |   `false`   |
+|           |   overrides    |               Allows customising the tx overrides (ethers.js Overrides)               |   Flag    |                      |                                                  |   `false`   |
+|           |    gaslimit    |                                   The tx `gasLimit`                                   |    int    |     --overrides      |                                                  |             |
+|           |     txtype     |                                      The tx type                                      |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |    gasprice    |                         The type 0 tx `gasPrice` (in `gwei`)                          |   float   | --overrides --type 0 |                                                  |             |
+|           |   gasmaxfee    |                       The type 0 tx `maxFeePerGas` (in `gwei`)                        |   float   | --overrides --type 2 |                                                  |             |
+|           | gasmaxpriority |                      The type 0 tx `gasmaxpriority` (in `gwei`)                       |   float   | --overrides --type 2 |                                                  |             |
+|           |    network     |                                Hardhat `network` param                                |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
 
 Example calls:
 
@@ -259,7 +246,6 @@ Example calls:
 yarn hardhat drcoordinator:deploy-consumer \
 --name DRCConsumerCryptoCompare \
 --drcoordinator 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
---operator 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
 --verify \
 --network eth-kovan
 ```
@@ -268,7 +254,6 @@ yarn hardhat drcoordinator:deploy-consumer \
 yarn hardhat drcoordinator:deploy-consumer \
 --name DRCConsumerCryptoCompare \
 --drcoordinator 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
---operator 0x878541888a928a31F9EAb4cB61DfD4e381EC2f00 \
 --fund \
 --amount "3000000000000000000" \
 --verify \
@@ -285,28 +270,28 @@ The purpose of the `dryrun` mode is running an integrity check over the specs fi
 
 Task parameters:
 
-| Required? |      Name      |                                 Description                                  |  Type   |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :------------: | :--------------------------------------------------------------------------: | :-----: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |    address     |                      The DRCoordinator contract address                      | address |                |                                                  |             |
-|    ✅     |    filename    | The specs filename (without .json extension) in the specs folder (`./specs`) | address |                |                                                  |             |
-|    ✅     |      mode      |                              The execution mode                              | string  |                |  `dryrun` (hardhat network), `forking`, `prod`   |  `dryrun`   |
-|           |    nobatch     |                          Disables the batch import                           |  Flag   |                |                                                  |   `false`   |
-|           |   batchsize    |                     Number of specs per CUD transaction                      |   int   |                |                                                  |    `50`     |
-|           |      gas       |              Allows customising the tx gas (legacy & EIP-1559)               |  Flag   |                |                                                  |   `false`   |
-|           |      type      |                                 The tx type                                  |   int   |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |    gasprice    |                     The type 0 tx `gasPrice` (in `gwei`)                     |  float  | --gas --type 0 |                                                  |             |
-|           |   gasmaxfee    |                   The type 0 tx `maxFeePerGas` (in `gwei`)                   |  float  | --gas --type 2 |                                                  |             |
-|           | gasmaxpriority |                  The type 0 tx `gasmaxpriority` (in `gwei`)                  |  float  | --gas --type 2 |                                                  |             |
-|           |    network     |                           Hardhat `network` param                            | string  |                | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
+| Required? |      Name      |                                 Description                                  |  Type   |      Depends On      |                     Options                      | Defaults to |
+| :-------: | :------------: | :--------------------------------------------------------------------------: | :-----: | :------------------: | :----------------------------------------------: | :---------: |
+|    ✅     |    address     |                      The DRCoordinator contract address                      | address |                      |                                                  |             |
+|    ✅     |    filename    | The specs filename (without .json extension) in the specs folder (`./specs`) | address |                      |                                                  |             |
+|    ✅     |      mode      |                              The execution mode                              | string  |                      |  `dryrun` (hardhat network), `forking`, `prod`   |  `dryrun`   |
+|           |    nobatch     |                          Disables the batch import                           |  Flag   |                      |                                                  |   `false`   |
+|           |   batchsize    |                     Number of specs per CUD transaction                      |   int   |                      |                                                  |    `50`     |
+|           |   overrides    |          Allows customising the tx overrides (ethers.js Overrides)           |  Flag   |                      |                                                  |   `false`   |
+|           |    gaslimit    |                              The tx `gasLimit`                               |   int   |     --overrides      |                                                  |             |
+|           |     txtype     |                                 The tx type                                  |   int   |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |    gasprice    |                     The type 0 tx `gasPrice` (in `gwei`)                     |  float  | --overrides --type 0 |                                                  |             |
+|           |   gasmaxfee    |                   The type 0 tx `maxFeePerGas` (in `gwei`)                   |  float  | --overrides --type 2 |                                                  |             |
+|           | gasmaxpriority |                  The type 0 tx `gasmaxpriority` (in `gwei`)                  |  float  | --overrides --type 2 |                                                  |             |
+|           |    network     |                           Hardhat `network` param                            | string  |                      | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
 
 Example calls:
 
 ```sh
 yarn hardhat drcoordinator:import-file \
 --address 0x0FfF43fE72dEEa9E6340B5FE1B0E02E0429D5A5b \
---filename local-demo2 \
---mode dryrun \
---network eth-kovan
+--filename local-demo \
+--mode dryrun
 ```
 
 ```sh
@@ -322,22 +307,23 @@ yarn hardhat drcoordinator:import-file \
 
 Task parameters:
 
-| Required? |          Name          |                                Description                                |   Type    |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-----------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |        address         |                    The DRCoordinator contract address                     |  address  |                |                                                  |             |
-|    ✅     |          mode          |                            The execution mode                             |  string   |                |                `forking`, `prod`                 |  `forking`  |
-|           |      description       |                       The new contract description                        |  string   |                |                                                  |    `''`     |
-|           | fallbackweiperunitlink |            The new fallback amount of network TKN wei per LINK            | BigNumber |                |                                                  |             |
-|           |         owner          |                 The new address to transfer the ownership                 |  address  |                |                                                  |             |
-|           |         pause          |                       Pause or unpause the contract                       |  boolean  |                |                                                  |             |
-|           |          sha1          |                               The new sha1                                |  bytes20  |                |                                                  |             |
-|           |    stalenessseconds    | The new number of seconds after which the feed answer is considered stale | BigNumber |                |                                                  |             |
-|           |          gas           |             Allows customising the tx gas (legacy & EIP-1559)             |   Flag    |                |                                                  |   `false`   |
-|           |          type          |                                The tx type                                |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |        gasprice        |                   The type 0 tx `gasPrice` (in `gwei`)                    |   float   | --gas --type 0 |                                                  |             |
-|           |       gasmaxfee        |                 The type 0 tx `maxFeePerGas` (in `gwei`)                  |   float   | --gas --type 2 |                                                  |             |
-|           |     gasmaxpriority     |                The type 0 tx `gasmaxpriority` (in `gwei`)                 |   float   | --gas --type 2 |                                                  |             |
-|    ✅     |        network         |                          Hardhat `network` param                          |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |          Name          |                                Description                                |   Type    |      Depends On      |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :-----------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
+|    ✅     |        address         |                    The DRCoordinator contract address                     |  address  |                      |                                                  |             |
+|    ✅     |          mode          |                            The execution mode                             |  string   |                      |                `forking`, `prod`                 |  `forking`  |
+|           |      description       |                       The new contract description                        |  string   |                      |                                                  |    `''`     |
+|           | fallbackweiperunitlink |            The new fallback amount of network TKN wei per LINK            | BigNumber |                      |                                                  |             |
+|           |         owner          |                 The new address to transfer the ownership                 |  address  |                      |                                                  |             |
+|           |         pause          |                       Pause or unpause the contract                       |  boolean  |                      |                                                  |             |
+|           |   permiryadfeefactor   |              The factor to be applied to the permiryad `fee`              |  number   |                      |                                                  |             |
+|           |    stalenessseconds    | The new number of seconds after which the feed answer is considered stale | BigNumber |                      |                                                  |             |
+|           |       overrides        |         Allows customising the tx overrides (ethers.js Overrides)         |   Flag    |                      |                                                  |   `false`   |
+|           |        gaslimit        |                             The tx `gasLimit`                             |    int    |     --overrides      |                                                  |             |
+|           |         txtype         |                                The tx type                                |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |        gasprice        |                   The type 0 tx `gasPrice` (in `gwei`)                    |   float   | --overrides --type 0 |                                                  |             |
+|           |       gasmaxfee        |                 The type 0 tx `maxFeePerGas` (in `gwei`)                  |   float   | --overrides --type 2 |                                                  |             |
+|           |     gasmaxpriority     |                The type 0 tx `gasmaxpriority` (in `gwei`)                 |   float   | --overrides --type 2 |                                                  |             |
+|    ✅     |        network         |                          Hardhat `network` param                          |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
@@ -345,8 +331,7 @@ Example calls:
 yarn hardhat drcoordinator:set-config \
 --mode forking \
 --fallbackweiperunitlink "5000000000000000" \
---stalenessseconds "3600" \
---network eth-kovan
+--stalenessseconds "3600"
 ```
 
 ```sh
@@ -360,19 +345,20 @@ yarn hardhat drcoordinator:set-config \
 
 Task parameters:
 
-| Required? |      Name      |                                       Description                                        |   Type    |   Depends On   |                     Options                      | Defaults to |
-| :-------: | :------------: | :--------------------------------------------------------------------------------------: | :-------: | :------------: | :----------------------------------------------: | :---------: |
-|    ✅     |    address     |                            The DRCoordinator contract address                            |  address  |                |                                                  |             |
-|    ✅     |      mode      |                                    The execution mode                                    |  string   |                |                `forking`, `prod`                 |  `forking`  |
-|           |    granular    | Allows setting a payee and an amount. Otherwise the signer withdraws all funds available |   Flag    |                |                                                  |   `false`   |
-|           |     payee      |                            The address that receives the LINK                            |  address  |   `granular`   |                                                  |             |
-|           |     amount     |                                     The LINK amount                                      | BigNumber |   `granular`   |                                                  |             |
-|           |      gas       |                    Allows customising the tx gas (legacy & EIP-1559)                     |   Flag    |                |                                                  |   `false`   |
-|           |      type      |                                       The tx type                                        |    int    |     --gas      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |    gasprice    |                           The type 0 tx `gasPrice` (in `gwei`)                           |   float   | --gas --type 0 |                                                  |             |
-|           |   gasmaxfee    |                         The type 0 tx `maxFeePerGas` (in `gwei`)                         |   float   | --gas --type 2 |                                                  |             |
-|           | gasmaxpriority |                        The type 0 tx `gasmaxpriority` (in `gwei`)                        |   float   | --gas --type 2 |                                                  |             |
-|    ✅     |    network     |                                 Hardhat `network` param                                  |  string   |                | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |      Name      |                                       Description                                        |   Type    |      Depends On      |                     Options                      | Defaults to |
+| :-------: | :------------: | :--------------------------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
+|    ✅     |    address     |                            The DRCoordinator contract address                            |  address  |                      |                                                  |             |
+|    ✅     |      mode      |                                    The execution mode                                    |  string   |                      |                `forking`, `prod`                 |  `forking`  |
+|           |    granular    | Allows setting a payee and an amount. Otherwise the signer withdraws all funds available |   Flag    |                      |                                                  |   `false`   |
+|           |     payee      |                            The address that receives the LINK                            |  address  |      `granular`      |                                                  |             |
+|           |     amount     |                                     The LINK amount                                      | BigNumber |      `granular`      |                                                  |             |
+|           |   overrides    |                Allows customising the tx overrides (ethers.js Overrides)                 |   Flag    |                      |                                                  |   `false`   |
+|           |    gaslimit    |                                    The tx `gasLimit`                                     |    int    |     --overrides      |                                                  |             |
+|           |     txtype     |                                       The tx type                                        |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |    gasprice    |                           The type 0 tx `gasPrice` (in `gwei`)                           |   float   | --overrides --type 0 |                                                  |             |
+|           |   gasmaxfee    |                         The type 0 tx `maxFeePerGas` (in `gwei`)                         |   float   | --overrides --type 2 |                                                  |             |
+|           | gasmaxpriority |                        The type 0 tx `gasmaxpriority` (in `gwei`)                        |   float   | --overrides --type 2 |                                                  |             |
+|    ✅     |    network     |                                 Hardhat `network` param                                  |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 

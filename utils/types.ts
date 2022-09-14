@@ -7,8 +7,13 @@ export interface JSONObject {
   [x: string]: JSONValue;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface JSONArray extends Array<JSONValue> {}
+export type JSONArray = Array<JSONValue>;
+
+export interface HardhatNetworkForkingUserConfig {
+  enabled?: boolean;
+  url: string;
+  blockNumber?: number;
+}
 
 // ethers.js - overrides
 export interface Overrides {
@@ -27,4 +32,9 @@ export interface TxType0GasParams {
 export interface TxType2GasParams {
   maxFeePerGas: BigNumberish;
   maxPriorityFeePerGas: BigNumberish;
+}
+
+export interface NetworkUrl {
+  http?: string;
+  wss?: string;
 }

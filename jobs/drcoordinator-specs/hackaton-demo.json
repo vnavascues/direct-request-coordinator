@@ -1,0 +1,23 @@
+[
+  {
+    "description": {
+      "adapter": null,
+      "chainId": 42,
+      "jobId": 62,
+      "jobName": "CryptoCompare Get Prices DRCoordinator fallback",
+      "nodeId": "eth_kovan",
+      "notes": null
+    },
+    "configuration": {
+      "externalJobId": "cc677638-fe1b-4741-9bdf-8dd1d777a6a0",
+      "fee": "1000",
+      "feeType": 1,
+      "gasLimit": 777000,
+      "minConfirmations": 2,
+      "operator": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
+      "payment": "10000000000000000",
+      "paymentType": 0
+    },
+    "consumers": []
+  }
+]

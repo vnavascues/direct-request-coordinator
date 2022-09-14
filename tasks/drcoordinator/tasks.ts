@@ -1,56 +1,20 @@
 import { BigNumber, ethers } from "ethers";
 import { task, types } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";
-import hash from "object-hash";
 
-import { DEFAULT_BATCH_SIZE, FeeType, TaskExecutionMode, TaskName } from "./constants";
-import {
-  addFunds,
-  addSpecs,
-  deleteSpecs,
-  deployDRCoordinator,
-  getDRCoordinator,
-  generateSpecKey,
-  getSpecConvertedMap,
-  getSpecMap,
-  logDRCoordinatorDetail,
-  parseAndCheckSpecsFile,
-  parseSpecsFile,
-  pause,
-  setDescription,
-  setFallbackWeiPerUnitLink,
-  setSha1,
-  setStalenessSeconds,
-  setupDRCoordinatorAfterDeploy,
-  setupDRCoordinatorBeforeTask,
-  transferOwnership,
-  unpause,
-  updateSpecs,
-  validateConfigurationExternalJobId,
-  validateConfigurationOperator,
-  verifyDRCoordinator,
-  verifyDRCoordinatorConsumer,
-  withdrawFunds,
-} from "./methods";
-import type { Spec } from "./types";
 import { BetterSet } from "../../libs/better-set";
+import { DRCoordinator, LinkToken } from "../../src/types";
 import {
   approve as approveLink,
-  chainIdFlags,
-  chainIdSequencerOfflineFlag,
   convertBytes32ToJobId,
   convertJobIdToBytes32,
   getNetworkLinkAddress,
   getNetworkLinkTknFeedAddress,
-  MIN_CONSUMER_GAS_LIMIT,
   validateLinkAddressFunds,
 } from "../../utils/chainlink";
-import { DRCoordinator, LinkToken } from "../../src/types";
-import { ChainId } from "../../utils/constants";
-import { getNumberOfConfirmations } from "../../utils/deployment";
-import { getGasOverridesFromTaskArgs } from "../../utils/gas-estimation";
+import { MIN_CONSUMER_GAS_LIMIT, chainIdFlags, chainIdSequencerOfflineFlag } from "../../utils/chainlink-constants";
+import { getNumberOfConfirmations, getOverrides } from "../../utils/deployment";
 import { logger } from "../../utils/logger";
-import type { Overrides } from "../../utils/types";
 import {
   address as typeAddress,
   bignumber as typeBignumber,
@@ -58,24 +22,49 @@ import {
   optionsArray as typeOptionsArray,
   uuid as typeUUID,
 } from "../../utils/task-arguments-validations";
+import { DEFAULT_BATCH_SIZE, FeeType, TaskExecutionMode, TaskName } from "./constants";
+import {
+  addFunds,
+  addSpecs,
+  deleteSpecs,
+  deployDRCoordinator,
+  generateSpecKey,
+  getDRCoordinator,
+  getSpecAuthorizedConsumersMap,
+  getSpecItemConvertedMap,
+  getSpecMap,
+  logDRCoordinatorDetail,
+  pause,
+  setDescription,
+  setFallbackWeiPerUnitLink,
+  setPermiryadFeeFactor,
+  setStalenessSeconds,
+  setupDRCoordinatorAfterDeploy,
+  setupDRCoordinatorBeforeTask,
+  transferOwnership,
+  unpause,
+  updateSpecs,
+  updateSpecsAuthorizedConsumers,
+  validateConfigurationExternalJobId,
+  validateConfigurationOperator,
+  verifyDRCoordinator,
+  verifyDRCoordinatorConsumer,
+  withdrawFunds,
+} from "./methods";
+import type { SpecItem } from "./types";
 
 task("drcoordinator:calculate-max-amount", "Calculates the max LINK amount for the given params")
   .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
   .addOptionalParam("weiperunitgas", "The wei per unit of gas on the network", undefined, types.int)
-  .addParam(
-    "payment",
-    "The initial LINK payment amount in Juels (from Spec.payment and 'minContractPaymentLinkJuels')",
-    undefined,
-    typeBignumber,
-  )
+  .addParam("payment", "The initial LINK payment amount in Juels (in escrow in the Operator)", undefined, typeBignumber)
   .addParam("gaslimit", "The transaction gasLimit in gwei", MIN_CONSUMER_GAS_LIMIT, types.int)
-  .addParam("fulfillmentfee", "The fulfillment fee", undefined, typeBignumber)
   .addParam(
     "feetype",
     "The fee type",
     undefined,
     typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMIRYAD.toString()]),
   )
+  .addParam("fee", "The fulfillment fee", undefined, typeBignumber)
   // Get wei per unit of gas from provider
   .addFlag("provider", "Uses the providers `'gasPrice' for 'weiPerUnitGas'")
   .setAction(async function (taskArguments: TaskArguments, hre) {
@@ -98,8 +87,8 @@ task("drcoordinator:calculate-max-amount", "Calculates the max LINK amount for t
         weiPerGasUnit,
         taskArguments.payment as BigNumber,
         taskArguments.gaslimit,
-        taskArguments.fulfillmentfee as BigNumber,
         taskArguments.feetype,
+        taskArguments.fee as BigNumber,
       );
     logger.info(`maxPaymentAmount (Juels): ${maxPaymentAmount}`);
     logger.info(`maxPaymentAmount (LINK): ${ethers.utils.formatEther(maxPaymentAmount)}`);
@@ -114,19 +103,14 @@ task("drcoordinator:calculate-spot-amount", "Calculates the spot LINK amount for
   .addParam("gaslimit", "The tx gasLimit in gwei", MIN_CONSUMER_GAS_LIMIT, types.int)
   .addParam("startgas", "The gasleft at the beginning", MIN_CONSUMER_GAS_LIMIT, types.int)
   .addOptionalParam("weiperunitgas", "The wei per unit of gas on the network", undefined, types.int)
-  .addParam(
-    "payment",
-    "The initial LINK payment amount in juels (from Spec.payment and 'minContractPaymentLinkJuels')",
-    undefined,
-    typeBignumber,
-  )
-  .addParam("fulfillmentfee", "The fulfillment fee", undefined, typeBignumber)
+  .addParam("payment", "The initial LINK payment amount in juels (in escrow in the Operator)", undefined, typeBignumber)
   .addParam(
     "feetype",
     "The fee type",
     undefined,
     typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMIRYAD.toString()]),
   )
+  .addParam("fee", "The fulfillment fee", undefined, typeBignumber)
   // Get wei per unit of gas from provider
   .addFlag("provider", "Uses the providers data for 'weiPerUnitGas'")
   .setAction(async function (taskArguments: TaskArguments, hre) {
@@ -149,8 +133,8 @@ task("drcoordinator:calculate-spot-amount", "Calculates the spot LINK amount for
         taskArguments.startgas,
         weiPerGasUnit,
         taskArguments.payment as BigNumber,
-        taskArguments.fulfillmentfee as BigNumber,
         taskArguments.feetype,
+        taskArguments.fee as BigNumber,
         {
           gasLimit: taskArguments.gaslimit,
         },
@@ -187,9 +171,10 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
   .addOptionalParam("owner", "requires flag setup. The address to transfer the ownership", undefined, typeAddress)
   // Verification
   .addFlag("verify", "Verify the contract on Etherscan after deployment")
-  // Gas customisation
-  .addFlag("gas", "Customise the tx gas")
-  .addOptionalParam("type", "The tx type", undefined, types.int)
+  // Tx customisation (ethers.js Overrides)
+  .addFlag("overrides", "Customise the tx overrides")
+  .addOptionalParam("gaslimit", "The tx gasLimit", undefined, types.int)
+  .addOptionalParam("txtype", "The tx gas type (0 or 2)", undefined, types.int)
   .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
   .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
   .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
@@ -198,17 +183,16 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
     const [signer] = await hre.ethers.getSigners();
     logger.info(`signer address: ${signer.address}`);
 
-    // Get tx overrides with gas params
-    let overrides: Overrides = {};
-    if (taskArguments.gas) {
-      overrides = await getGasOverridesFromTaskArgs(taskArguments, hre);
-    }
+    // Get the contract method overrides
+    const overrides = await getOverrides(taskArguments, hre);
 
     // Deploy
     const {
       drCoordinator,
       addressLink,
-      addressLinkTknFeed,
+      isMultiPriceFeedDependant,
+      addressPriceFeed1,
+      addressPriceFeed2,
       isSequencerDependant,
       sequencerOfflineFlag,
       addressChainlinkFlags,
@@ -233,7 +217,9 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
       hre,
       drCoordinator.address,
       addressLink,
-      addressLinkTknFeed,
+      isMultiPriceFeedDependant,
+      addressPriceFeed1,
+      addressPriceFeed2,
       taskArguments.description,
       taskArguments.fallbackweiperunitlink,
       taskArguments.stalenessseconds,
@@ -246,15 +232,15 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
 task("drcoordinator:deploy-consumer")
   .addParam("name", "The consumer contract name", undefined, types.string)
   .addParam("drcoordinator", "The DRCoordinator contract address", undefined, typeAddress)
-  .addParam("operator", "The Operator contract address", undefined, typeAddress)
   // Configuration after deployment
   .addFlag("fund", "Top-up the consumer balance with LINK from the signer's wallet right after deployment")
   .addOptionalParam("amount", "The amount of LINK (wei) to fund the balance after deployment", undefined, typeBignumber)
   // Verification
   .addFlag("verify", "Verify the contract on Etherscan after deployment")
-  // Gas customisation
-  .addFlag("gas", "Customise the tx gas")
-  .addOptionalParam("type", "The tx type", undefined, types.int)
+  // Tx customisation (ethers.js Overrides)
+  .addFlag("overrides", "Customise the tx overrides")
+  .addOptionalParam("gaslimit", "The tx gasLimit", undefined, types.int)
+  .addOptionalParam("txtype", "The tx gas type (0 or 2)", undefined, types.int)
   .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
   .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
   .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
@@ -262,28 +248,24 @@ task("drcoordinator:deploy-consumer")
     const [signer] = await hre.ethers.getSigners();
     logger.info(`signer address: ${signer.address}`);
 
-    // Get tx overrides with gas params
-    let overrides: Overrides = {};
-    if (taskArguments.gas) {
-      overrides = await getGasOverridesFromTaskArgs(taskArguments, hre);
-    }
+    // Get the contract method overrides
+    const overrides = await getOverrides(taskArguments, hre);
 
     // Get LINK address (by network)
     const addressLink = getNetworkLinkAddress(hre.network);
     const addressDRCoordinator = taskArguments.drcoordinator as string;
-    const addressOperator = taskArguments.operator as string;
 
     // Custom validations
     if (taskArguments.fund) {
       if (!taskArguments.amount) {
         throw new Error(`Flag 'fund' requires task argument 'amount' (and optionally 'approve')`);
       }
-      await validateLinkAddressFunds(hre, signer.address, addressLink, taskArguments.amount as BigNumber);
+      await validateLinkAddressFunds(hre, signer, signer.address, addressLink, taskArguments.amount as BigNumber);
     }
 
     // Deploy
     const consumerFactory = await hre.ethers.getContractFactory(taskArguments.name);
-    const consumer = await consumerFactory.deploy(addressLink, addressDRCoordinator, addressOperator, overrides);
+    const consumer = await consumerFactory.deploy(addressLink, addressDRCoordinator, overrides);
     logger.info(`${taskArguments.name} deployed to: ${consumer.address} | Tx hash: ${consumer.deployTransaction.hash}`);
     await consumer.deployTransaction.wait(getNumberOfConfirmations(hre.network.config.chainId));
 
@@ -306,13 +288,14 @@ task("drcoordinator:deploy-consumer")
 
     // Verify
     // NB: contract verification request may fail if the contract address does not have bytecode. Wait until it's mined
-    await verifyDRCoordinatorConsumer(hre, consumer.address, addressLink, addressDRCoordinator, addressOperator);
+    await verifyDRCoordinatorConsumer(hre, consumer.address, addressLink, addressDRCoordinator);
   });
 
 task("drcoordinator:detail", "Log the DRCoordinator storage")
   .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
   .addFlag("keys", "Log the Spec keys")
   .addFlag("specs", "Log each Spec")
+  .addFlag("authconsumers", "Log each Spec authorized consumers")
   .setAction(async function (taskArguments: TaskArguments, hre) {
     const [signer] = await hre.ethers.getSigners();
     logger.info(`connecting to DRCoordinator at: ${taskArguments.address}`);
@@ -325,6 +308,7 @@ task("drcoordinator:detail", "Log the DRCoordinator storage")
         detail: true,
         keys: taskArguments.keys,
         specs: taskArguments.specs,
+        authconsumers: taskArguments.authconsumers,
       },
       signer,
     );
@@ -358,32 +342,18 @@ task("drcoordinator:generate-key", "Generate the Spec key")
     logger.info(`key: ${key}`);
   });
 
-task("drcoordinator:generate-sha1", "Generate the specs file 'sha1'")
-  .addParam("filename", "The specs filename (without .json extension) in the specs folder", undefined, types.string)
-  // Check specs file
-  .addFlag("check", "Check the integrity of the specs file")
-  .setAction(async function (taskArguments: TaskArguments, hre) {
-    const filePath = `./specs/${taskArguments.filename}.json`;
-    let specs: Spec[];
-    if (taskArguments.check) {
-      specs = parseAndCheckSpecsFile(filePath, hre.network.config.chainId as ChainId);
-    } else {
-      specs = parseSpecsFile(filePath);
-    }
-    const sha1 = hash(specs, { unorderedObjects: false });
-    logger.info(`sha1: 0x${sha1}`);
-  });
-
 task("drcoordinator:import-file", "CUD specs in the DRCoordinator storage")
   .addParam("address", "The DRCoordinator contract address", undefined, typeAddress)
   .addParam("filename", "The specs filename (without .json extension) in the specs folder", undefined, types.string)
   .addParam("mode", "The execution mode", TaskExecutionMode.DRYRUN, typeOptionsArray(Object.values(TaskExecutionMode)))
+  .addOptionalParam("apeaddress", "The address to impersonate on the forking mode", undefined, typeAddress)
   // Batch import
   .addFlag("nobatch", "Disables the batch import")
   .addOptionalParam("batchsize", "Number of specs per CUD transaction", DEFAULT_BATCH_SIZE, types.int)
-  // Gas customisation
-  .addFlag("gas", "Customise the tx gas")
-  .addOptionalParam("type", "The tx type", undefined, types.int)
+  // Tx customisation (ethers.js Overrides)
+  .addFlag("overrides", "Customise the tx overrides")
+  .addOptionalParam("gaslimit", "The tx gasLimit", undefined, types.int)
+  .addOptionalParam("txtype", "The tx gas type (0 or 2)", undefined, types.int)
   .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
   .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
   .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
@@ -393,18 +363,8 @@ task("drcoordinator:import-file", "CUD specs in the DRCoordinator storage")
       hre,
       TaskName.IMPORT_FILE,
     );
-
-    // Fetch DRCoordinator sha-1, calculate the specs file sha-1, and compare both
-    const fileSha1 = hash(specs as Spec[], { unorderedObjects: false });
-    const sha1 = await drCoordinator.connect(signer).getSha1();
-    if (fileSha1 === sha1.slice(2)) {
-      logger.info(`nothing to import. DRCoordinator sha-1 and specs file sha-1 match: ${sha1}`);
-      logger.info("*** Import file task finished successfully ***");
-      return;
-    }
-
     logger.info(`converting file specs ...`);
-    const fileSpecMap = await getSpecConvertedMap(specs as Spec[]);
+    const fileSpecMap = await getSpecItemConvertedMap(specs as SpecItem[]);
 
     // Fetch each DRCoordinator Spec and map them by key
     logger.info(`fetching DRCoordinator specs ...`);
@@ -416,13 +376,18 @@ task("drcoordinator:import-file", "CUD specs in the DRCoordinator storage")
     const fileKeys = [...fileSpecMap.keys()];
     const drcKeysSet = new BetterSet(drcKeys);
     const fileKeysSet = new BetterSet(fileKeys);
-    const keysToRemoveSet = fileKeysSet.difference(drcKeysSet);
-    const keysToAddSet = drcKeysSet.difference(fileKeysSet);
+    const keysToRemoveSet = drcKeysSet.difference(fileKeysSet);
+    const keysToAddSet = fileKeysSet.difference(drcKeysSet);
     const keysToCheckSet = fileKeysSet.intersection(drcKeysSet);
-
+    // NB: due to transactions priority/size and on-chain checks (adding SpecAuthorizedConsumers
+    // requires Spec to be inserted), it could be interesting timing (spacing as max as possible)
+    // the create-like transactions:
+    //  * Spec: CUD - Create -> Update -> Delete
+    //  * SpecAuthorizedConsumers: DC -> Delete -> Create
+    // At the same time the strategy above will be more expensive, due to looping through larger
+    // Spec and SpecAuthorizedConsumers arrays.
     // Remove, update and add specs
     const isBatchMode = !taskArguments.nobatch;
-
     await deleteSpecs(drCoordinator, signer, keysToRemoveSet, isBatchMode, overrides, taskArguments.batchsize);
     await updateSpecs(
       drCoordinator,
@@ -436,10 +401,23 @@ task("drcoordinator:import-file", "CUD specs in the DRCoordinator storage")
     );
     await addSpecs(drCoordinator, signer, fileSpecMap, keysToAddSet, isBatchMode, overrides, taskArguments.batchsize);
 
-    // Set sha1
-    logger.info(`setting DRCoordinator sha-1 ...`);
-    await setSha1(drCoordinator, signer, fileSha1, overrides);
+    // Fetch each DRCoordinator AuthorizedConsumers (per Spec) and map them by key
+    // NB: it must be executed after CUD Spec
+    logger.info(`fetching DRCoordinator specs' authorized consumers`);
+    const drcSpecAuthorizedConsumersMap = await getSpecAuthorizedConsumersMap(drCoordinator, signer, fileKeys);
 
+    // Remove and add authorized consumers (per Spec)
+    await updateSpecsAuthorizedConsumers(
+      drCoordinator,
+      signer,
+      drcSpecAuthorizedConsumersMap,
+      fileSpecMap,
+      keysToAddSet,
+      keysToCheckSet,
+      isBatchMode,
+      overrides,
+      taskArguments.batchsize,
+    );
     logger.info("*** Import file task finished successfully ***");
   });
 
@@ -455,11 +433,12 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
   .addOptionalParam("fallbackweiperunitlink", "The new 'fallbackWeiPerUnitLink'", undefined, typeBignumber)
   .addOptionalParam("owner", "The new 'owner'", undefined, typeAddress)
   .addOptionalParam("pause", "Pause or unpause the contract", undefined, types.boolean)
-  .addOptionalParam("sha1", "The new 'sha1'", undefined, typeBytes(20))
   .addOptionalParam("stalenessseconds", "The new 'stalenessSeconds'", undefined, typeBignumber)
-  // Gas customisation
-  .addFlag("gas", "Customise the tx gas")
-  .addOptionalParam("type", "The tx type", undefined, types.int)
+  .addOptionalParam("permiryadfeefactor", "The new 'permiryadFeeFactor'", undefined, types.int)
+  // Tx customisation (ethers.js Overrides)
+  .addFlag("overrides", "Customise the tx overrides")
+  .addOptionalParam("gaslimit", "The tx gasLimit", undefined, types.int)
+  .addOptionalParam("txtype", "The tx gas type (0 or 2)", undefined, types.int)
   .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
   .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
   .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
@@ -490,9 +469,9 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
       await pause(drCoordinator, signer, overrides);
     }
 
-    // Set sha1
-    if (taskArguments.sha1) {
-      await setSha1(drCoordinator, signer, taskArguments.sha1.slice(2), overrides);
+    // Set permiryadFeeFactor
+    if (taskArguments.permiryadfeefactor) {
+      await setPermiryadFeeFactor(drCoordinator, signer, taskArguments.permiryadfeefactor, overrides);
     }
 
     // Set stalenessSeconds
@@ -521,7 +500,10 @@ task("drcoordinator:verify", "Verify a DRCoordinator on an Etherscan-like block 
   .setAction(async function (taskArguments: TaskArguments, hre) {
     const chainId = hre.network.config.chainId as number;
     const addressLink = getNetworkLinkAddress(hre.network);
-    const addressLinkTknFeed = getNetworkLinkTknFeedAddress(hre.network);
+    // TODO: support multiple price feeds
+    const isMultiPriceFeedDependant = false;
+    const addressPriceFeed1 = getNetworkLinkTknFeedAddress(hre.network);
+    const addressPriceFeed2 = ethers.constants.AddressZero;
     const sequencerOfflineFlag = chainIdSequencerOfflineFlag.get(chainId) || "";
     const isSequencerDependant = !!sequencerOfflineFlag;
     const addressChainlinkFlags = chainIdFlags.get(chainId) || "";
@@ -529,7 +511,9 @@ task("drcoordinator:verify", "Verify a DRCoordinator on an Etherscan-like block 
       hre,
       taskArguments.address,
       addressLink,
-      addressLinkTknFeed,
+      isMultiPriceFeedDependant,
+      addressPriceFeed1,
+      addressPriceFeed2,
       taskArguments.description,
       taskArguments.fallbackweiperunitlink,
       taskArguments.stalenessseconds,
@@ -551,9 +535,10 @@ task("drcoordinator:withdraw", "Withdraw LINK in the contract")
   .addFlag("granular", "Allow setting a payee and an amount")
   .addOptionalParam("payee", "The address that receives the LINK", undefined, typeAddress)
   .addOptionalParam("amount", "The LINK amount", undefined, typeBignumber)
-  // Gas customisation
-  .addFlag("gas", "Customise the tx gas")
-  .addOptionalParam("type", "The tx type", undefined, types.int)
+  // Tx customisation (ethers.js Overrides)
+  .addFlag("overrides", "Customise the tx overrides")
+  .addOptionalParam("gaslimit", "The tx gasLimit", undefined, types.int)
+  .addOptionalParam("txtype", "The tx gas type (0 or 2)", undefined, types.int)
   .addOptionalParam("gasprice", "Type 0 tx gasPrice", undefined, types.float)
   .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
   .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
