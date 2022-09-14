@@ -1,0 +1,23 @@
+[
+  {
+    "description": {
+      "adapter": null,
+      "chainId": 42,
+      "jobId": 1,
+      "jobName": "Coingecko Get Price",
+      "nodeId": "eth_kovan",
+      "notes": null
+    },
+    "configuration": {
+      "externalJobId": "17f946d0-c3fb-47b1-91b8-195f4ec036dc",
+      "fee": "1100",
+      "feeType": 1,
+      "gasLimit": 500000,
+      "minConfirmations": 2,
+      "operator": "0xdf25c593b2372C8dAB7F6f81C695f6FE489579F7",
+      "payment": "1000",
+      "paymentType": 1
+    },
+    "consumers": ["0x0000000000000000000000000000000000000001", "0x0000000000000000000000000000000000000002"]
+  }
+]

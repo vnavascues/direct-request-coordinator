@@ -1,8 +1,15 @@
+export const DEFAULT_HARDHAT_MNEMONIC = "test test test test test test test test test test test junk";
+
 // Hardhat - Network config
 export enum Provider {
   ALCHEMY = "alchemy",
+  CUSTOM = "custom",
   INFURA = "infura",
-  PUBLIC_RPC = "public_rpc",
+  PUBLIC = "public",
+}
+export enum NetworkProtocol {
+  HTTP = "http",
+  WSS = "wss",
 }
 
 export enum ChainId {
@@ -14,7 +21,7 @@ export enum ChainId {
   RSK_MAINNET = 30, // RSK - Mainnet
   ETH_KOVAN = 42, // Ethereum - Kovan
   BSC_MAINNET = 56, // Binance Smart Chain - Mainnet
-  OPT_KOVAN = 69, // Optimism- Kovan
+  OPT_KOVAN = 69, // Optimism - Kovan
   SPOA_SOKOL = 77, // POA Network Sokol
   BSC_TESTNET = 97, // Binance Smart Chain - Testnet
   XDAI_MAINNET = 100, // Gnosis Chain (formerly xDai - Mainnet)
@@ -22,6 +29,8 @@ export enum ChainId {
   MATIC_MAINNET = 137, // Polygon - Mainnet
   FTM_MAINNET = 250, // Fantom - Mainnet
   HECO_TESTNET = 256, // Huobi Eco Chain - Testnet
+  OPT_GOERLI = 420, // Optimism - Goerli
+  METIS_MAINNET = 1088, // Metis Andromeda Mainnet
   MOONBEAM_MAINNET = 1284, // Moonbeam - Mainnet (Polkadot)
   MOONBEAM_MOONRIVER = 1285, // Moonbeam - Moonriver (Kusama)
   MOONBEAM_ALPHA = 1287, // Moonbeam - Alpha (PureStake)
@@ -33,11 +42,13 @@ export enum ChainId {
   AVAX_MAINNET = 43114, // Avalanche - Mainnet
   MATIC_MUMBAI = 80001, // Polygon - Mumbai
   ARB_RINKEBY = 421611, // Arbitrum - Rinkeby
+  ARB_GOERLI = 421613, // Arbitrum - Goerli
+  ETH_SEPOLIA = 11155111, // Ethereum - Sepolia
   ONE_MAINNET = 1666600000, // Harmony - Mainnet (Shard 0)
   ONE_TESTNET = 1666700000, // Harmony - Testnet (Shard 0)
 }
 
-export const chainIdTkn: Map<ChainId, string> = new Map([
+export const chainIdTkn: ReadonlyMap<ChainId, string> = new Map([
   [ChainId.ETH_MAINNET, "ETH"],
   [ChainId.ETH_RINKEBY, "ETH"],
   [ChainId.ETH_GOERLI, "ETH"],
@@ -50,6 +61,7 @@ export const chainIdTkn: Map<ChainId, string> = new Map([
   [ChainId.XDAI_MAINNET, "xDAI"],
   [ChainId.HECO_MAINNET, "HT"],
   [ChainId.MATIC_MAINNET, "MATIC"],
+  [ChainId.METIS_MAINNET, "METIS"],
   [ChainId.FTM_MAINNET, "FRM"],
   [ChainId.MOONBEAM_MOONRIVER, "GLMR"],
   [ChainId.FTM_TESTNET, "FRM"],

@@ -1,11 +1,14 @@
-import { task } from "hardhat/config";
 import { ethers } from "ethers";
 import type { BigNumberish } from "ethers";
+import { task } from "hardhat/config";
 import type { TaskArguments } from "hardhat/types";
+import path from "path";
 
-import { logger } from "../../utils/logger";
+import { logger as parentLogger } from "../../utils/logger";
 
-task("tools:gas:estimate", "Gas price per network via provider's getFeeData()").setAction(async function (
+const logger = parentLogger.child({ name: path.relative(process.cwd(), __filename) });
+
+task("tools:gas:estimate", "ETH gas per network via provider getFeeData()").setAction(async function (
   taskArguments: TaskArguments,
   hre,
 ) {

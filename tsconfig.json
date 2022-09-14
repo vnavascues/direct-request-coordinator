@@ -19,11 +19,5 @@
   },
   "exclude": ["node_modules"],
   "files": ["./hardhat.config.ts"],
-  "include": [
-    "libs/**/*",
-    "tasks/**/*",
-    "test/**/*",
-    "types/**/*",
-    "utils/**/*"
-  ]
+  "include": ["libs/**/*", "tasks/**/*", "test/**/*", "types/**/*", "utils/**/*"]
 }

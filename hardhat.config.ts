@@ -1,24 +1,22 @@
+// NB: this file is ignored by prettier due to dotenvConfig call before loading network configs
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
+import { config as dotenvConfig } from "dotenv";
 import "hardhat-dependency-compiler";
 import "hardhat-gas-reporter";
-import "solidity-coverage";
-
-import "./tasks/accounts";
-import "./tasks/drcoordinator";
-import "./tasks/tools";
-import "./tasks/verify";
-
-import { config as dotenvConfig } from "dotenv";
 import type { HardhatUserConfig } from "hardhat/config";
 import { resolve } from "path";
+dotenvConfig({ path: resolve(__dirname, process.env.NODE_ENV ? "./.env.ci" : "./.env"), override: true });
 
-import { ChainId } from "./utils/constants";
-import { networkUserConfigs } from "./utils/networks";
-
-dotenvConfig({ path: resolve(__dirname, "./.env") });
+import "solidity-coverage";
+import "./tasks/accounts";
+import "./tasks/chainlink";
+import "./tasks/drcoordinator";
+import "./tasks/tools";
+import { ChainId, DEFAULT_HARDHAT_MNEMONIC } from "./utils/constants";
+import { getHardhatNetworkForkingUserConfig, networkUserConfigs } from "./utils/networks";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
@@ -31,49 +29,59 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       accounts: {
-        mnemonic: process.env.MNEMONIC as string,
+        mnemonic: process.env.MNEMONIC || DEFAULT_HARDHAT_MNEMONIC,
       },
       chainId: ChainId.HARDHAT,
-      forking: {
-        enabled: process.env.HARDHAT_FORKING_ENABLED === "true",
-        url: process.env.HARDHAT_FORKING_URL as string,
-        // blockNumber: process.env.HARDHAT_FORKING_BLOCK_NUMBER as number,
-      },
+      forking: getHardhatNetworkForkingUserConfig(),
     },
+    // TODO: add the other EVM compatible networks our infra supports (e.g. Fantom, Binance Chain, RSK),
     ...Object.fromEntries(networkUserConfigs.entries()),
   },
   etherscan: {
+    // NB: supported by default by @nomiclabs/hardhat-etherscan 3.1.0
+    customChains: [
+      {
+        network: "optimisticGoerli",
+        chainId: ChainId.OPT_GOERLI,
+        urls: {
+          apiURL: "https://api-goerli-optimism.etherscan.io/api",
+          browserURL: "https://goerli-optimism.etherscan.io/",
+        },
+      },
+    ],
+    // NB: currently the plugin only supports Etherscan explorers
     apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY,
-      ropsten: process.env.ETHERSCAN_API_KEY,
-      rinkeby: process.env.ETHERSCAN_API_KEY,
-      goerli: process.env.ETHERSCAN_API_KEY,
-      kovan: process.env.ETHERSCAN_API_KEY,
+      mainnet: process.env.ETHERSCAN_API_KEY as string,
+      ropsten: process.env.ETHERSCAN_API_KEY as string,
+      rinkeby: process.env.ETHERSCAN_API_KEY as string,
+      goerli: process.env.ETHERSCAN_API_KEY as string,
+      kovan: process.env.ETHERSCAN_API_KEY as string,
       // binance smart chain
-      bsc: process.env.BSCSCAN_API_KEY,
-      bscTestnet: process.env.BSCSCAN_API_KEY,
+      bsc: process.env.BSCSCAN_API_KEY as string,
+      bscTestnet: process.env.BSCSCAN_API_KEY as string,
       // huobi eco chain
-      heco: process.env.HECHOINFO_API_KEY,
-      hecoTestnet: process.env.HECHOINFO_API_KEY,
+      heco: process.env.HECHOINFO_API_KEY as string,
+      hecoTestnet: process.env.HECHOINFO_API_KEY as string,
       // fantom mainnet
-      opera: process.env.FTMSCAN_API_KEY,
-      ftmTestnet: process.env.FTMSCAN_API_KEY,
+      opera: process.env.FTMSCAN_API_KEY as string,
+      ftmTestnet: process.env.FTMSCAN_API_KEY as string,
       // optimistim
-      optimisticEthereum: process.env.OPTIMISTIC_ETHERSCAN_API_KEY,
-      optimisticKovan: process.env.OPTIMISTIC_ETHERSCAN_API_KEY,
+      optimisticEthereum: process.env.OPTIMISTIC_ETHERSCAN_API_KEY as string,
+      optimisticGoerli: process.env.OPTIMISTIC_ETHERSCAN_API_KEY as string,
+      optimisticKovan: process.env.OPTIMISTIC_ETHERSCAN_API_KEY as string,
       // polygon
-      polygon: process.env.POLYGONSCAN_API_KEY,
-      polygonMumbai: process.env.POLYGONSCAN_API_KEY,
+      polygon: process.env.POLYGONSCAN_API_KEY as string,
+      polygonMumbai: process.env.POLYGONSCAN_API_KEY as string,
       // arbitrum
-      arbitrumOne: process.env.ARBISCAN_API_KEY,
-      arbitrumTestnet: process.env.ARBISCAN_API_KEY,
+      arbitrumOne: process.env.ARBISCAN_API_KEY as string,
+      arbitrumTestnet: process.env.ARBISCAN_API_KEY as string,
       // avalanche
-      avalanche: process.env.SNOWTRACE_API_KEY,
-      avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY,
+      avalanche: process.env.SNOWTRACE_API_KEY as string,
+      avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY as string,
       // moonbeam
       // moonbeam: process.env.MOONBEAM_MOONSCAN_API_KEY, // NB: not yet supported
-      moonriver: process.env.MOONRIVER_MOONSCAN_API_KEY,
-      moonbaseAlpha: process.env.MOONRIVER_MOONSCAN_API_KEY,
+      moonriver: process.env.MOONRIVER_MOONSCAN_API_KEY as string,
+      moonbaseAlpha: process.env.MOONRIVER_MOONSCAN_API_KEY as string,
       // xdai and sokol don't need an API key, but you still need
       // to specify one; any string placeholder will work
       xdai: "api-key",
@@ -153,7 +161,23 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: "0.8.13",
+        version: "0.8.6",
+        settings: {
+          metadata: {
+            // Not including the metadata hash
+            // https://github.com/paulrberg/solidity-template/issues/31
+            bytecodeHash: "none",
+          },
+          // Disable the optimizer when debugging
+          // https://hardhat.org/hardhat-network/#solidity-optimizer-support
+          optimizer: {
+            enabled: true,
+            runs: 800,
+          },
+        },
+      },
+      {
+        version: "0.8.15",
         settings: {
           metadata: {
             // Not including the metadata hash

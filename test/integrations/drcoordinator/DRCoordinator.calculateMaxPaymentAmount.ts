@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 
-import type { Signers, Context } from "./DRCoordinator";
-import { takeSnapshot, revertToSnapshot } from "../../helpers/snapshot";
 import { FeeType } from "../../../tasks/drcoordinator/constants";
+import { revertToSnapshot, takeSnapshot } from "../../helpers/snapshot";
+import type { Context, Signers } from "./DRCoordinator";
 
 export function testCalculateMaxPaymentAmount(signers: Signers, context: Context): void {
   let snapshotId: string;
@@ -19,9 +19,9 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
   it("reverts if 'feeType' is not supported", async function () {
     // Arrange
     const weiPerUnitGas = BigNumber.from("1");
-    const payment = BigNumber.from("100000000000000000"); // 0.1 LINK
+    const paymentInEscrow = BigNumber.from("0");
     const gasLimit = BigNumber.from("1");
-    const fulfillmentFee = BigNumber.from("0");
+    const fee = BigNumber.from("0");
     const unsupportedFeeType = BigNumber.from("2");
     await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("1"));
 
@@ -29,67 +29,81 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .calculateMaxPaymentAmount(weiPerUnitGas, payment, gasLimit, fulfillmentFee, unsupportedFeeType),
+        .calculateMaxPaymentAmount(weiPerUnitGas, paymentInEscrow, gasLimit, unsupportedFeeType, fee),
     ).to.be.reverted;
-  });
-
-  it("reverts if 'paymentPreFee' is less or equal than 'payment'", async function () {
-    // Arrange
-    const weiPerUnitGas = BigNumber.from("0");
-    const payment = BigNumber.from("0");
-    const gasLimit = BigNumber.from("0");
-    const fulfillmentFee = BigNumber.from("0");
-    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("1"));
-
-    // Act & Assert
-    // TODO: amend once hardhat fixes custom error assertions https://github.com/ethers-io/ethers.js/discussions/2849
-    await expect(
-      context.drCoordinator
-        .connect(signers.externalCaller)
-        .calculateMaxPaymentAmount(weiPerUnitGas, payment, gasLimit, fulfillmentFee, FeeType.FLAT),
-    ).to.be.revertedWith(`DRCoordinator__PaymentPreFeeIsLtePayment`);
-  });
-
-  it("reverts if 'amount' is greater than all LINK supply", async function () {
-    // Arrange
-    const weiPerUnitGas = BigNumber.from("1");
-    const payment = BigNumber.from("0");
-    const gasLimit = BigNumber.from("1");
-    const fulfillmentFee = BigNumber.from("10").pow("27"); // NB: LINK totalSupply (1e27)
-    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("1"));
-
-    // Act & Assert
-    // TODO: amend once hardhat fixes custom error assertions https://github.com/ethers-io/ethers.js/discussions/2849
-    await expect(
-      context.drCoordinator
-        .connect(signers.externalCaller)
-        .calculateMaxPaymentAmount(weiPerUnitGas, payment, gasLimit, fulfillmentFee, FeeType.FLAT),
-    ).to.be.revertedWith(`DRCoordinator__PaymentAfterFeeIsGtLinkTotalSupply`);
   });
 
   const testCases = [
     {
-      name: "paymentNoFeeType.MAX and FeeType.FLAT",
+      name: "paymentNoFeeType.MAX, FeeType.FLAT and no payment in escrow (result is a positive LINK amount)",
       testData: {
         weiPerUnitGas: BigNumber.from("30000000000"),
-        payment: BigNumber.from("100000000000000000"), // 0.1 LINK
+        paymentInEscrow: BigNumber.from("0"), // 0 LINK
         gasLimit: BigNumber.from("2000000"),
-        fulfillmentFee: BigNumber.from("1000000000000000000"), // 1 LINK
+        fee: BigNumber.from("1000000000000000000"), // 1 LINK
         feeType: FeeType.FLAT,
-        expectedDelta: BigNumber.from("1000000000000000"), // 0.001 LINK
-        expectedAmount: BigNumber.from("18091712914594219838"), // 18 LINK
+        expectedAmount: BigNumber.from("18191712914594219838"), // 18.19 LINK (to pay)
+        expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
     {
-      name: "paymentNoFeeType.MAX and FeeType.PERMIRYAD",
+      name: "paymentNoFeeType.MAX, FeeType.FLAT and a payment in escrow (result is a positive LINK amount)",
       testData: {
         weiPerUnitGas: BigNumber.from("30000000000"),
-        payment: BigNumber.from("100000000000000000"), // 0.1 LINK
+        paymentInEscrow: BigNumber.from("2000000000000000000"), // 2 LINK
         gasLimit: BigNumber.from("2000000"),
-        fulfillmentFee: BigNumber.from("1225"), // 12.25%
+        fee: BigNumber.from("1000000000000000000"), // 1 LINK
+        feeType: FeeType.FLAT,
+        expectedAmount: BigNumber.from("16191712914594219838"), // 16.19 LINK (to pay)
+        expectedDelta: BigNumber.from("0"), // 0 LINK
+      },
+    },
+    {
+      name: "paymentNoFeeType.MAX, FeeType.FLAT and a payment in escrow (result is a negative LINK amount)",
+      testData: {
+        weiPerUnitGas: BigNumber.from("30000000000"),
+        paymentInEscrow: BigNumber.from("20000000000000000000"), // 20 LINK
+        gasLimit: BigNumber.from("2000000"),
+        fee: BigNumber.from("1000000000000000000"), // 1 LINK
+        feeType: FeeType.FLAT,
+        expectedAmount: BigNumber.from("-1808287085405780162"), // -1.8 LINK (to refund)
+        expectedDelta: BigNumber.from("0"), // 0 LINK
+      },
+    },
+    {
+      name: "paymentNoFeeType.MAX, FeeType.PERMIRYAD and no payment in escrow (result is a positive LINK amount)",
+      testData: {
+        weiPerUnitGas: BigNumber.from("30000000000"),
+        paymentInEscrow: BigNumber.from("0"), // 0 LINK
+        gasLimit: BigNumber.from("2000000"),
+        fee: BigNumber.from("1225"), // 12.25%
         feeType: FeeType.PERMIRYAD,
-        expectedDelta: BigNumber.from("1000000000000000"), // 0.001 LINK
-        expectedAmount: BigNumber.from("19185447746632011768"), // 19.18 LINK
+        expectedAmount: BigNumber.from("19297697746632011768"), // 19.28 LINK (to pay)
+        expectedDelta: BigNumber.from("0"), // 0 LINK
+      },
+    },
+    {
+      name: "paymentNoFeeType.MAX, FeeType.PERMIRYAD and a payment in escrow (result is a positive LINK amount)",
+      testData: {
+        weiPerUnitGas: BigNumber.from("30000000000"),
+        paymentInEscrow: BigNumber.from("2000000000000000000"), // 2 LINK
+        gasLimit: BigNumber.from("2000000"),
+        fee: BigNumber.from("1225"), // 12.25%
+        feeType: FeeType.PERMIRYAD,
+        expectedAmount: BigNumber.from("17297697746632011768"), // 17.30 LINK (to pay)
+        expectedDelta: BigNumber.from("0"), // 0 LINK
+      },
+    },
+    {
+      name: "paymentNoFeeType.MAX, FeeType.PERMIRYAD and a payment in escrow (result is a negative LINK amount)",
+      testData: {
+        weiPerUnitGas: BigNumber.from("30000000000"),
+        paymentInEscrow: BigNumber.from("20000000000000000000"), // 20 LINK
+        gasLimit: BigNumber.from("2000000"),
+        fee: BigNumber.from("1225"), // 12.25%
+        feeType: FeeType.PERMIRYAD,
+        expectedAmount: BigNumber.from("-702302253367988232"), // -0.702 LINK (to refund)
+        expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
   ];
@@ -103,10 +117,10 @@ export function testCalculateMaxPaymentAmount(signers: Signers, context: Context
         .connect(signers.externalCaller)
         .calculateMaxPaymentAmount(
           testData.weiPerUnitGas,
-          testData.payment,
+          testData.paymentInEscrow,
           testData.gasLimit,
-          testData.fulfillmentFee,
           testData.feeType,
+          testData.fee,
         );
 
       // Assert

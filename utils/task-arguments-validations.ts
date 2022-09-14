@@ -1,5 +1,6 @@
-import { ethers, BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import type { CLIArgumentType } from "hardhat/types";
+
 // TODO: patches importing HardhatError & ERRORS
 import { HardhatError } from "./errors";
 import { ERRORS } from "./errors-list";
@@ -306,7 +307,8 @@ export const network: CLIArgumentType<string> = {
   },
 };
 
-export const optionsArray = (items: string[]): CLIArgumentType<string> => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const optionsArray = (items: any[]): CLIArgumentType<string> => {
   return {
     name: "optionsArray",
     parse: (argName: string, strValue: string) => strValue,
@@ -320,7 +322,8 @@ export const optionsArray = (items: string[]): CLIArgumentType<string> => {
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validate: (argName: string, value: any): void => {
-      if (!items.includes(value)) {
+      const itemsAsString = items.map(item => item.toString());
+      if (!itemsAsString.includes(value)) {
         throw new HardhatError(ERRORS.ARGUMENTS.INVALID_VALUE_FOR_TYPE_WITH_REASON, {
           value,
           name: argName,

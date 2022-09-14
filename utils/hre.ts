@@ -19,3 +19,10 @@ export async function setAddressBalance(
 export async function setAddressCode(hre: HardhatRuntimeEnvironment, address: string, value: string): Promise<void> {
   await hre.network.provider.send("hardhat_setCode", [address, value]);
 }
+
+export async function stopImpersonatingAccount(hre: HardhatRuntimeEnvironment, address: string): Promise<void> {
+  await hre.network.provider.request({
+    method: "hardhat_stopImpersonatingAccount",
+    params: [address],
+  });
+}
