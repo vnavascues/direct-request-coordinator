@@ -30,6 +30,7 @@ export enum ChainId {
   FTM_MAINNET = 250, // Fantom - Mainnet
   HECO_TESTNET = 256, // Huobi Eco Chain - Testnet
   OPT_GOERLI = 420, // Optimism - Goerli
+  KLAYTN_BAOBAB = 1001, // Klaytn - Baobab (testnet)
   METIS_MAINNET = 1088, // Metis Andromeda Mainnet
   MOONBEAM_MAINNET = 1284, // Moonbeam - Mainnet (Polkadot)
   MOONBEAM_MOONRIVER = 1285, // Moonbeam - Moonriver (Kusama)
@@ -60,6 +61,7 @@ export const chainIdTkn: ReadonlyMap<ChainId, string> = new Map([
   [ChainId.BSC_TESTNET, "BNB"],
   [ChainId.XDAI_MAINNET, "xDAI"],
   [ChainId.HECO_MAINNET, "HT"],
+  [ChainId.KLAYTN_BAOBAB, "KLAY"],
   [ChainId.MATIC_MAINNET, "MATIC"],
   [ChainId.METIS_MAINNET, "METIS"],
   [ChainId.FTM_MAINNET, "FRM"],

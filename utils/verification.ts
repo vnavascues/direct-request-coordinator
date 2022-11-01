@@ -6,6 +6,7 @@ import { throwNewError } from "./errors";
 function getChainVerifyApiKeyEnv(chainId: ChainId): string {
   let apiKey;
   switch (chainId) {
+    case ChainId.ARB_GOERLI:
     case ChainId.ARB_MAINNET:
     case ChainId.ARB_RINKEBY:
       apiKey = process.env.ARBISCAN_API_KEY;
@@ -66,22 +67,6 @@ export async function verifyByAddress(
   setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
   await hre.run("verify:verify", {
     address: addressContract,
-    contract,
-  });
-}
-
-// Verify a consumer contract whose constructor requires [LINK address,oracle contract address]
-export async function verifyStandardConsumer(
-  hre: HardhatRuntimeEnvironment,
-  addressContract: string,
-  addressLink: string,
-  addressOperator: string,
-  contract?: string,
-): Promise<void> {
-  setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
-  await hre.run("verify:verify", {
-    address: addressContract,
-    constructorArguments: [addressLink, addressOperator],
     contract,
   });
 }

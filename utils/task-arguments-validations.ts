@@ -204,7 +204,7 @@ export const bytesArray = (size?: number): CLIArgumentType<string[]> => {
       value.forEach((item: string) => {
         if (!item.startsWith("0x")) {
           throw new HardhatError(ERRORS.ARGUMENTS.INVALID_VALUE_FOR_TYPE_WITH_REASON, {
-            item,
+            value: item,
             name: argName,
             type: bytes(size).name,
             reason: `Not starts with 0x`,
@@ -213,7 +213,7 @@ export const bytesArray = (size?: number): CLIArgumentType<string[]> => {
         if (size === undefined) {
           if (!ethers.utils.isHexString(item)) {
             throw new HardhatError(ERRORS.ARGUMENTS.INVALID_VALUE_FOR_TYPE_WITH_REASON, {
-              item,
+              value: item,
               name: argName,
               type: bytes(size).name,
               reason: `Not a valid hex string`,
@@ -223,7 +223,7 @@ export const bytesArray = (size?: number): CLIArgumentType<string[]> => {
         }
         if (!ethers.utils.isHexString(item, size)) {
           throw new HardhatError(ERRORS.ARGUMENTS.INVALID_VALUE_FOR_TYPE_WITH_REASON, {
-            item,
+            value: item,
             name: argName,
             type: bytes(size).name,
             reason: `Not a valid ${size} bytes long hex string`,

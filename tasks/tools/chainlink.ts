@@ -38,38 +38,6 @@ task("tools:chainlink:bytes32-to-jobid", "Converts bytes32 into a UUID v4")
     logger.info(`uuid: ${hexStr}`);
   });
 
-task("tools:chainlink:buffer", "Calculate the buffer using the Chainlink.sol library")
-  .addParam(
-    "params",
-    'The request parametars as JSON (format: [{"name": <string>, "value": <any>, "type": <RequestParamType>}, ...])',
-    undefined,
-    types.json,
-  )
-  .addFlag("nosort", "Do not sort 'params' alphabetically by 'name'")
-  .addFlag("cbor", "EXPERIMENTAL - Calculate the buffer using the cbor package")
-  .setAction(async function (taskArguments: TaskArguments, hre) {
-    let buffer: string;
-    // Use cbor package
-    // BE AWARE: Experimental mode, not reliable yet
-    if (taskArguments.cbor) {
-      buffer = await convertRequestParamsToCborBufferExperimental(
-        taskArguments.params as RequestParam[],
-        !taskArguments.nosort as boolean,
-      );
-    } else {
-      // Use Chainlink.sol library on the hardhat network
-      const toolsChainlinkTestHelperFactory = await hre.ethers.getContractFactory("ToolsChainlinkTestHelper");
-      const toolsChainlinkTestHelper = (await toolsChainlinkTestHelperFactory.deploy()) as ToolsChainlinkTestHelper;
-
-      buffer = await convertRequestParamsToCborBuffer(
-        toolsChainlinkTestHelper,
-        taskArguments.params as RequestParam[],
-        !taskArguments.nosort as boolean,
-      );
-    }
-    logger.info(`request buffer: ${buffer}`);
-  });
-
 task("tools:chainlink:approve", "Approves a LINK amount")
   .addParam("spender", "The spender address", undefined, typeAddress)
   .addParam("amount", "The amount to be approved", undefined, typeBignumber)

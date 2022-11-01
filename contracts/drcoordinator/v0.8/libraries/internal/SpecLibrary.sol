@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 // The kind of fee to apply on top of the LINK payment before fees (paymentPreFee)
 enum FeeType {

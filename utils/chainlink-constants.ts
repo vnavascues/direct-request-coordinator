@@ -41,7 +41,9 @@ export const chainIdLink: Map<ChainId, string> = new Map([
   [ChainId.MATIC_MAINNET, "0xb0897686c545045aFc77CF20eC7A532E3120E0F1"],
   [ChainId.FTM_MAINNET, "0x6F43FF82CCA38001B6699a8AC47A2d0E66939407"],
   [ChainId.OPT_GOERLI, "0xdc2CC710e42857672E7907CF474a69B63B93089f"],
+  [ChainId.KLAYTN_BAOBAB, "0x04c5046A1f4E3fFf094c26dFCAA75eF293932f18"],
   [ChainId.METIS_MAINNET, "0x79892E8A3Aea66C8F6893fa49eC6208ef07EC046"],
+  [ChainId.MOONBEAM_MAINNET, "0x012414A392F9FA442a3109f1320c439C45518aC3"],
   [ChainId.MOONBEAM_MOONRIVER, "0x8b12Ac23BFe11cAb03a634C1F117D64a7f2cFD3e"],
   [ChainId.FTM_TESTNET, "0xfaFedb041c0DD4fA2Dc0d87a6B0979Ee6FA7af5F"],
   [ChainId.ARB_MAINNET, "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4"],
@@ -49,6 +51,7 @@ export const chainIdLink: Map<ChainId, string> = new Map([
   [ChainId.AVAX_MAINNET, "0x5947BB275c521040051D82396192181b413227A3"],
   [ChainId.MATIC_MUMBAI, "0x326C977E6efc84E512bB9C30f76E30c160eD06FB"],
   [ChainId.ARB_RINKEBY, "0x615fBe6372676474d9e6933d310469c9b68e9726"],
+  [ChainId.ARB_GOERLI, "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4"],
   [ChainId.ONE_MAINNET, "0x218532a12a389a4a92fC0C5Fb22901D1c19198aA"],
   [ChainId.ONE_TESTNET, "0x8b12Ac23BFe11cAb03a634C1F117D64a7f2cFD3e"],
 ]);
@@ -76,20 +79,3 @@ export const chainIdSequencerOfflineFlag: ReadonlyMap<ChainId, string> = new Map
   [ChainId.ARB_MAINNET, "chainlink.flags.arbitrum-seq-offline"],
   [ChainId.ARB_RINKEBY, "chainlink.flags.arbitrum-seq-offline"],
 ]);
-
-// LinkPool - GenericConsumer
-export enum RequestParamType {
-  // From Chainlink.sol
-  BUFFER = "buffer",
-  BYTES = "bytes",
-  INT = "int",
-  STRING = "string",
-  STRING_ARRAY = "string_array",
-  UINT = "uint",
-  // LinkPool custom ones
-  ADDRESS = "address", // i.e. req.addBytes("address", abi.encode(_address));
-  ADDRESS_ARRAY = "address_array", // i.e. req.addBytes("addresses", abi.encode(_addresses));
-  BYTES_ENCODE = "bytes_encode",
-  INT_ARRAY = "int_array",
-  UINT_ARRAY = "uint_array",
-}

@@ -8,15 +8,16 @@ import "hardhat-dependency-compiler";
 import "hardhat-gas-reporter";
 import type { HardhatUserConfig } from "hardhat/config";
 import { resolve } from "path";
-dotenvConfig({ path: resolve(__dirname, process.env.NODE_ENV ? "./.env.ci" : "./.env"), override: true });
-
 import "solidity-coverage";
+
 import "./tasks/accounts";
 import "./tasks/chainlink";
 import "./tasks/drcoordinator";
 import "./tasks/tools";
 import { ChainId, DEFAULT_HARDHAT_MNEMONIC } from "./utils/constants";
 import { getHardhatNetworkForkingUserConfig, networkUserConfigs } from "./utils/networks";
+
+dotenvConfig({ path: resolve(__dirname, process.env.NODE_ENV ? "./.env.ci" : "./.env"), override: true });
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
@@ -40,6 +41,14 @@ const config: HardhatUserConfig = {
   etherscan: {
     // NB: supported by default by @nomiclabs/hardhat-etherscan 3.1.0
     customChains: [
+      {
+        network: "arbitrumGoerli",
+        chainId: ChainId.ARB_GOERLI,
+        urls: {
+          apiURL: "https://goerli.arbiscan.io/api",
+          browserURL: "https://goerli.arbiscan.io//",
+        },
+      },
       {
         network: "optimisticGoerli",
         chainId: ChainId.OPT_GOERLI,
@@ -73,6 +82,7 @@ const config: HardhatUserConfig = {
       polygon: process.env.POLYGONSCAN_API_KEY as string,
       polygonMumbai: process.env.POLYGONSCAN_API_KEY as string,
       // arbitrum
+      arbitrumGoerli: process.env.ARBISCAN_API_KEY as string,
       arbitrumOne: process.env.ARBISCAN_API_KEY as string,
       arbitrumTestnet: process.env.ARBISCAN_API_KEY as string,
       // avalanche
@@ -190,6 +200,23 @@ const config: HardhatUserConfig = {
             enabled: true,
             runs: 800,
           },
+        },
+      },
+      {
+        version: "0.8.17",
+        settings: {
+          metadata: {
+            // Not including the metadata hash
+            // https://github.com/paulrberg/solidity-template/issues/31
+            bytecodeHash: "none",
+          },
+          // Disable the optimizer when debugging
+          // https://hardhat.org/hardhat-network/#solidity-optimizer-support
+          optimizer: {
+            enabled: true,
+            runs: 800,
+          },
+          viaIR: true,
         },
       },
     ],
