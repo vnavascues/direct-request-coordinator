@@ -109,58 +109,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
     mapping(bytes32 => AuthorizedConsumerLibrary.Map) private s_keyToAuthorizedConsumerMap;
     SpecLibrary.Map private s_keyToSpec; /* keccak256(abi.encodePacked(operatorAddr, specId)) */ /* Spec */
 
-    error DRCoordinator__ArrayIsEmpty(string arrayName);
-    error DRCoordinator__ArrayLengthsAreNotEqual(
-        string array1Name,
-        uint256 array1Length,
-        string array2Name,
-        uint256 array2Length
-    );
-    error DRCoordinator__CallbackAddrIsDRCoordinator(address callbackAddr);
-    error DRCoordinator__CallbackAddrIsNotContract(address callbackAddr);
-    error DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(uint32 callbackGasLimit, uint32 specGasLimit);
-    error DRCoordinator__CallbackGasLimitIsLtMinRequestGasLimit(uint32 callbackGasLimit, uint32 minRequestGasLimit);
-    error DRCoordinator__CallbackMinConfirmationsIsGtSpecMinConfirmations(
-        uint8 callbackMinConfirmations,
-        uint8 specMinConfirmations
-    );
-    error DRCoordinator__CallerIsNotAuthorizedConsumer(bytes32 key, address operatorAddr, bytes32 specId);
-    error DRCoordinator__CallerIsNotRequester(address requester);
-    error DRCoordinator__CallerIsNotRequestOperator(address operatorAddr);
-    error DRCoordinator__FallbackWeiPerUnitLinkIsZero();
-    error DRCoordinator__FeedAnswerIsNotGtZero(address priceFeed, int256 answer);
-    error DRCoordinator__FeeTypeIsUnsupported(FeeType feeType);
-    error DRCoordinator__LinkAllowanceIsInsufficient(address payer, uint96 allowance, uint96 amount);
-    error DRCoordinator__LinkBalanceIsInsufficient(address payer, uint96 balance, uint96 amount);
-    error DRCoordinator__LinkPaymentIsGtLinkTotalSupply(uint96 payment, uint96 linkTotalSupply);
-    error DRCoordinator__LinkTransferAndCallFailed(address to, uint96 amount, bytes encodedRequest);
-    error DRCoordinator__LinkTransferFailed(address to, uint96 amount);
-    error DRCoordinator__LinkTransferFromFailed(address from, address to, uint96 amount);
-    error DRCoordinator__PaymentPreFeeTypeIsUnsupported(PaymentPreFeeType paymentPreFeeType);
-    error DRCoordinator__PaymentTypeIsUnsupported(PaymentType paymentType);
-    error DRCoordinator__PriceFeedIsNotContract(address priceFeedAddr);
-    error DRCoordinator__Reentrant();
-    error DRCoordinator__RequestIsNotPending();
-    error DRCoordinator__SpecFieldFeeTypeIsUnsupported(bytes32 key, FeeType feeType);
-    error DRCoordinator__SpecFieldFeeIsGtLinkTotalSupply(bytes32 key, uint96 fee, uint96 linkTotalSupply);
-    error DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee(bytes32 key, uint96 fee, uint256 maxPermiryadFee);
-    error DRCoordinator__SpecFieldGasLimitIsLtMinRequestGasLimit(
-        bytes32 key,
-        uint32 gasLimit,
-        uint32 minRequestGasLimit
-    );
-    error DRCoordinator__SpecFieldMinConfirmationsIsGtMaxRequestConfirmations(
-        bytes32 key,
-        uint8 minConfirmations,
-        uint8 maxRequestConfirmations
-    );
-    error DRCoordinator__SpecFieldOperatorIsDRCoordinator(bytes32 key, address operator);
-    error DRCoordinator__SpecFieldOperatorIsNotContract(bytes32 key, address operator);
-    error DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(bytes32 key, uint96 payment, uint96 linkTotalSupply);
-    error DRCoordinator__SpecFieldPaymentIsGtPermiryad(bytes32 key, uint96 payment, uint16 permiryad);
-    error DRCoordinator__SpecFieldPaymentTypeIsUnsupported(bytes32 key, PaymentType paymentType);
-    error DRCoordinator__SpecFieldSpecIdIsZero(bytes32 key);
-    error DRCoordinator__SpecIsNotInserted(bytes32 key);
+    string public constant override typeAndVersion = "DRCoordinator 1.0.0";
 
     event AuthorizedConsumersAdded(bytes32 indexed key, address[] consumers);
     event AuthorizedConsumersRemoved(bytes32 indexed key, address[] consumers);
@@ -170,7 +119,8 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         bool success,
         address indexed callbackAddr,
         bytes4 callbackFunctionId,
-        int256 payment
+        uint96 initialPayment,
+        int256 spotPayment
     );
     event ChainlinkRequested(bytes32 indexed id);
     event DescriptionSet(string description);
@@ -220,7 +170,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         s_consumerToLinkBalance[_consumer] += _amount;
         emit FundsAdded(msg.sender, _consumer, _amount);
         if (!LINK.transferFrom(msg.sender, address(this), _amount)) {
-            revert DRCoordinator__LinkTransferFromFailed(msg.sender, address(this), _amount);
+            revert IDRCoordinator.DRCoordinator__LinkTransferFromFailed(msg.sender, address(this), _amount);
         }
     }
 
@@ -317,6 +267,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
             success,
             fulfillConfig.callbackAddr,
             fulfillConfig.callbackFunctionId,
+            fulfillConfig.payment,
             spotPaymentInt
         );
     }
@@ -496,7 +447,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         s_consumerToLinkBalance[consumer] = consumerLinkBalance - _amount;
         emit FundsWithdrawn(consumer, _payee, _amount);
         if (!LINK.transfer(_payee, _amount)) {
-            revert DRCoordinator__LinkTransferFailed(_payee, _amount);
+            revert IDRCoordinator.DRCoordinator__LinkTransferFailed(_payee, _amount);
         }
     }
 
@@ -606,9 +557,9 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
 
     /* ========== EXTERNAL PURE FUNCTIONS ========== */
 
-    function typeAndVersion() external pure virtual override returns (string memory) {
-        return "DRCoordinator 1.0.0";
-    }
+    // function typeAndVersion() external pure virtual override returns (string memory) {
+    //     return "DRCoordinator 1.0.0";
+    // }
 
     /* ========== PRIVATE FUNCTIONS ========== */
 
@@ -641,7 +592,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         uint256 authConsumersLength = _authConsumers.length;
         if (_isUncheckedCase) {
             if (_s_authorizedConsumerMap._size() == 0) {
-                revert DRCoordinator__SpecIsNotInserted(_key);
+                revert IDRCoordinator.DRCoordinator__SpecIsNotInserted(_key);
             }
             _requireArrayIsNotEmpty("authConsumers", authConsumersLength);
         }
@@ -675,7 +626,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         s_pendingRequests[requestId] = _operatorAddr;
         emit ChainlinkRequested(requestId);
         if (!LINK.transferAndCall(_operatorAddr, _payment, encodedRequest)) {
-            revert DRCoordinator__LinkTransferAndCallFailed(_operatorAddr, _payment, encodedRequest);
+            revert IDRCoordinator.DRCoordinator__LinkTransferAndCallFailed(_operatorAddr, _payment, encodedRequest);
         }
         return requestId;
     }
@@ -712,7 +663,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
                 (LINK_TO_JUELS_FACTOR * _weiPerUnitGas * (GAS_AFTER_PAYMENT_CALCULATION + _startGas - gasleft())) /
                 weiPerUnitLink;
         } else {
-            revert DRCoordinator__PaymentPreFeeTypeIsUnsupported(_paymentPreFeeType);
+            revert IDRCoordinator.DRCoordinator__PaymentPreFeeTypeIsUnsupported(_paymentPreFeeType);
         }
         uint256 paymentAfterFee;
         if (_feeType == FeeType.FLAT) {
@@ -720,7 +671,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         } else if (_feeType == FeeType.PERMIRYAD) {
             paymentAfterFee = paymentPreFee + (paymentPreFee * _fee) / PERMIRYAD;
         } else {
-            revert DRCoordinator__FeeTypeIsUnsupported(_feeType);
+            revert IDRCoordinator.DRCoordinator__FeeTypeIsUnsupported(_feeType);
         }
         return int256(paymentAfterFee) - int256(uint256(_paymentInEscrow));
     }
@@ -735,7 +686,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         uint256 timestamp;
         (, answer, , timestamp, ) = _priceFeed.latestRoundData();
         if (answer < 1) {
-            revert DRCoordinator__FeedAnswerIsNotGtZero(address(_priceFeed), answer);
+            revert IDRCoordinator.DRCoordinator__FeedAnswerIsNotGtZero(address(_priceFeed), answer);
         }
         // solhint-disable-next-line not-rely-on-time
         if (_stalenessSeconds > 0 && _stalenessSeconds < block.timestamp - timestamp) {
@@ -761,35 +712,35 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
     ) private view {
         AuthorizedConsumerLibrary.Map storage s_authorizedConsumerMap = s_keyToAuthorizedConsumerMap[_key];
         if (s_authorizedConsumerMap._size() > 0 && !s_authorizedConsumerMap._isInserted(msg.sender)) {
-            revert DRCoordinator__CallerIsNotAuthorizedConsumer(_key, _operatorAddr, _specId);
+            revert IDRCoordinator.DRCoordinator__CallerIsNotAuthorizedConsumer(_key, _operatorAddr, _specId);
         }
     }
 
     function _requireCallerIsRequester(address _requester) private view {
         if (_requester != msg.sender) {
-            revert DRCoordinator__CallerIsNotRequester(_requester);
+            revert IDRCoordinator.DRCoordinator__CallerIsNotRequester(_requester);
         }
     }
 
     function _requireCallerIsRequestOperator(address _operatorAddr) private view {
         if (_operatorAddr != msg.sender) {
             _requireRequestIsPending(_operatorAddr);
-            revert DRCoordinator__CallerIsNotRequestOperator(_operatorAddr);
+            revert IDRCoordinator.DRCoordinator__CallerIsNotRequestOperator(_operatorAddr);
         }
     }
 
     function _requireSpecIsInserted(bytes32 _key) private view {
         if (!s_keyToSpec._isInserted(_key)) {
-            revert DRCoordinator__SpecIsNotInserted(_key);
+            revert IDRCoordinator.DRCoordinator__SpecIsNotInserted(_key);
         }
     }
 
     function _validateCallbackAddress(address _callbackAddr) private view {
         if (!_callbackAddr.isContract()) {
-            revert DRCoordinator__CallbackAddrIsNotContract(_callbackAddr);
+            revert IDRCoordinator.DRCoordinator__CallbackAddrIsNotContract(_callbackAddr);
         }
         if (_callbackAddr == address(this)) {
-            revert DRCoordinator__CallbackAddrIsDRCoordinator(_callbackAddr);
+            revert IDRCoordinator.DRCoordinator__CallbackAddrIsDRCoordinator(_callbackAddr);
         }
     }
 
@@ -800,24 +751,24 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
     ) private view {
         if (_feeType == FeeType.FLAT) {
             if (_fee > LINK_TOTAL_SUPPLY) {
-                revert DRCoordinator__SpecFieldFeeIsGtLinkTotalSupply(_key, _fee, LINK_TOTAL_SUPPLY);
+                revert IDRCoordinator.DRCoordinator__SpecFieldFeeIsGtLinkTotalSupply(_key, _fee, LINK_TOTAL_SUPPLY);
             }
         } else if (_feeType == FeeType.PERMIRYAD) {
             uint256 maxPermiryadFee = PERMIRYAD * s_permiryadFeeFactor;
             if (_fee > maxPermiryadFee) {
-                revert DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee(_key, _fee, maxPermiryadFee);
+                revert IDRCoordinator.DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee(_key, _fee, maxPermiryadFee);
             }
         } else {
-            revert DRCoordinator__SpecFieldFeeTypeIsUnsupported(_key, _feeType);
+            revert IDRCoordinator.DRCoordinator__SpecFieldFeeTypeIsUnsupported(_key, _feeType);
         }
     }
 
     function _validateSpecFieldOperator(bytes32 _key, address _operator) private view {
         if (!_operator.isContract()) {
-            revert DRCoordinator__SpecFieldOperatorIsNotContract(_key, _operator);
+            revert IDRCoordinator.DRCoordinator__SpecFieldOperatorIsNotContract(_key, _operator);
         }
         if (_operator == address(this)) {
-            revert DRCoordinator__SpecFieldOperatorIsDRCoordinator(_key, _operator);
+            revert IDRCoordinator.DRCoordinator__SpecFieldOperatorIsDRCoordinator(_key, _operator);
         }
     }
 
@@ -835,7 +786,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         } else if (_paymentType == PaymentType.PERMIRYAD) {
             return (_maxPayment, (_maxPayment * _payment) / PERMIRYAD);
         } else {
-            revert DRCoordinator__PaymentTypeIsUnsupported(_paymentType);
+            revert IDRCoordinator.DRCoordinator__PaymentTypeIsUnsupported(_paymentType);
         }
     }
 
@@ -847,7 +798,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
 
     function _requireArrayIsNotEmpty(string memory _arrayName, uint256 _arrayLength) private pure {
         if (_arrayLength == 0) {
-            revert DRCoordinator__ArrayIsEmpty(_arrayName);
+            revert IDRCoordinator.DRCoordinator__ArrayIsEmpty(_arrayName);
         }
     }
 
@@ -858,13 +809,18 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         uint256 _array2Length
     ) private pure {
         if (_array1Length != _array2Length) {
-            revert DRCoordinator__ArrayLengthsAreNotEqual(_array1Name, _array1Length, _array2Name, _array2Length);
+            revert IDRCoordinator.DRCoordinator__ArrayLengthsAreNotEqual(
+                _array1Name,
+                _array1Length,
+                _array2Name,
+                _array2Length
+            );
         }
     }
 
     function _requireFallbackWeiPerUnitLinkIsGtZero(uint256 _fallbackWeiPerUnitLink) private pure {
         if (_fallbackWeiPerUnitLink == 0) {
-            revert DRCoordinator__FallbackWeiPerUnitLinkIsZero();
+            revert IDRCoordinator.DRCoordinator__FallbackWeiPerUnitLinkIsZero();
         }
     }
 
@@ -874,7 +830,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         uint96 _amount
     ) private pure {
         if (_allowance < _amount) {
-            revert DRCoordinator__LinkAllowanceIsInsufficient(_payer, _allowance, _amount);
+            revert IDRCoordinator.DRCoordinator__LinkAllowanceIsInsufficient(_payer, _allowance, _amount);
         }
     }
 
@@ -884,13 +840,13 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         uint96 _amount
     ) private pure {
         if (_balance < _amount) {
-            revert DRCoordinator__LinkBalanceIsInsufficient(_payer, _balance, _amount);
+            revert IDRCoordinator.DRCoordinator__LinkBalanceIsInsufficient(_payer, _balance, _amount);
         }
     }
 
     function _requireLinkPaymentIsInRange(uint96 _payment) private pure {
         if (_payment > LINK_TOTAL_SUPPLY) {
-            revert DRCoordinator__LinkPaymentIsGtLinkTotalSupply(_payment, LINK_TOTAL_SUPPLY);
+            revert IDRCoordinator.DRCoordinator__LinkPaymentIsGtLinkTotalSupply(_payment, LINK_TOTAL_SUPPLY);
         }
     }
 
@@ -900,25 +856,28 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         address _priceFeed2
     ) private view {
         if (!_priceFeed1.isContract()) {
-            revert DRCoordinator__PriceFeedIsNotContract(_priceFeed1);
+            revert IDRCoordinator.DRCoordinator__PriceFeedIsNotContract(_priceFeed1);
         }
         if (_isMultiPriceFeedDependant && !_priceFeed2.isContract()) {
-            revert DRCoordinator__PriceFeedIsNotContract(_priceFeed2);
+            revert IDRCoordinator.DRCoordinator__PriceFeedIsNotContract(_priceFeed2);
         }
     }
 
     function _requireRequestIsPending(address _operatorAddr) private pure {
         if (_operatorAddr == address(0)) {
-            revert DRCoordinator__RequestIsNotPending();
+            revert IDRCoordinator.DRCoordinator__RequestIsNotPending();
         }
     }
 
     function _validateCallbackGasLimit(uint32 _callbackGasLimit, uint32 _specGasLimit) private pure {
         if (_callbackGasLimit > _specGasLimit) {
-            revert DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(_callbackGasLimit, _specGasLimit);
+            revert IDRCoordinator.DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(_callbackGasLimit, _specGasLimit);
         }
         if (_callbackGasLimit < MIN_REQUEST_GAS_LIMIT) {
-            revert DRCoordinator__CallbackGasLimitIsLtMinRequestGasLimit(_callbackGasLimit, MIN_REQUEST_GAS_LIMIT);
+            revert IDRCoordinator.DRCoordinator__CallbackGasLimitIsLtMinRequestGasLimit(
+                _callbackGasLimit,
+                MIN_REQUEST_GAS_LIMIT
+            );
         }
     }
 
@@ -927,7 +886,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         pure
     {
         if (_callbackMinConfirmations > _specMinConfirmations) {
-            revert DRCoordinator__CallbackMinConfirmationsIsGtSpecMinConfirmations(
+            revert IDRCoordinator.DRCoordinator__CallbackMinConfirmationsIsGtSpecMinConfirmations(
                 _callbackMinConfirmations,
                 _specMinConfirmations
             );
@@ -936,13 +895,17 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
 
     function _validateSpecFieldGasLimit(bytes32 _key, uint32 _gasLimit) private pure {
         if (_gasLimit < MIN_REQUEST_GAS_LIMIT) {
-            revert DRCoordinator__SpecFieldGasLimitIsLtMinRequestGasLimit(_key, _gasLimit, MIN_REQUEST_GAS_LIMIT);
+            revert IDRCoordinator.DRCoordinator__SpecFieldGasLimitIsLtMinRequestGasLimit(
+                _key,
+                _gasLimit,
+                MIN_REQUEST_GAS_LIMIT
+            );
         }
     }
 
     function _validateSpecFieldMinConfirmations(bytes32 _key, uint8 _minConfirmations) private pure {
         if (_minConfirmations > MAX_REQUEST_CONFIRMATIONS) {
-            revert DRCoordinator__SpecFieldMinConfirmationsIsGtMaxRequestConfirmations(
+            revert IDRCoordinator.DRCoordinator__SpecFieldMinConfirmationsIsGtMaxRequestConfirmations(
                 _key,
                 _minConfirmations,
                 MAX_REQUEST_CONFIRMATIONS
@@ -957,20 +920,24 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
     ) private pure {
         if (_paymentType == PaymentType.FLAT) {
             if (_payment > LINK_TOTAL_SUPPLY) {
-                revert DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(_key, _payment, LINK_TOTAL_SUPPLY);
+                revert IDRCoordinator.DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(
+                    _key,
+                    _payment,
+                    LINK_TOTAL_SUPPLY
+                );
             }
         } else if (_paymentType == PaymentType.PERMIRYAD) {
             if (_payment > PERMIRYAD) {
-                revert DRCoordinator__SpecFieldPaymentIsGtPermiryad(_key, _payment, PERMIRYAD);
+                revert IDRCoordinator.DRCoordinator__SpecFieldPaymentIsGtPermiryad(_key, _payment, PERMIRYAD);
             }
         } else {
-            revert DRCoordinator__SpecFieldPaymentTypeIsUnsupported(_key, _paymentType);
+            revert IDRCoordinator.DRCoordinator__SpecFieldPaymentTypeIsUnsupported(_key, _paymentType);
         }
     }
 
     function _validateSpecFieldSpecId(bytes32 _key, bytes32 _specId) private pure {
         if (_specId == NO_SPEC_ID) {
-            revert DRCoordinator__SpecFieldSpecIdIsZero(_key);
+            revert IDRCoordinator.DRCoordinator__SpecFieldSpecIdIsZero(_key);
         }
     }
 }

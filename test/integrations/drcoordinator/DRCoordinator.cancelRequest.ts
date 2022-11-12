@@ -109,18 +109,20 @@ export function testCancelRequest(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      payment: cfPayment,
+      initialPayment: cfInitialPayment,
+      spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.true;
     expect(cfCallbackAddr).to.equal(context.drCoordinatorAttackerTH.address);
     expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
+    expect(cfInitialPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
-      drCoordinatorBalanceBefore.add(cfPayment),
+      drCoordinatorBalanceBefore.add(cfSpotPayment),
     );
     expect(await context.drCoordinator.availableFunds(context.drCoordinatorAttackerTH.address)).to.equal(
-      drCoordinatorAttackerTHBalanceBefore.sub(cfPayment),
+      drCoordinatorAttackerTHBalanceBefore.sub(cfSpotPayment),
     );
   });
 
