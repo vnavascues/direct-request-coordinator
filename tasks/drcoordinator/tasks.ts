@@ -12,7 +12,7 @@ import {
   getNetworkLinkTknFeedAddress,
   validateLinkAddressFunds,
 } from "../../utils/chainlink";
-import { MIN_CONSUMER_GAS_LIMIT, chainIdFlags, chainIdSequencerOfflineFlag } from "../../utils/chainlink-constants";
+import { MIN_CONSUMER_GAS_LIMIT, chainIdFlags, chainIdL2SequencerFeed } from "../../utils/chainlink-constants";
 import { getNumberOfConfirmations, getOverrides } from "../../utils/deployment";
 import { logger } from "../../utils/logger";
 import {
@@ -166,9 +166,30 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
     undefined,
     typeBignumber,
   )
+  // Multi Price Feed mode(2-hop mode)
+  .addFlag("ismultipricefeed", "Enables the 2 Price Feed mode, i.e. GASTKN / TKN & LINK / TKN")
+  .addOptionalParam(
+    "pricefeed1",
+    "Requires flag ismultipricefeed. The address of the GASTKN / TKN Price Feed",
+    undefined,
+    typeAddress,
+  )
+  .addOptionalParam(
+    "pricefeed2",
+    "Requires flag ismultipricefeed. The address of the LINK / TKN Price Feed",
+    undefined,
+    typeAddress,
+  )
+  // L2 Sequencer configs
+  .addOptionalParam(
+    "l2sequencergraceperiod",
+    "The number of seconds before trusting the L2 Sequencer Uptime Status Feed answer",
+    undefined,
+    typeBignumber,
+  )
   // Configuration after deployment
   .addFlag("setup", "Configs the contract after deployment")
-  .addOptionalParam("owner", "requires flag setup. The address to transfer the ownership", undefined, typeAddress)
+  .addOptionalParam("owner", "Requires flag setup. The address to transfer the ownership", undefined, typeAddress)
   // Verification
   .addFlag("verify", "Verify the contract on Etherscan after deployment")
   // Tx customisation (ethers.js Overrides)
@@ -179,6 +200,17 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
   .addOptionalParam("gasmaxfee", "Type 2 tx maxFeePerGas", undefined, types.float)
   .addOptionalParam("gasmaxpriority", "Type 2 tx maxPriorityFeePerGas", undefined, types.float)
   .setAction(async function (taskArguments: TaskArguments, hre) {
+    // Custom checks
+    if (taskArguments.ismultipricefeed) {
+      if (!taskArguments.pricefeed1 || !taskArguments.pricefeed2) {
+        throw new Error(`Flag 'ismultipricefeed' requires task arguments 'pricefeed1' and 'pricefeed2'`);
+      }
+    }
+    const isL2WithSequencerChain = chainIdL2SequencerFeed.has(hre.network.config.chainId as number);
+    if (isL2WithSequencerChain && !taskArguments.l2sequencergraceperiod) {
+      throw new Error(`Deploying to an L2 with Sequencer requires task argument 'l2sequencergraceperiod'`);
+    }
+
     // Instantiate the signer of the network
     const [signer] = await hre.ethers.getSigners();
     logger.info(`signer address: ${signer.address}`);
@@ -193,15 +225,22 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
       isMultiPriceFeedDependant,
       addressPriceFeed1,
       addressPriceFeed2,
+      description,
+      fallbackWeiPerUnitLink,
+      stalenessSeconds,
       isSequencerDependant,
-      sequencerOfflineFlag,
-      addressChainlinkFlags,
+      addressL2SequencerFeed,
+      l2SequencerGracePeriodSeconds,
     } = await deployDRCoordinator(
       hre,
       signer,
       taskArguments.description,
       taskArguments.fallbackweiperunitlink,
       taskArguments.stalenessseconds,
+      taskArguments.ismultipricefeed,
+      taskArguments.pricefeed1,
+      taskArguments.pricefeed2,
+      taskArguments.l2sequencergraceperiod,
       overrides,
     );
 
@@ -220,12 +259,12 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
       isMultiPriceFeedDependant,
       addressPriceFeed1,
       addressPriceFeed2,
-      taskArguments.description,
-      taskArguments.fallbackweiperunitlink,
-      taskArguments.stalenessseconds,
+      description,
+      fallbackWeiPerUnitLink,
+      stalenessSeconds,
       isSequencerDependant,
-      sequencerOfflineFlag,
-      addressChainlinkFlags,
+      addressL2SequencerFeed,
+      l2SequencerGracePeriodSeconds,
     );
   });
 

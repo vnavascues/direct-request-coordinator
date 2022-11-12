@@ -111,18 +111,20 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      payment: cfPayment,
+      initialPayment: cfInitialPayment,
+      spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.true;
     expect(cfCallbackAddr).to.equal(context.drCoordinatorAttackerTH.address);
     expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
+    expect(cfInitialPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
-      drCoordinatorBalanceBefore.add(cfPayment),
+      drCoordinatorBalanceBefore.add(cfSpotPayment),
     );
     expect(await context.drCoordinator.availableFunds(context.drCoordinatorAttackerTH.address)).to.equal(
-      drCoordinatorAttackerTHBalanceBefore.sub(cfPayment),
+      drCoordinatorAttackerTHBalanceBefore.sub(cfSpotPayment),
     );
   });
 
@@ -475,18 +477,20 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      payment: cfPayment,
+      initialPayment: cfInitialPayment,
+      spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.false;
     expect(cfCallbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
     expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
+    expect(cfInitialPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
-      drCoordinatorBalanceBefore.add(cfPayment),
+      drCoordinatorBalanceBefore.add(cfSpotPayment),
     );
     expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
-      drCoordinatorConsumerTHBalanceBefore.sub(cfPayment),
+      drCoordinatorConsumerTHBalanceBefore.sub(cfSpotPayment),
     );
   });
 
@@ -655,23 +659,25 @@ export function testFulfillData(signers: Signers, context: Context): void {
         success: cfSuccess,
         callbackAddr: cfCallbackAddr,
         callbackFunctionId: cfCallbackFunctionId,
-        payment: cfPayment,
+        initialPayment: cfInitialPayment,
+        spotPayment: cfSpotPayment,
       } = eventChainlinkFulfilled.args;
       expect(cfRequestId).to.equal(requestId);
       expect(cfSuccess).to.be.true;
       expect(cfCallbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
       expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
+      expect(cfInitialPayment).to.equal(payment);
       expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
       expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
-        drCoordinatorBalanceBefore.add(cfPayment),
+        drCoordinatorBalanceBefore.add(cfSpotPayment),
       );
       expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
-        drCoordinatorConsumerTHBalanceBefore.sub(cfPayment),
+        drCoordinatorConsumerTHBalanceBefore.sub(cfSpotPayment),
       );
       if (testData.isRefundCase) {
-        expect(cfPayment.lt(BigNumber.from("0"))).to.be.true;
+        expect(cfSpotPayment.lt(BigNumber.from("0"))).to.be.true;
       } else {
-        expect(cfPayment.gt(BigNumber.from("0"))).to.be.true;
+        expect(cfSpotPayment.gt(BigNumber.from("0"))).to.be.true;
       }
     });
   }
@@ -758,18 +764,20 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      payment: cfPayment,
+      initialPayment: cfInitialPayment,
+      spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.true;
     expect(cfCallbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
     expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
+    expect(cfInitialPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
-      drCoordinatorBalanceBefore.add(cfPayment),
+      drCoordinatorBalanceBefore.add(cfSpotPayment),
     );
     expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
-      drCoordinatorConsumerTHBalanceBefore.sub(cfPayment),
+      drCoordinatorConsumerTHBalanceBefore.sub(cfSpotPayment),
     );
   });
 
@@ -860,18 +868,20 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      payment: cfPayment,
+      initialPayment: cfInitialPayment,
+      spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.true;
     expect(cfCallbackAddr).to.equal(context.drcGenericFulfillmentTH.address);
     expect(cfCallbackFunctionId).to.equal(externalCallbackFunctionId);
+    expect(cfInitialPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
-      drCoordinatorBalanceBefore.add(cfPayment),
+      drCoordinatorBalanceBefore.add(cfSpotPayment),
     );
     expect(await context.drCoordinator.availableFunds(context.drCoordinatorConsumerTH.address)).to.equal(
-      drCoordinatorConsumerTHBalanceBefore.sub(cfPayment),
+      drCoordinatorConsumerTHBalanceBefore.sub(cfSpotPayment),
     );
   });
 }

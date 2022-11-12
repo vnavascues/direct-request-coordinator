@@ -53,9 +53,12 @@ export interface DeployData {
   isMultiPriceFeedDependant: boolean;
   addressPriceFeed1: string;
   addressPriceFeed2: string;
+  description: string;
+  fallbackWeiPerUnitLink: BigNumber;
+  stalenessSeconds: BigNumber;
   isSequencerDependant: boolean;
-  sequencerOfflineFlag: string;
-  addressChainlinkFlags: string;
+  addressL2SequencerFeed: string;
+  l2SequencerGracePeriodSeconds: BigNumber;
 }
 
 export interface SpecItem {

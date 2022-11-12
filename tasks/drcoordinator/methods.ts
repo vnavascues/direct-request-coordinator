@@ -13,12 +13,7 @@ import {
   getNetworkLinkAddressDeployingOnHardhat,
   getNetworkLinkTknFeedAddress,
 } from "../../utils/chainlink";
-import {
-  LINK_TOTAL_SUPPLY,
-  MIN_CONSUMER_GAS_LIMIT,
-  chainIdFlags,
-  chainIdSequencerOfflineFlag,
-} from "../../utils/chainlink-constants";
+import { LINK_TOTAL_SUPPLY, MIN_CONSUMER_GAS_LIMIT, chainIdL2SequencerFeed } from "../../utils/chainlink-constants";
 import { ChainId } from "../../utils/constants";
 import { getNumberOfConfirmations, getOverrides, isAddressAContract } from "../../utils/deployment";
 import { formatNumericEnumValuesPretty } from "../../utils/enums";
@@ -270,38 +265,53 @@ export async function deployDRCoordinator(
   description: string,
   fallbackWeiPerUnitLink: BigNumber,
   stalenessSeconds: BigNumber,
-  overrides: Overrides,
+  isMultiPriceFeedDependant: boolean,
+  priceFeed1?: string,
+  priceFeed2?: string,
+  l2SequencerGracePeriod?: BigNumber,
+  overrides?: Overrides,
   numberOfConfirmations?: number,
 ): Promise<DeployData> {
-  // Get LINK and LINK_TKN_FEED related arguments by network
-  const chainId = hre.network.config.chainId as number;
-  chainIdSequencerOfflineFlag.get(chainId);
   let addressLink: string;
-  let isMultiPriceFeedDependant: boolean;
   let addressPriceFeed1: string;
   let addressPriceFeed2: string;
   let isSequencerDependant: boolean;
-  let sequencerOfflineFlag: string;
-  let addressChainlinkFlags: string;
-  if (chainId === ChainId.HARDHAT) {
-    addressLink = await getNetworkLinkAddressDeployingOnHardhat(hre); // ethers.constants.AddressZero;
-    isMultiPriceFeedDependant = false;
-    // TODO: support addresses as an argument
-    addressPriceFeed1 = "0x3Af8C569ab77af5230596Acf0E8c2F9351d24C38"; // LINK / ETH on Ethereum
-    await setAddressCode(hre, addressPriceFeed1, DUMMY_SET_CODE_BYTES); // NB: bypass constructor checks
-    addressPriceFeed2 = ethers.constants.AddressZero;
-    sequencerOfflineFlag = "";
-    isSequencerDependant = false;
-    addressChainlinkFlags = ethers.constants.AddressZero;
+  let addressL2SequencerFeed: string;
+  let l2SequencerGracePeriodSeconds: BigNumber;
+  const chainId = hre.network.config.chainId as number;
+
+  if (isMultiPriceFeedDependant) {
+    addressPriceFeed1 = priceFeed1 as string;
+    addressPriceFeed2 = priceFeed2 as string;
   } else {
-    // TODO: Support DRCoordinator 2-hop price feed functionality
-    addressLink = getNetworkLinkAddress(hre.network);
-    isMultiPriceFeedDependant = false;
-    addressPriceFeed1 = getNetworkLinkTknFeedAddress(hre.network);
+    addressPriceFeed1 =
+      chainId === ChainId.HARDHAT
+        ? "0x3Af8C569ab77af5230596Acf0E8c2F9351d24C38" // LINK / ETH on Ethereum
+        : getNetworkLinkTknFeedAddress(hre.network);
     addressPriceFeed2 = ethers.constants.AddressZero;
-    sequencerOfflineFlag = chainIdSequencerOfflineFlag.get(chainId) || "";
-    isSequencerDependant = !!sequencerOfflineFlag;
-    addressChainlinkFlags = chainIdFlags.get(chainId) || ethers.constants.AddressZero;
+  }
+  if (chainId === ChainId.HARDHAT) {
+    // NB: dry-run mode for the Hardhat network
+    addressLink = await getNetworkLinkAddressDeployingOnHardhat(hre); // ethers.constants.AddressZero;
+    await setAddressCode(hre, addressPriceFeed1, DUMMY_SET_CODE_BYTES); // NB: bypass constructor checks
+    if (isMultiPriceFeedDependant) {
+      await setAddressCode(hre, addressPriceFeed2, DUMMY_SET_CODE_BYTES); // NB: bypass constructor checks
+    }
+    isSequencerDependant = false;
+    addressL2SequencerFeed = ethers.constants.AddressZero;
+    l2SequencerGracePeriodSeconds = BigNumber.from("0");
+  } else {
+    addressLink = getNetworkLinkAddress(hre.network);
+  }
+  const isL2WithSequencerChain = chainIdL2SequencerFeed.has(chainId);
+  if (isL2WithSequencerChain) {
+    isSequencerDependant = true;
+    addressL2SequencerFeed = chainIdL2SequencerFeed.get(chainId) as string;
+    l2SequencerGracePeriodSeconds = l2SequencerGracePeriod as BigNumber;
+  } else {
+    isSequencerDependant = false;
+    addressL2SequencerFeed = ethers.constants.AddressZero;
+    l2SequencerGracePeriodSeconds = BigNumber.from("0");
   }
 
   // Deploy
@@ -317,8 +327,8 @@ export async function deployDRCoordinator(
       fallbackWeiPerUnitLink,
       stalenessSeconds,
       isSequencerDependant,
-      sequencerOfflineFlag,
-      addressChainlinkFlags,
+      addressL2SequencerFeed,
+      l2SequencerGracePeriodSeconds,
       overrides,
     )) as DRCoordinator;
   logger.info(`DRCoordinator deployed to: ${drCoordinator.address} | Tx hash: ${drCoordinator.deployTransaction.hash}`);
@@ -332,9 +342,12 @@ export async function deployDRCoordinator(
     isMultiPriceFeedDependant,
     addressPriceFeed1,
     addressPriceFeed2,
+    description,
+    fallbackWeiPerUnitLink,
+    stalenessSeconds,
     isSequencerDependant,
-    sequencerOfflineFlag,
-    addressChainlinkFlags,
+    addressL2SequencerFeed,
+    l2SequencerGracePeriodSeconds,
   };
 }
 
@@ -1268,8 +1281,8 @@ export async function verifyDRCoordinator(
   fallbackWeiPerUnitLink: BigNumber,
   stalenessSeconds: BigNumber,
   isSequencerDependant: boolean,
-  sequencerOfflineFlag: string,
-  addressChainlinkFlags: string,
+  addressL2SequencerFeed: string,
+  l2SequencerGracePeriodSeconds: BigNumber,
 ): Promise<void> {
   setChainVerifyApiKeyEnv(hre.network.config.chainId as number, hre.config);
   await hre.run("verify:verify", {
@@ -1283,8 +1296,8 @@ export async function verifyDRCoordinator(
       fallbackWeiPerUnitLink,
       stalenessSeconds,
       isSequencerDependant,
-      sequencerOfflineFlag,
-      addressChainlinkFlags,
+      addressL2SequencerFeed,
+      l2SequencerGracePeriodSeconds,
     ],
   });
 }

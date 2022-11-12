@@ -3,7 +3,7 @@
   "plugins": ["prettier"],
   "rules": {
     "code-complexity": ["error", 8],
-    "compiler-version": ["warn", "0.8.15"],
+    "compiler-version": ["warn", "0.8.17"],
     "const-name-snakecase": "off",
     "constructor-syntax": "error",
     "event-name-camelcase": "off",

@@ -14,8 +14,7 @@ import {
   address as typeAddress,
   addressesArray as typeAddressesArray,
 } from "../../../../utils/task-arguments-validations";
-import { verifyStandardConsumer } from "../../../../utils/verification";
-import { setupOperatorAfterDeploy } from "./methods";
+import { setupOperatorAfterDeploy, verifyOperator } from "./methods";
 
 const logger = parentLogger.child({ name: path.relative(process.cwd(), __filename) });
 
@@ -55,7 +54,7 @@ task("operator:v0.7:deploy", "Deploy, set-up and verify an Operator.sol")
 
     // Verify
     if (!taskArguments.verify) return;
-    await verifyStandardConsumer(hre, operator.address, addressLink, signer.address);
+    await verifyOperator(hre, operator.address, addressLink, signer.address);
   });
 
 task("operator:v0.7:verify")
@@ -64,5 +63,5 @@ task("operator:v0.7:verify")
   .setAction(async function (taskArguments: TaskArguments, hre) {
     const addressLink = await getNetworkLinkAddressDeployingOnHardhat(hre);
     const addressOwner = taskArguments.deployer ?? (await hre.ethers.getSigners())[0];
-    await verifyStandardConsumer(hre, taskArguments.address, addressLink, addressOwner);
+    await verifyOperator(hre, taskArguments.address, addressLink, addressOwner);
   });

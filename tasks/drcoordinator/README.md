@@ -173,21 +173,25 @@ yarn hardhat drcoordinator:generate-key \
 
 Task parameters:
 
-| Required? |          Name          |                              Description                              |   Type    |      Depends On      |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
-|    ✅     |      description       |                       The contract description                        |  string   |                      |                                                  |    `''`     |
-|    ✅     | fallbackweiperunitlink |            The fallback amount of network TKN wei per LINK            | BigNumber |                      |                                                  |             |
-|    ✅     |    stalenessseconds    | The number of seconds after which the feed answer is considered stale | BigNumber |                      |                                                  |             |
-|           |         setup          |                 Configs the contract after deployment                 |   Flag    |                      |                                                  |   `false`   |
-|           |         owner          |                 The address to transfer the ownership                 |  address  |       --setup        |                                                  |             |
-|           |         verify         |             Verifies the contract on Etherscan at the end             |   Flag    |                      |                                                  |   `false`   |
-|           |       overrides        |       Allows customising the tx overrides (ethers.js Overrides)       |   Flag    |                      |                                                  |   `false`   |
-|           |        gaslimit        |                           The tx `gasLimit`                           |    int    |     --overrides      |                                                  |             |
-|           |         txtype         |                              The tx type                              |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |        gasprice        |                 The type 0 tx `gasPrice` (in `gwei`)                  |   float   | --overrides --type 0 |                                                  |             |
-|           |       gasmaxfee        |               The type 0 tx `maxFeePerGas` (in `gwei`)                |   float   | --overrides --type 2 |                                                  |             |
-|           |     gasmaxpriority     |              The type 0 tx `gasmaxpriority` (in `gwei`)               |   float   | --overrides --type 2 |                                                  |             |
-|           |        network         |                        Hardhat `network` param                        |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
+| Required? |          Name          |                                   Description                                    |   Type    |      Depends On      |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :------------------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
+|    ✅     |      description       |                             The contract description                             |  string   |                      |                                                  |    `''`     |
+|    ✅     | fallbackweiperunitlink |                 The fallback amount of network TKN wei per LINK                  | BigNumber |                      |                                                  |             |
+|    ✅     |    stalenessseconds    |      The number of seconds after which the feed answer is considered stale       | BigNumber |                      |                                                  |             |
+|           |    ismultipricefeed    |          Enables the 2 Price Feed mode, i.e. GASTKN / TKN & LINK / TKN           |   Flag    |                      |                                                  |   `false`   |
+|           |       pricefeed1       |                    The address of the GASTKN / TKN Price Feed                    |  address  |  --ismultipricefeed  |                                                  |             |
+|           |       pricefeed2       |                     The address of the LINK / TKN Price Feed                     |  address  |  --ismultipricefeed  |                                                  |             |
+|           | l2sequencergraceperiod | The number of seconds before trusting the L2 Sequencer Uptime Status Feed answer | BigNumber |                      |                                                  |             |
+|           |         setup          |                      Configs the contract after deployment                       |   Flag    |                      |                                                  |   `false`   |
+|           |         owner          |                      The address to transfer the ownership                       |  address  |       --setup        |                                                  |             |
+|           |         verify         |                  Verifies the contract on Etherscan at the end                   |   Flag    |                      |                                                  |   `false`   |
+|           |       overrides        |            Allows customising the tx overrides (ethers.js Overrides)             |   Flag    |                      |                                                  |   `false`   |
+|           |        gaslimit        |                                The tx `gasLimit`                                 |    int    |     --overrides      |                                                  |             |
+|           |         txtype         |                                   The tx type                                    |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |        gasprice        |                       The type 0 tx `gasPrice` (in `gwei`)                       |   float   | --overrides --type 0 |                                                  |             |
+|           |       gasmaxfee        |                     The type 0 tx `maxFeePerGas` (in `gwei`)                     |   float   | --overrides --type 2 |                                                  |             |
+|           |     gasmaxpriority     |                    The type 0 tx `gasmaxpriority` (in `gwei`)                    |   float   | --overrides --type 2 |                                                  |             |
+|           |        network         |                             Hardhat `network` param                              |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |  `hardhat`  |
 
 Example calls:
 
@@ -200,6 +204,29 @@ yarn hardhat drcoordinator:deploy \
 --owner 0x0000000000000000000000000000000000000001 \
 --verify \
 --network eth-kovan
+```
+
+```sh
+yarn hardhat drcoordinator:deploy \
+--description beta-2 \
+--fallbackweiperunitlink "8000000000000000" \
+--stalenessseconds "86400" \
+--ismultipricefeed \
+--pricefeed1 0x0000000000000000000000000000000000000001 \
+--pricefeed2 0x0000000000000000000000000000000000000002 \
+--setup \
+--owner 0x0000000000000000000000000000000000000003
+```
+
+```sh
+yarn hardhat drcoordinator:deploy \
+--description beta-3 \
+--fallbackweiperunitlink "8000000000000000" \
+--stalenessseconds "86400" \
+--l2sequencergraceperiod "3600" \
+--setup \
+--verify \
+--network opt-goerli
 ```
 
 ```sh

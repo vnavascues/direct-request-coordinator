@@ -7,6 +7,9 @@ import type { HardhatNetworkForkingUserConfig, NetworkUrl } from "./types";
 
 const logger = parentLogger.child({ name: path.relative(process.cwd(), __filename) });
 
+// Alchemy network URLs
+export const chainIdToAlchemyNetworkUrl: ReadonlyMap<ChainId, NetworkUrl> = new Map([]);
+
 // Infura network URLs
 export const chainIdToInfuraNetworkUrl: ReadonlyMap<ChainId, NetworkUrl> = new Map([
   [ChainId.ETH_MAINNET, { http: "https://mainnet.infura.io/v3", wss: "wss://mainnet.infura.io/ws/v3" }],
@@ -42,6 +45,13 @@ export const chainIdToPublicNetwork: ReadonlyMap<ChainId, NetworkUrl> = new Map(
   [ChainId.HECO_MAINNET, { http: "https://http-mainnet.hecochain.com/" }],
   [ChainId.HECO_TESTNET, { http: "https://http-testnet.hecochain.com/" }],
   [
+    ChainId.KLAYTN_BAOBAB,
+    {
+      http: "https://public-node-api.klaytnapi.com/v1/baobab",
+      wss: "wss://public-node-api.klaytnapi.com/v1/baobab/ws",
+    },
+  ],
+  [
     ChainId.MATIC_MUMBAI,
     {
       http: "https://matic-mumbai.chainstacklabs.com",
@@ -56,6 +66,7 @@ export const chainIdToPublicNetwork: ReadonlyMap<ChainId, NetworkUrl> = new Map(
   [ChainId.ONE_TESTNET, { http: "https://api.s0.pops.one/" }],
   [ChainId.OPT_GOERLI, { http: "https://goerli.optimism.io", wss: "wss://ws-goerli.optimism.io" }],
   [ChainId.OPT_KOVAN, { wss: "wss://ws-kovan.optimism.io" }],
+  [ChainId.RSK_MAINNET, { http: "https://public-node.rsk.co" }],
   [ChainId.SPOA_SOKOL, { http: "https://sokol.poa.network" }],
   [ChainId.XDAI_MAINNET, { http: "https://rpc.gnosischain.com/" }],
 ]);
@@ -89,8 +100,12 @@ export function getChainConfig(chainId: ChainId): NetworkUserConfig {
     };
   }
   const networkProvider = process.env[`${networkEnvVarPrefix}_PROVIDER`];
+
   let chainIdToNetworkUrl;
   switch (networkProvider) {
+    case Provider.ALCHEMY:
+      chainIdToNetworkUrl = chainIdToAlchemyNetworkUrl.get(chainId);
+      break;
     case Provider.INFURA:
       chainIdToNetworkUrl = chainIdToInfuraNetworkUrl.get(chainId);
       break;
@@ -123,6 +138,7 @@ export function getChainConfig(chainId: ChainId): NetworkUserConfig {
   // Network URL custom logic per provider
   let url;
   switch (networkProvider) {
+    case Provider.ALCHEMY:
     case Provider.PUBLIC:
       url = networkUrl;
       break;
@@ -190,6 +206,7 @@ export const networkUserConfigs: ReadonlyMap<string, NetworkUserConfig> = new Ma
   ["ftm-testnet", getChainConfig(ChainId.FTM_TESTNET)],
   ["heco-mainnet", getChainConfig(ChainId.HECO_MAINNET)],
   ["heco-testnet", getChainConfig(ChainId.HECO_TESTNET)],
+  ["klaytn-baobab", getChainConfig(ChainId.KLAYTN_BAOBAB)],
   ["matic-mainnet", getChainConfig(ChainId.MATIC_MAINNET)],
   ["matic-mumbai", getChainConfig(ChainId.MATIC_MUMBAI)],
   ["metis-mainnet", getChainConfig(ChainId.METIS_MAINNET)],
@@ -200,6 +217,7 @@ export const networkUserConfigs: ReadonlyMap<string, NetworkUserConfig> = new Ma
   ["opt-goerli", getChainConfig(ChainId.OPT_GOERLI)],
   ["opt-kovan", getChainConfig(ChainId.OPT_KOVAN)],
   ["opt-mainnet", getChainConfig(ChainId.OPT_MAINNET)],
+  ["rsk-mainnet", getChainConfig(ChainId.RSK_MAINNET)],
   ["spoa-sokol", getChainConfig(ChainId.SPOA_SOKOL)],
   ["xdai-mainnet", getChainConfig(ChainId.XDAI_MAINNET)],
 ]);
