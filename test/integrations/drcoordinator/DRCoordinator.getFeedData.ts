@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { artifacts, ethers, waffle } from "hardhat";
+import { ethers } from "hardhat";
 
 import type { DRCoordinator, MockV3Aggregator } from "../../../src/types";
 import { revertToSnapshot, takeSnapshot } from "../../helpers/snapshot";
@@ -20,11 +20,13 @@ export function testGetFeedData(signers: Signers, context: Context): void {
 
   it("returns the 's_fallbackWeiPerUnitLink' if L2 Sequencer is offline", async function () {
     // Arrange
-    // Mock Flags and its response
-    const sequencerFlag = "chainlink.flags.arbitrum-seq-offline";
-    const flagsArtifact = await artifacts.readArtifact("Flags");
-    const mockFlags = await waffle.deployMockContract(signers.deployer, flagsArtifact.abi);
-    await mockFlags.mock.getFlag.returns(true);
+    // Mock L2 Sequencer Feed and its response
+    const mockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator");
+    const decimals = BigNumber.from("0");
+    const initialAnswer = BigNumber.from("1");
+    const mockL2SequencerFeed = (await mockV3AggregatorFactory
+      .connect(signers.deployer)
+      .deploy(decimals, initialAnswer)) as MockV3Aggregator;
     // Deploy DRCoordinator
     const addressLinkToken = context.linkToken.address;
     const isMultiPriceFeedDependant = false;
@@ -34,7 +36,8 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = true;
-    const chainlinkFlags = mockFlags.address;
+    const addressL2SequencerFeed = mockL2SequencerFeed.address;
+    const l2SequencerGracePeriodSeconds = BigNumber.from("3600");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
     const drCoordinator = (await drCoordinatorFactory
       .connect(signers.deployer)
@@ -47,17 +50,62 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         fallbackWeiPerUnitLink,
         stalenessSeconds,
         isSequencerDependant,
-        sequencerFlag,
-        chainlinkFlags,
+        addressL2SequencerFeed,
+        l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
     await drCoordinator.deployTransaction.wait();
     // Update Aggregator answer
     await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
 
     // Act & Assert
-    expect(await drCoordinator.connect(signers.externalCaller).FLAG_SEQUENCER_OFFLINE()).to.equal(
-      "0xa438451D6458044c3c8CD2f6f31c91ac882A6d91",
-    );
+    expect(await drCoordinator.connect(signers.externalCaller).getFeedData()).to.equal(fallbackWeiPerUnitLink);
+  });
+
+  it("returns the 's_fallbackWeiPerUnitLink' if L2 Sequencer answer timestamp is not greater than the grace period", async function () {
+    // Arrange
+    // Mock L2 Sequencer Feed and its response
+    const mockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator");
+    const decimals = BigNumber.from("0");
+    const initialAnswer = BigNumber.from("0");
+    const mockL2SequencerFeed = (await mockV3AggregatorFactory
+      .connect(signers.deployer)
+      .deploy(decimals, initialAnswer)) as MockV3Aggregator;
+    // Deploy DRCoordinator
+    const addressLinkToken = context.linkToken.address;
+    const isMultiPriceFeedDependant = false;
+    const addressPriceFeed1 = context.mockV3Aggregator.address;
+    const addressPriceFeed2 = ethers.constants.AddressZero;
+    const description = "Testing DRCoordinator";
+    const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
+    const stalenessSeconds = BigNumber.from("86400");
+    const isSequencerDependant = true;
+    const addressL2SequencerFeed = mockL2SequencerFeed.address;
+    const l2SequencerGracePeriodSeconds = BigNumber.from("3600");
+    const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
+    const drCoordinator = (await drCoordinatorFactory
+      .connect(signers.deployer)
+      .deploy(
+        addressLinkToken,
+        isMultiPriceFeedDependant,
+        addressPriceFeed1,
+        addressPriceFeed2,
+        description,
+        fallbackWeiPerUnitLink,
+        stalenessSeconds,
+        isSequencerDependant,
+        addressL2SequencerFeed,
+        l2SequencerGracePeriodSeconds,
+      )) as DRCoordinator;
+    await drCoordinator.deployTransaction.wait();
+    // Update Aggregator answer
+    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
+    // Update L2Sequencer Feed data
+    const nowTs = Math.round(new Date().getTime() / 1000);
+    const staleTs = nowTs + l2SequencerGracePeriodSeconds.toNumber();
+    await mockL2SequencerFeed.connect(signers.deployer).updateRoundData("1", "0", nowTs, nowTs);
+    await increaseTo(staleTs); // NB: force block.timestamp - timestamp < stalenessSeconds
+
+    // Act & Assert
     expect(await drCoordinator.connect(signers.externalCaller).getFeedData()).to.equal(fallbackWeiPerUnitLink);
   });
 
@@ -120,8 +168,8 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = false;
-    const sequencerFlag = "";
-    const chainlinkFlags = ethers.constants.AddressZero;
+    const addressL2SequencerFeed = ethers.constants.AddressZero;
+    const l2SequencerGracePeriodSeconds = BigNumber.from("0");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
     const drCoordinator = (await drCoordinatorFactory
       .connect(signers.deployer)
@@ -134,8 +182,8 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         fallbackWeiPerUnitLink,
         stalenessSeconds,
         isSequencerDependant,
-        sequencerFlag,
-        chainlinkFlags,
+        addressL2SequencerFeed,
+        l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
     await drCoordinator.deployTransaction.wait();
 
@@ -169,8 +217,8 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = false;
-    const sequencerFlag = "";
-    const chainlinkFlags = ethers.constants.AddressZero;
+    const addressL2SequencerFeed = ethers.constants.AddressZero;
+    const l2SequencerGracePeriodSeconds = BigNumber.from("0");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
     const drCoordinator = (await drCoordinatorFactory
       .connect(signers.deployer)
@@ -183,8 +231,8 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         fallbackWeiPerUnitLink,
         stalenessSeconds,
         isSequencerDependant,
-        sequencerFlag,
-        chainlinkFlags,
+        addressL2SequencerFeed,
+        l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
     await drCoordinator.deployTransaction.wait();
     const expectedWeiPerUnitLink = BigNumber.from("4728773298931363"); // NB: 0.004728773298931363 LINK/ETH
@@ -215,8 +263,8 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = false;
-    const sequencerFlag = "";
-    const chainlinkFlags = ethers.constants.AddressZero;
+    const addressL2SequencerFeed = ethers.constants.AddressZero;
+    const l2SequencerGracePeriodSeconds = BigNumber.from("0");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
     const drCoordinator = (await drCoordinatorFactory
       .connect(signers.deployer)
@@ -229,8 +277,8 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         fallbackWeiPerUnitLink,
         stalenessSeconds,
         isSequencerDependant,
-        sequencerFlag,
-        chainlinkFlags,
+        addressL2SequencerFeed,
+        l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
     await drCoordinator.deployTransaction.wait();
     // 3. Set timestamp-dependant properties

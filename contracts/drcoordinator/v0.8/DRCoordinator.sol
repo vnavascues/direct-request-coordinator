@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
 import { ConfirmedOwner } from "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { FlagsInterface } from "@chainlink/contracts/src/v0.8/interfaces/FlagsInterface.sol";
 import { LinkTokenInterface } from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import { OperatorInterface } from "@chainlink/contracts/src/v0.8/interfaces/OperatorInterface.sol";
 import { TypeAndVersionInterface } from "@chainlink/contracts/src/v0.8/interfaces/TypeAndVersionInterface.sol";
@@ -89,15 +88,15 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
     // GAS_AFTER_PAYMENT_CALCULATION to 50_000 as a constant. Exact amount used is 42422 gas
     uint32 public constant GAS_AFTER_PAYMENT_CALCULATION = 50_000; // 6 bytes
     bool public immutable IS_SEQUENCER_DEPENDANT; // 1 byte
-    address public immutable FLAG_SEQUENCER_OFFLINE; // 20 bytes
-    FlagsInterface public immutable CHAINLINK_FLAGS; // 20 bytes
     LinkTokenInterface public immutable LINK; // 20 bytes
+    AggregatorV3Interface public immutable L2_SEQUENCER_FEED; // 20 bytes
     AggregatorV3Interface public immutable PRICE_FEED_1; // 20 bytes - LINK/TKN (single feed) or TKN/USD (multi feed)
     AggregatorV3Interface public immutable PRICE_FEED_2; // 20 bytes - address(0) (single feed) or LINK/USD (multi feed)
     bool public immutable IS_MULTI_PRICE_FEED_DEPENDANT; // 1 byte
     uint8 private s_permiryadFeeFactor = 1; // 1 byte
     uint256 private s_requestCount = 1; // 32 bytes
     uint256 private s_stalenessSeconds; // 32 bytes
+    uint256 private s_l2SequencerGracePeriodSeconds; // 32 bytes
     uint256 private s_fallbackWeiPerUnitLink; // 32 bytes
     string private s_description;
     mapping(bytes32 => address) private s_pendingRequests; /* requestId */ /* operatorAddr */
@@ -128,6 +127,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
     event FundsAdded(address indexed from, address indexed to, uint96 amount);
     event FundsWithdrawn(address indexed from, address indexed to, uint96 amount);
     event GasAfterPaymentCalculationSet(uint32 gasAfterPaymentCalculation);
+    event L2SequencerGracePeriodSecondsSet(uint256 l2SequencerGracePeriodSeconds);
     event PermiryadFeeFactorSet(uint8 permiryadFactor);
     event SetExternalPendingRequestFailed(address indexed callbackAddr, bytes32 indexed requestId, bytes32 key);
     event SpecRemoved(bytes32 indexed key);
@@ -143,8 +143,8 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         uint256 _fallbackWeiPerUnitLink,
         uint256 _stalenessSeconds,
         bool _isSequencerDependant,
-        string memory _sequencerOfflineFlag,
-        address _chainlinkFlags
+        address _l2SequencerFeed,
+        uint256 _l2SequencerGracePeriodSeconds
     ) ConfirmedOwner(msg.sender) {
         _requirePriceFeed(_isMultiPriceFeedDependant, _priceFeed1, _priceFeed2);
         _requireFallbackWeiPerUnitLinkIsGtZero(_fallbackWeiPerUnitLink);
@@ -153,13 +153,11 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         PRICE_FEED_1 = AggregatorV3Interface(_priceFeed1);
         PRICE_FEED_2 = AggregatorV3Interface(_priceFeed2);
         IS_SEQUENCER_DEPENDANT = _isSequencerDependant;
-        FLAG_SEQUENCER_OFFLINE = _isSequencerDependant
-            ? address(bytes20(bytes32(uint256(keccak256(abi.encodePacked(_sequencerOfflineFlag))) - 1)))
-            : address(0);
-        CHAINLINK_FLAGS = FlagsInterface(_chainlinkFlags);
+        L2_SEQUENCER_FEED = AggregatorV3Interface(_l2SequencerFeed);
         s_description = _description;
         s_fallbackWeiPerUnitLink = _fallbackWeiPerUnitLink;
         s_stalenessSeconds = _stalenessSeconds;
+        s_l2SequencerGracePeriodSeconds = _l2SequencerGracePeriodSeconds;
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
@@ -410,6 +408,11 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         emit FallbackWeiPerUnitLinkSet(_fallbackWeiPerUnitLink);
     }
 
+    function setL2SequencerGracePeriodSeconds(uint256 _l2SequencerGracePeriodSeconds) external onlyOwner {
+        s_l2SequencerGracePeriodSeconds = _l2SequencerGracePeriodSeconds;
+        emit L2SequencerGracePeriodSecondsSet(_l2SequencerGracePeriodSeconds);
+    }
+
     function setPermiryadFeeFactor(uint8 _permiryadFactor) external onlyOwner {
         s_permiryadFeeFactor = _permiryadFactor;
         emit PermiryadFeeFactorSet(_permiryadFactor);
@@ -514,6 +517,10 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         return s_requestIdToFulfillConfig[_requestId];
     }
 
+    function getL2SequencerGracePeriodSeconds() external view returns (uint256) {
+        return s_l2SequencerGracePeriodSeconds;
+    }
+
     function getNumberOfSpecs() external view returns (uint256) {
         return s_keyToSpec._size();
     }
@@ -554,12 +561,6 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
         _requireSpecIsInserted(_key);
         return s_keyToAuthorizedConsumerMap[_key]._isInserted(_consumer);
     }
-
-    /* ========== EXTERNAL PURE FUNCTIONS ========== */
-
-    // function typeAndVersion() external pure virtual override returns (string memory) {
-    //     return "DRCoordinator 1.0.0";
-    // }
 
     /* ========== PRIVATE FUNCTIONS ========== */
 
@@ -696,8 +697,11 @@ contract DRCoordinator is ConfirmedOwner, Pausable, ReentrancyGuard, TypeAndVers
     }
 
     function _getFeedData() private view returns (uint256) {
-        if (IS_SEQUENCER_DEPENDANT && CHAINLINK_FLAGS.getFlag(FLAG_SEQUENCER_OFFLINE)) {
-            return s_fallbackWeiPerUnitLink;
+        if (IS_SEQUENCER_DEPENDANT) {
+            (, int256 answer, , uint256 startedAt, ) = L2_SEQUENCER_FEED.latestRoundData();
+            if (answer == 1 || block.timestamp - startedAt <= s_l2SequencerGracePeriodSeconds) {
+                return s_fallbackWeiPerUnitLink;
+            }
         }
         uint256 stalenessSeconds = s_stalenessSeconds;
         uint256 weiPerUnitLink = _calculateWeiPerUnitLink(true, PRICE_FEED_1, stalenessSeconds, 0);

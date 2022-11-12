@@ -106,6 +106,8 @@ interface IDRCoordinator {
 
     function setFallbackWeiPerUnitLink(uint256 _fallbackWeiPerUnitLink) external;
 
+    function setL2SequencerGracePeriodSeconds(uint256 _l2SequencerGracePeriodSeconds) external;
+
     function setPermiryadFeeFactor(uint8 _permiryadFactor) external;
 
     function setSpec(bytes32 _key, Spec calldata _spec) external;
@@ -145,6 +147,8 @@ interface IDRCoordinator {
     function getFallbackWeiPerUnitLink() external view returns (uint256);
 
     function getFulfillConfig(bytes32 _requestId) external view returns (FulfillConfig memory);
+
+    function getL2SequencerGracePeriodSeconds() external view returns (uint256);
 
     function getNumberOfSpecs() external view returns (uint256);
 

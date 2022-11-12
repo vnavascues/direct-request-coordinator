@@ -30,9 +30,11 @@ import { testRemoveSpecsAuthorizedConsumers } from "./DRCoordinator.removeSpecsA
 import { testRequestData } from "./DRCoordinator.requestData";
 import { testSetDescription } from "./DRCoordinator.setDescription";
 import { testSetFallbackWeiPerUnitLink } from "./DRCoordinator.setFallbackWeiPerUnitLink";
+import { testSetL2SequencerGracePeriodSeconds } from "./DRCoordinator.setL2SequencerGracePeriodSeconds";
 import { testSetPermiryadFeeFactor } from "./DRCoordinator.setPermiryadFeeFactor";
 import { testSetSpec } from "./DRCoordinator.setSpec";
 import { testSetSpecs } from "./DRCoordinator.setSpecs";
+import { testSetStalenessSeconds } from "./DRCoordinator.setStalenessSeconds";
 import { testTransferOwnership } from "./DRCoordinator.transferOwnership";
 import { testUnpause } from "./DRCoordinator.unpause";
 import { testWithdrawFunds } from "./DRCoordinator.withdrawFunds";
@@ -114,8 +116,8 @@ describe("DRCoordinator", () => {
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
     const isSequencerDependant = false;
-    const sequencerFlag = "";
-    const chainlinkFlags = ethers.constants.AddressZero;
+    const addressL2SequencerFeed = ethers.constants.AddressZero;
+    const l2SequencerGracePeriodSeconds = BigNumber.from("0");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
     const drCoordinator = (await drCoordinatorFactory
       .connect(signers.deployer)
@@ -128,8 +130,8 @@ describe("DRCoordinator", () => {
         fallbackWeiPerUnitLink,
         stalenessSeconds,
         isSequencerDependant,
-        sequencerFlag,
-        chainlinkFlags,
+        addressL2SequencerFeed,
+        l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
     await drCoordinator.deployTransaction.wait();
     context.drCoordinator = drCoordinator;
@@ -182,9 +184,11 @@ describe("DRCoordinator", () => {
   describe("testRequestData()", () => testRequestData(signers, context));
   describe("testSetDescription()", () => testSetDescription(signers, context));
   describe("testSetFallbackWeiPerUnitLink()", () => testSetFallbackWeiPerUnitLink(signers, context));
+  describe("testSetL2SequencerGracePeriodSeconds()", () => testSetL2SequencerGracePeriodSeconds(signers, context));
   describe("testSetPermiryadFeeFactor()", () => testSetPermiryadFeeFactor(signers, context));
   describe("testSetSpec()", () => testSetSpec(signers, context));
   describe("testSetSpecs()", () => testSetSpecs(signers, context));
+  describe("testSetStalenessSeconds()", () => testSetStalenessSeconds(signers, context));
   describe("testTransferOwnership()", () => testTransferOwnership(signers, context));
   describe("testUnpause()", () => testUnpause(signers, context));
   describe("testWithdrawFunds()", () => testWithdrawFunds(signers, context));
