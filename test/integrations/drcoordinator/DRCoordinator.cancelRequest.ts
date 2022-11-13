@@ -62,7 +62,6 @@ export function testCancelRequest(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         expectedCallbackFunctionId,
         {
           gasPrice: weiPerUnitGas,
@@ -159,7 +158,6 @@ export function testCancelRequest(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -211,7 +209,6 @@ export function testCancelRequest(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -262,7 +259,6 @@ export function testCancelRequest(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },

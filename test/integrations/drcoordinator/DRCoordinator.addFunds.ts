@@ -60,7 +60,6 @@ export function testAddFunds(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         expectedCallbackFunctionId,
         {
           gasPrice: weiPerUnitGas,

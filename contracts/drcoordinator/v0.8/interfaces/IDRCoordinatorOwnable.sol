@@ -22,11 +22,6 @@ interface IDRCoordinatorOwnable {
         uint32 gasLimit,
         uint32 minRequestGasLimit
     );
-    error DRCoordinator__SpecFieldMinConfirmationsIsGtMaxRequestConfirmations(
-        bytes32 key,
-        uint8 minConfirmations,
-        uint8 maxRequestConfirmations
-    );
     error DRCoordinator__SpecFieldOperatorIsDRCoordinator(bytes32 key, address operator);
     error DRCoordinator__SpecFieldOperatorIsNotContract(bytes32 key, address operator);
     error DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(bytes32 key, uint96 payment, uint96 linkTotalSupply);

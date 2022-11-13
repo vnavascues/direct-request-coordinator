@@ -81,19 +81,12 @@ contract DRCoordinatorAttackerTestHelper is DRCoordinatorClient {
         bytes32 specId = 0x3233356262656361363566333434623762613862336166353031653433363232;
         address operatorAddr = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
         uint32 callbackGasLimit = 2_000_000; // NB: enough for two rounds?
-        uint8 callbackMinConfirmations = 2;
         Chainlink.Request memory req;
         req.initialize(specId, address(this), this.attackRequestDataCall.selector);
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = address(s_drCoordinator).call(
-            abi.encodeWithSelector(
-                s_drCoordinator.requestData.selector,
-                operatorAddr,
-                callbackGasLimit,
-                callbackMinConfirmations,
-                req
-            )
+            abi.encodeWithSelector(s_drCoordinator.requestData.selector, operatorAddr, callbackGasLimit, req)
         );
         emit Attacked("attackRequestDataCall", success);
     }
@@ -119,13 +112,12 @@ contract DRCoordinatorAttackerTestHelper is DRCoordinatorClient {
         address _operatorAddr,
         bytes32 _specId,
         uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations,
         bytes4 _functionSelector
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), _functionSelector);
-        _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, _callbackMinConfirmations, req);
+        _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, req);
     }
 
     function withdraw(address payable _payee, uint256 _amount) external {

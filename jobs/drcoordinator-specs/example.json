@@ -13,7 +13,6 @@
       "fee": "100000000000000000",
       "feeType": 0,
       "gasLimit": 500000,
-      "minConfirmations": 2,
       "operator": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
       "payment": "10000000000000000",
       "paymentType": 0
@@ -37,7 +36,6 @@
       "fee": "1100",
       "feeType": 1,
       "gasLimit": 1000000,
-      "minConfirmations": 2,
       "operator": "0x878541888a928a31F9EAb4cB61DfD4e381EC2f00",
       "payment": "100",
       "paymentType": 1

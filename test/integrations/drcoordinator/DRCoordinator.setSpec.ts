@@ -87,13 +87,6 @@ export function testSetSpec(signers: Signers, context: Context): void {
       },
     },
     {
-      name: "minConfirmations is greater than MAX_REQUEST_CONFIRMATIONS",
-      testData: {
-        minConfirmations: MAX_REQUEST_CONFIRMATIONS + 1,
-        customError: "DRCoordinator__SpecFieldMinConfirmationsIsGtMaxRequestConfirmations",
-      },
-    },
-    {
       name: "gasLimit is less than MIN_CONSUMER_GAS_LIMIT",
       testData: {
         gasLimit: MIN_CONSUMER_GAS_LIMIT - 1,
@@ -130,7 +123,6 @@ export function testSetSpec(signers: Signers, context: Context): void {
         fee: testData.fee ?? BigNumber.from("1000000000000000"),
         gasLimit: testData.gasLimit ?? MIN_CONSUMER_GAS_LIMIT + 1,
         key: generateSpecKey(operatorAddr as string, specId),
-        minConfirmations: testData.minConfirmations ?? 2,
         operator: operatorAddr as string,
         paymentType: testData.paymentType || PaymentType.PERMIRYAD,
         payment: testData.payment ?? BigNumber.from("1000"),
@@ -166,7 +158,6 @@ export function testSetSpec(signers: Signers, context: Context): void {
         specConverted.fee,
         specConverted.feeType,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
       ]);
     expect(await context.drCoordinator.connect(signers.owner).getNumberOfSpecs()).to.equal(1);
   });
@@ -187,7 +178,6 @@ export function testSetSpec(signers: Signers, context: Context): void {
     specConverted.feeType = FeeType.PERMIRYAD;
     specConverted.fee = BigNumber.from("10000");
     specConverted.gasLimit = specConverted.gasLimit + 1;
-    specConverted.minConfirmations = specConverted.minConfirmations + 1;
     specConverted.operator = context.drCoordinatorConsumerTH.address;
     specConverted.payment = specConverted.payment.add("1");
     specConverted.paymentType = PaymentType.FLAT;
@@ -204,7 +194,6 @@ export function testSetSpec(signers: Signers, context: Context): void {
         specConverted.fee,
         specConverted.feeType,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
       ]);
     expect(await context.drCoordinator.connect(signers.owner).getNumberOfSpecs()).to.equal(1);
   });

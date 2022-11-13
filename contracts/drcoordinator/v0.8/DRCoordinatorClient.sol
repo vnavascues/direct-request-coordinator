@@ -52,18 +52,15 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
      * @param _operatorAddr The Operator contract address.
      * @param _callbackGasLimit The amount of gas to attach to directrequest fulfillment transaction. It is the gasLimit
      * parameter of the directrequest ethtx task.
-     * @param _callbackMinConfirmations The minimum number of confirmations required before the directrequest task
-     * continues. It is the minConfirmations parameter of the directrequest ethtx task.
      * @param _req The initialized Chainlink.Request.
      * @return requestId The request ID.
      */
     function _sendRequest(
         address _operatorAddr,
         uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) internal returns (bytes32) {
-        return _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, _callbackMinConfirmations, _req);
+        return _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, _req);
     }
 
     /**
@@ -76,8 +73,6 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
      * @param _operatorAddr The Operator contract address.
      * @param _callbackGasLimit The amount of gas to attach to directrequest fulfillment transaction. It is the gasLimit
      * parameter of the directrequest ethtx task.
-     * @param _callbackMinConfirmations The minimum number of confirmations required before the directrequest task
-     * continues. It is the minConfirmations parameter of the directrequest ethtx task.
      * @param _req The initialized Chainlink.Request.
      * @return requestId The request ID.
      */
@@ -85,15 +80,9 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
         IDRCoordinator _drCoordinator,
         address _operatorAddr,
         uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) internal returns (bytes32) {
-        bytes32 requestId = _drCoordinator.requestData(
-            _operatorAddr,
-            _callbackGasLimit,
-            _callbackMinConfirmations,
-            _req
-        );
+        bytes32 requestId = _drCoordinator.requestData(_operatorAddr, _callbackGasLimit, _req);
         _addPendingRequest(address(_drCoordinator), requestId);
         emit ChainlinkRequested(requestId);
         return requestId;

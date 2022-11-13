@@ -44,38 +44,24 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorClient {
         address _drCoordinatorAddr,
         address _operatorAddr,
         bytes32 _specId,
-        uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations
+        uint32 _callbackGasLimit
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), this.fulfillNothing.selector);
-        _sendRequestTo(
-            IDRCoordinator(_drCoordinatorAddr),
-            _operatorAddr,
-            _callbackGasLimit,
-            _callbackMinConfirmations,
-            req
-        );
+        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, req);
     }
 
     function requestUint256(
         address _drCoordinatorAddr,
         address _operatorAddr,
         bytes32 _specId,
-        uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations
+        uint32 _callbackGasLimit
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), this.fulfillUint256.selector);
-        _sendRequestTo(
-            IDRCoordinator(_drCoordinatorAddr),
-            _operatorAddr,
-            _callbackGasLimit,
-            _callbackMinConfirmations,
-            req
-        );
+        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, req);
     }
 
     function requestUint256Externally(
@@ -83,20 +69,13 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorClient {
         address _operatorAddr,
         bytes32 _specId,
         uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations,
         address _callbackAddr,
         bytes4 _callbackFunctionId
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, _callbackAddr, _callbackFunctionId);
-        _sendRequestTo(
-            IDRCoordinator(_drCoordinatorAddr),
-            _operatorAddr,
-            _callbackGasLimit,
-            _callbackMinConfirmations,
-            req
-        );
+        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, req);
     }
 
     function withdraw(address payable _payee, uint256 _amount) external {

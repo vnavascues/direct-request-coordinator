@@ -44,11 +44,10 @@ contract DRCConsumerCryptoCompare is DRCoordinatorClient {
     function requestPrices(
         address _operatorAddr,
         bytes32 _specId,
-        uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations
+        uint32 _callbackGasLimit
     ) external {
         Chainlink.Request memory req = _buildRequest(_specId, address(this), this.fulfillPrices.selector);
-        _sendRequest(_operatorAddr, _callbackGasLimit, _callbackMinConfirmations, req);
+        _sendRequest(_operatorAddr, _callbackGasLimit, req);
     }
 
     function setDRCoordinator(address _drCoordinator) external {

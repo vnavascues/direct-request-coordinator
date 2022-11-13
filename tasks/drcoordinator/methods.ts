@@ -420,7 +420,6 @@ export async function getSpecConfigurationConverted(configuration: Configuration
     feeType: configuration.feeType,
     gasLimit: configuration.gasLimit,
     key,
-    minConfirmations: configuration.minConfirmations,
     operator,
     payment: BigNumber.from(configuration.payment),
     paymentType: configuration.paymentType,
@@ -459,7 +458,7 @@ export async function getSpecMap(
 ): Promise<Map<string, SpecConverted>> {
   const specConvertedMap: Map<string, SpecConverted> = new Map();
   for (const key of keys) {
-    const { specId, operator, payment, paymentType, fee, feeType, gasLimit, minConfirmations } = await drCoordinator
+    const { specId, operator, payment, paymentType, fee, feeType, gasLimit } = await drCoordinator
       .connect(signer)
       .getSpec(key);
     const spec = {
@@ -467,7 +466,6 @@ export async function getSpecMap(
       feeType,
       gasLimit,
       key,
-      minConfirmations,
       operator,
       payment,
       paymentType,
@@ -483,7 +481,6 @@ export function hasSpecDifferences(fileSpec: SpecConverted, drcSpec: SpecConvert
     !fileSpec.fee.eq(drcSpec.fee) ||
     fileSpec.feeType !== drcSpec.feeType ||
     fileSpec.gasLimit !== drcSpec.gasLimit ||
-    fileSpec.minConfirmations !== drcSpec.minConfirmations ||
     fileSpec.payment !== drcSpec.payment ||
     fileSpec.paymentType !== drcSpec.paymentType
   );
@@ -1096,7 +1093,6 @@ export function validateConfiguration(configuration: Configuration): void {
   validateConfigurationFeeType(configuration.feeType as FeeType);
   validateConfigurationFee(configuration.feeType, configuration.fee);
   validateConfigurationGasLimit(configuration.gasLimit);
-  validateConfigurationMinConfirmations(configuration.minConfirmations);
   validateConfigurationOperator(configuration.operator);
   validateConfigurationPayment(configuration.paymentType, configuration.payment);
 }
@@ -1157,19 +1153,6 @@ export function validateConfigurationOperator(operator: string): void {
   ) {
     throw new Error(
       `Invalid 'operator': ${operator}. Expected format is a checksum Ethereum address (can't be the Zero address)`,
-    );
-  }
-}
-
-export function validateConfigurationMinConfirmations(minConfirmations: number): void {
-  if (
-    typeof minConfirmations !== "number" ||
-    !Number.isInteger(minConfirmations) ||
-    minConfirmations < 0 ||
-    minConfirmations > MAX_REQUEST_CONFIRMATIONS
-  ) {
-    throw new Error(
-      `Invalid 'minConfirmations': ${minConfirmations}. Expected an integer 0 < minConfirmations <= ${MAX_REQUEST_CONFIRMATIONS}`,
     );
   }
 }
