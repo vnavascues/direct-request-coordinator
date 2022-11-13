@@ -43,7 +43,6 @@ contract DRCConsumerSportsdataio is DRCoordinatorClient {
         address _operatorAddr,
         bytes32 _specId,
         uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations,
         uint256 _market,
         uint256 _leagueId,
         uint256 _date
@@ -53,7 +52,7 @@ contract DRCConsumerSportsdataio is DRCoordinatorClient {
         req.addUint("market", _market);
         req.addUint("leagueId", _leagueId);
         req.addUint("date", _date);
-        _sendRequest(_operatorAddr, _callbackGasLimit, _callbackMinConfirmations, req);
+        _sendRequest(_operatorAddr, _callbackGasLimit, req);
     }
 
     function setDRCoordinator(address _drCoordinator) external {

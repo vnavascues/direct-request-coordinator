@@ -35,14 +35,13 @@ export function testRequestData(signers: Signers, context: Context): void {
       callbackFunctionId,
     );
     const callbackGasLimit = 500_000;
-    const callbackMinConfirmations = 3;
     await context.drCoordinator.connect(signers.owner).pause();
 
     // Act & Assert
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestData(operatorAddr, callbackGasLimit, chainlinkRequest),
     ).to.be.revertedWith("Pausable: paused");
   });
 
@@ -85,7 +84,6 @@ export function testRequestData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         expectedCallbackFunctionId,
         {
           gasPrice: weiPerUnitGas,
@@ -161,14 +159,13 @@ export function testRequestData(signers: Signers, context: Context): void {
       callbackFunctionId,
     );
     const callbackGasLimit = 500_000;
-    const callbackMinConfirmations = 3;
 
     // Act & Assert
     const expectedKey = generateSpecKey(operatorAddr, specId);
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, callbackGasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestData(operatorAddr, callbackGasLimit, chainlinkRequest),
     ).to.be.revertedWith(`DRCoordinator__SpecIsNotInserted("${expectedKey}")`);
   });
 
@@ -197,7 +194,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, specConverted.gasLimit, specConverted.minConfirmations, chainlinkRequest),
+        .requestData(operatorAddr, specConverted.gasLimit, chainlinkRequest),
     ).to.be.revertedWith(`DRCoordinator__CallbackAddrIsNotContract("${signers.externalCaller.address}")`);
   });
 
@@ -226,18 +223,16 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, specConverted.gasLimit, specConverted.minConfirmations, chainlinkRequest),
+        .requestData(operatorAddr, specConverted.gasLimit, chainlinkRequest),
     ).to.be.revertedWith("DRCoordinator__CallbackAddrIsDRCoordinator");
   });
 
   it("reverts when consumer (requester) has not been authorized to request the Spec", async function () {
     // Arrange
     // 1. Insert the Spec
-    const maxRequestConfirmations = await context.drCoordinator.MAX_REQUEST_CONFIRMATIONS();
     const specs = parseSpecsFile(path.join(filePath, "file3.json"));
     specs.forEach(spec => {
       spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
-      spec.configuration.minConfirmations = maxRequestConfirmations;
     });
     const fileSpecMap = await getSpecItemConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -255,53 +250,18 @@ export function testRequestData(signers: Signers, context: Context): void {
       callbackAddr,
       callbackFunctionId,
     );
-    const callbackMinConfirmations = specConverted.minConfirmations + 1;
 
     // Act & Assert
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, specConverted.gasLimit, callbackMinConfirmations, chainlinkRequest),
+        .requestData(operatorAddr, specConverted.gasLimit, chainlinkRequest),
     ).to.be.revertedWith(
       `DRCoordinator__CallerIsNotAuthorizedConsumer("${key}", "${operatorAddr}", "${specConverted.specId}")`,
     );
   });
 
-  it("reverts when callbackMinConfirmations is greater than Spec.minConfirmations", async function () {
-    // Arrange
-    // 1. Insert the Spec
-    const maxRequestConfirmations = await context.drCoordinator.MAX_REQUEST_CONFIRMATIONS();
-    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
-    specs.forEach(spec => {
-      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
-      spec.configuration.minConfirmations = maxRequestConfirmations;
-    });
-    const fileSpecMap = await getSpecItemConvertedMap(specs);
-    const [key] = [...fileSpecMap.keys()];
-    const specConverted = (fileSpecMap.get(key) as SpecItemConverted).specConverted;
-    await context.drCoordinator.connect(signers.owner).setSpec(key, specConverted);
-    // 2. Prepare DRCoordinator.requestDataViaFulfillData() args
-    const operatorAddr = context.operator.address;
-    const callbackAddr = context.drCoordinatorConsumerTH.address;
-    const callbackFunctionId = convertFunctionNametoSignature("fulfillUint256(bytes32,uint256,bool)");
-    const chainlinkRequest = await context.drCoordinatorConsumerTH.initializeChainlinkRequest(
-      specConverted.specId,
-      callbackAddr,
-      callbackFunctionId,
-    );
-    const callbackMinConfirmations = specConverted.minConfirmations + 1;
-
-    // Act & Assert
-    await expect(
-      context.drCoordinator
-        .connect(signers.externalCaller)
-        .requestData(operatorAddr, specConverted.gasLimit, callbackMinConfirmations, chainlinkRequest),
-    ).to.be.revertedWith(
-      `DRCoordinator__CallbackMinConfirmationsIsGtSpecMinConfirmations(${callbackMinConfirmations}, ${specConverted.minConfirmations})`,
-    );
-  });
-
-  it("reverts when callbackMinConfirmations is greater than Spec.gasLimit", async function () {
+  it("reverts when callbackGasLimit is greater than Spec.gasLimit", async function () {
     // Arrange
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -327,7 +287,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, callbackGasLimit, specConverted.minConfirmations, chainlinkRequest),
+        .requestData(operatorAddr, callbackGasLimit, chainlinkRequest),
     ).to.be.revertedWith(
       `DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(${callbackGasLimit}, ${specConverted.gasLimit})`,
     );
@@ -363,7 +323,6 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
-          specConverted.minConfirmations,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -410,7 +369,6 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
-          specConverted.minConfirmations,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -498,7 +456,6 @@ export function testRequestData(signers: Signers, context: Context): void {
             context.operator.address,
             specConverted.specId,
             specConverted.gasLimit,
-            specConverted.minConfirmations,
             {
               gasPrice: weiPerUnitGas,
             },
@@ -522,7 +479,6 @@ export function testRequestData(signers: Signers, context: Context): void {
       expect(fulfillConfig.payment).to.equal(paymentInEscrow);
       expect(fulfillConfig.callbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
       expect(fulfillConfig.fee).to.equal(specConverted.fee);
-      expect(fulfillConfig.minConfirmations).to.equal(specConverted.minConfirmations);
       expect(fulfillConfig.gasLimit).to.equal(specConverted.gasLimit + gasAfterPaymentCalculation);
       expect(fulfillConfig.feeType).to.equal(specConverted.feeType);
       expect(fulfillConfig.callbackFunctionId).to.equal(expectedCallbackFunctionId);
@@ -593,7 +549,6 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
-          specConverted.minConfirmations,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -610,7 +565,6 @@ export function testRequestData(signers: Signers, context: Context): void {
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
     expect(fulfillConfig.callbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
     expect(fulfillConfig.fee).to.equal(specConverted.fee);
-    expect(fulfillConfig.minConfirmations).to.equal(specConverted.minConfirmations);
     expect(fulfillConfig.gasLimit).to.equal(specConverted.gasLimit + gasAfterPaymentCalculation);
     expect(fulfillConfig.feeType).to.equal(specConverted.feeType);
     expect(fulfillConfig.callbackFunctionId).to.equal(expectedCallbackFunctionId);
@@ -677,7 +631,6 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
-          specConverted.minConfirmations,
           callbackAddr,
           callbackFunctionId,
           {
@@ -702,7 +655,6 @@ export function testRequestData(signers: Signers, context: Context): void {
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
     expect(fulfillConfig.callbackAddr).to.equal(callbackAddr);
     expect(fulfillConfig.fee).to.equal(specConverted.fee);
-    expect(fulfillConfig.minConfirmations).to.equal(specConverted.minConfirmations);
     expect(fulfillConfig.gasLimit).to.equal(specConverted.gasLimit + gasAfterPaymentCalculation);
     expect(fulfillConfig.feeType).to.equal(specConverted.feeType);
     expect(fulfillConfig.callbackFunctionId).to.equal(callbackFunctionId);
@@ -767,7 +719,6 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
-          specConverted.minConfirmations,
           context.drcGenericFulfillmentTH.address,
           callbackFunctionId,
           {
@@ -792,7 +743,6 @@ export function testRequestData(signers: Signers, context: Context): void {
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
     expect(fulfillConfig.callbackAddr).to.equal(context.drcGenericFulfillmentTH.address);
     expect(fulfillConfig.fee).to.equal(specConverted.fee);
-    expect(fulfillConfig.minConfirmations).to.equal(specConverted.minConfirmations);
     expect(fulfillConfig.gasLimit).to.equal(specConverted.gasLimit + gasAfterPaymentCalculation);
     expect(fulfillConfig.feeType).to.equal(specConverted.feeType);
     expect(fulfillConfig.callbackFunctionId).to.equal(callbackFunctionId);

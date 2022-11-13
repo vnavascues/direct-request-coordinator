@@ -90,7 +90,6 @@ contract DRCoordinator is
     bytes4 private constant OPERATOR_REQUEST_SELECTOR = OperatorInterface.operatorRequest.selector; // 4 bytes
     bytes4 private constant FULFILL_DATA_SELECTOR = this.fulfillData.selector; // 4 bytes
     uint16 public constant PERMIRYAD = 10_000; // 2 bytes
-    uint8 public constant MAX_REQUEST_CONFIRMATIONS = 200; // 1 byte
     uint32 private constant MIN_REQUEST_GAS_LIMIT = 400_000; // 6 bytes, from Operator.sol MINIMUM_CONSUMER_GAS_LIMIT
     // NB: with the current balance model & actions after calculating the payment, it is safe setting the
     // GAS_AFTER_PAYMENT_CALCULATION to 50_000 as a constant. Exact amount used is 42422 gas
@@ -312,7 +311,6 @@ contract DRCoordinator is
     function requestData(
         address _operatorAddr,
         uint32 _callbackGasLimit,
-        uint8 _callbackMinConfirmations,
         Chainlink.Request memory _req
     ) external whenNotPaused nonReentrant returns (bytes32) {
         // Validate parameters
@@ -325,7 +323,6 @@ contract DRCoordinator is
         // Validate arguments against Spec parameters
         Spec memory spec = s_keyToSpec._getSpec(key);
         _validateCallbackGasLimit(_callbackGasLimit, spec.gasLimit);
-        _validateCallbackMinConfirmations(_callbackMinConfirmations, spec.minConfirmations);
         // Calculate the MAX LINK payment amount
         uint96 maxPayment = uint96(
             uint256(
@@ -356,7 +353,6 @@ contract DRCoordinator is
         fulfillConfig.payment = paymentInEscrow;
         fulfillConfig.callbackAddr = callbackAddr;
         fulfillConfig.fee = spec.fee;
-        fulfillConfig.minConfirmations = _callbackMinConfirmations;
         fulfillConfig.gasLimit = _callbackGasLimit + GAS_AFTER_PAYMENT_CALCULATION;
         fulfillConfig.feeType = spec.feeType;
         fulfillConfig.callbackFunctionId = _req.callbackFunctionId;
@@ -366,9 +362,6 @@ contract DRCoordinator is
         _req.callbackAddress = address(this);
         _req.callbackFunctionId = FULFILL_DATA_SELECTOR;
         _req.addUint("gasLimit", uint256(fulfillConfig.gasLimit));
-        // NB: Chainlink nodes 1.2.0 to 1.4.1 can't parse uint/string for 'minConfirmations'
-        // https://github.com/smartcontractkit/chainlink/issues/6680
-        _req.addUint("minConfirmations", uint256(spec.minConfirmations));
         // Send an Operator request, and store the fulfill configuration by 'requestId'
         bytes32 requestId = _sendOperatorRequestTo(_operatorAddr, _req, paymentInEscrow);
         s_requestIdToFulfillConfig[requestId] = fulfillConfig;
@@ -654,7 +647,6 @@ contract DRCoordinator is
         _validateSpecFieldOperator(_key, _spec.operator);
         _validateSpecFieldFee(_key, _spec.feeType, _spec.fee);
         _validateSpecFieldGasLimit(_key, _spec.gasLimit);
-        _validateSpecFieldMinConfirmations(_key, _spec.minConfirmations);
         _validateSpecFieldPayment(_key, _spec.paymentType, _spec.payment);
         s_keyToSpec._set(_key, _spec);
         emit SpecSet(_key, _spec);
@@ -919,34 +911,12 @@ contract DRCoordinator is
         }
     }
 
-    function _validateCallbackMinConfirmations(uint8 _callbackMinConfirmations, uint8 _specMinConfirmations)
-        private
-        pure
-    {
-        if (_callbackMinConfirmations > _specMinConfirmations) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallbackMinConfirmationsIsGtSpecMinConfirmations(
-                _callbackMinConfirmations,
-                _specMinConfirmations
-            );
-        }
-    }
-
     function _validateSpecFieldGasLimit(bytes32 _key, uint32 _gasLimit) private pure {
         if (_gasLimit < MIN_REQUEST_GAS_LIMIT) {
             revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldGasLimitIsLtMinRequestGasLimit(
                 _key,
                 _gasLimit,
                 MIN_REQUEST_GAS_LIMIT
-            );
-        }
-    }
-
-    function _validateSpecFieldMinConfirmations(bytes32 _key, uint8 _minConfirmations) private pure {
-        if (_minConfirmations > MAX_REQUEST_CONFIRMATIONS) {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldMinConfirmationsIsGtMaxRequestConfirmations(
-                _key,
-                _minConfirmations,
-                MAX_REQUEST_CONFIRMATIONS
             );
         }
     }

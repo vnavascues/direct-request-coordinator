@@ -64,7 +64,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         expectedCallbackFunctionId,
         {
           gasPrice: weiPerUnitGas,
@@ -179,7 +178,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -227,7 +225,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -291,7 +288,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -363,7 +359,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -424,7 +419,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -604,7 +598,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
-          specConverted.minConfirmations,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -712,7 +705,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -812,7 +804,6 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
-        specConverted.minConfirmations,
         context.drcGenericFulfillmentTH.address,
         externalCallbackFunctionId,
         {

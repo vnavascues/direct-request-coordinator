@@ -28,7 +28,7 @@ observationSource = """
                          abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
                          data="{\\"requestId\\": $(decode_log.requestId),\\"payment\\": $(decode_log.payment),\\"callbackAddress\\": $(decode_log.callbackAddr),\\"callbackFunctionId\\": $(decode_log.callbackFunctionId),\\"expiration\\": $(decode_log.cancelExpiration),\\"data\\": $(encode_data)}"]
 
-    submit_tx           [type="ethtx" to="0x0000000000000000000000000000000000000000" data="$(encode_tx)" minConfirmations="2" gasLimit="1000000"]
+    submit_tx           [type="ethtx" to="0x0000000000000000000000000000000000000000" data="$(encode_tx)" gasLimit="1000000"]
 
     decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_tx -> submit_tx
 """

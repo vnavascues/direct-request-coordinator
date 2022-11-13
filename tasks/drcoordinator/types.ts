@@ -26,7 +26,6 @@ export interface Configuration {
   fee: string;
   feeType: number;
   gasLimit: number;
-  minConfirmations: number;
   operator: string;
   payment: string;
   paymentType: number;
@@ -37,7 +36,6 @@ export interface ConfigurationConverted {
   feeType: number;
   gasLimit: number;
   key: string;
-  minConfirmations: number;
   operator: string;
   payment: BigNumber;
   paymentType: number;

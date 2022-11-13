@@ -14,7 +14,7 @@ enum PaymentType {
 
 // A representation of the essential data of an Operator directrequest TOML job spec. It also includes specific
 // variables for dynamic LINK payments, e.g. fee, feeType.
-// Spec size = slot0 (32) + slot1 (32) + slot2 (19) = 83 bytes
+// Spec size = slot0 (32) + slot1 (32) + slot2 (18) = 82 bytes
 struct Spec {
     bytes32 specId; // 32 bytes -> slot0
     address operator; // 20 bytes -> slot1
@@ -23,7 +23,6 @@ struct Spec {
     uint96 fee; // 1e27 < 2^96 = 12 bytes -> slot2
     FeeType feeType; // 1 byte -> slot2
     uint32 gasLimit; // < 4.295 billion = 4 bytes -> slot2
-    uint8 minConfirmations; // 200 < 2^8 = 1 byte -> slot2
 }
 
 /**

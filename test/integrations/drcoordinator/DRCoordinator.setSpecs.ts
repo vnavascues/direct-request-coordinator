@@ -112,13 +112,6 @@ export function testSetSpecs(signers: Signers, context: Context): void {
       },
     },
     {
-      name: "minConfirmations is greater than MAX_REQUEST_CONFIRMATIONS",
-      testData: {
-        minConfirmations: MAX_REQUEST_CONFIRMATIONS + 1,
-        customError: "DRCoordinator__SpecFieldMinConfirmationsIsGtMaxRequestConfirmations",
-      },
-    },
-    {
       name: "payment is greater than PERMIRYAD (paymentType is PaymentType.PERMIRYAD)",
       testData: {
         paymentType: PaymentType.PERMIRYAD,
@@ -163,7 +156,6 @@ export function testSetSpecs(signers: Signers, context: Context): void {
         fee: testData.fee ?? BigNumber.from("1000000000000000"),
         gasLimit: testData.gasLimit ?? MIN_CONSUMER_GAS_LIMIT + 1,
         key: generateSpecKey(operatorAddr as string, specId),
-        minConfirmations: testData.minConfirmations ?? 2,
         operator: operatorAddr as string,
         paymentType: testData.paymentType || PaymentType.PERMIRYAD,
         payment: testData.payment ?? BigNumber.from("1000"),
@@ -208,7 +200,6 @@ export function testSetSpecs(signers: Signers, context: Context): void {
         specConverted0.fee,
         specConverted0.feeType,
         specConverted0.gasLimit,
-        specConverted0.minConfirmations,
       ])
       .to.emit(context.drCoordinator, "SpecSet")
       .withArgs(key1, [
@@ -219,7 +210,6 @@ export function testSetSpecs(signers: Signers, context: Context): void {
         specConverted1.fee,
         specConverted1.feeType,
         specConverted1.gasLimit,
-        specConverted1.minConfirmations,
       ]);
     expect(await context.drCoordinator.connect(signers.owner).getNumberOfSpecs()).to.equal(2);
   });
