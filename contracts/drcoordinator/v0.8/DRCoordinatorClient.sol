@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
 import { LinkTokenInterface } from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
-import { IDRCoordinator } from "./interfaces/IDRCoordinator.sol";
+import { IDRCoordinatorCallable as IDRCoordinator } from "./interfaces/IDRCoordinatorCallable.sol";
 import { ChainlinkFulfillment } from "./ChainlinkFulfillment.sol";
 
 /**
