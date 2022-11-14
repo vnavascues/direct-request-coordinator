@@ -1,3 +1,4 @@
+import AggregatorV3Interface from "@chainlink/contracts/abi/v0.8/AggregatorV3Interface.json";
 import type { ContractTransaction } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, ethers } from "ethers";
@@ -28,7 +29,6 @@ import {
   ExternalAdapterId,
   FeeType,
   MAX_PERMIRYAD_FEE,
-  MAX_REQUEST_CONFIRMATIONS,
   PERMIRYAD,
   PaymentType,
   TaskExecutionMode,
@@ -275,7 +275,7 @@ export async function deployDRCoordinator(
   let addressLink: string;
   let addressPriceFeed1: string;
   let addressPriceFeed2: string;
-  let isSequencerDependant: boolean;
+  let isL2SequencerDependant: boolean;
   let addressL2SequencerFeed: string;
   let l2SequencerGracePeriodSeconds: BigNumber;
   const chainId = hre.network.config.chainId as number;
@@ -297,7 +297,7 @@ export async function deployDRCoordinator(
     if (isMultiPriceFeedDependant) {
       await setAddressCode(hre, addressPriceFeed2, DUMMY_SET_CODE_BYTES); // NB: bypass constructor checks
     }
-    isSequencerDependant = false;
+    isL2SequencerDependant = false;
     addressL2SequencerFeed = ethers.constants.AddressZero;
     l2SequencerGracePeriodSeconds = BigNumber.from("0");
   } else {
@@ -305,11 +305,11 @@ export async function deployDRCoordinator(
   }
   const isL2WithSequencerChain = chainIdL2SequencerFeed.has(chainId);
   if (isL2WithSequencerChain) {
-    isSequencerDependant = true;
+    isL2SequencerDependant = true;
     addressL2SequencerFeed = chainIdL2SequencerFeed.get(chainId) as string;
     l2SequencerGracePeriodSeconds = l2SequencerGracePeriod as BigNumber;
   } else {
-    isSequencerDependant = false;
+    isL2SequencerDependant = false;
     addressL2SequencerFeed = ethers.constants.AddressZero;
     l2SequencerGracePeriodSeconds = BigNumber.from("0");
   }
@@ -326,7 +326,7 @@ export async function deployDRCoordinator(
       description,
       fallbackWeiPerUnitLink,
       stalenessSeconds,
-      isSequencerDependant,
+      isL2SequencerDependant,
       addressL2SequencerFeed,
       l2SequencerGracePeriodSeconds,
       overrides,
@@ -345,7 +345,7 @@ export async function deployDRCoordinator(
     description,
     fallbackWeiPerUnitLink,
     stalenessSeconds,
-    isSequencerDependant,
+    isL2SequencerDependant,
     addressL2SequencerFeed,
     l2SequencerGracePeriodSeconds,
   };
@@ -377,7 +377,7 @@ export async function getDRCoordinator(
       "DRCoordinator for dry run mode on hardhat", // description
       BigNumber.from("8000000000000000"), // fallbackWeiPerUnitLink
       BigNumber.from("86400"), // stalenessSeconds
-      overrides,
+      false,
     );
     drCoordinator = deployData.drCoordinator;
   } else if ([TaskExecutionMode.FORKING, TaskExecutionMode.PROD].includes(mode)) {
@@ -540,25 +540,53 @@ export async function logDRCoordinatorDetail(
     const description = await drCoordinator.connect(signer).getDescription();
     const owner = await drCoordinator.connect(signer).owner();
     const paused = await drCoordinator.connect(signer).paused();
-    const maxRequestConfirmations = await drCoordinator.connect(signer).MAX_REQUEST_CONFIRMATIONS();
-    const isSequencerPendant = await drCoordinator.connect(signer).IS_SEQUENCER_DEPENDANT();
-    let flagsSequencerOffline = "N/A";
-    let chainlinkFlags = "N/A";
-    if (isSequencerPendant) {
-      flagsSequencerOffline = await drCoordinator.connect(signer).FLAG_SEQUENCER_OFFLINE();
-      chainlinkFlags = await drCoordinator.connect(signer).CHAINLINK_FLAGS();
-    }
     const addressLink = await drCoordinator.connect(signer).LINK();
-    // TODO: pull feed names and log them
     const isMultiPriceFeedDependant = await drCoordinator.connect(signer).IS_MULTI_PRICE_FEED_DEPENDANT();
     const addressPriceFeed1 = await drCoordinator.connect(signer).PRICE_FEED_1();
     const addressPriceFeed2 = await drCoordinator.connect(signer).PRICE_FEED_2();
+    const isL2SequencerDependant = await drCoordinator.connect(signer).IS_L2_SEQUENCER_DEPENDANT();
+    const addressL2SequencerFeed = await drCoordinator.connect(signer).L2_SEQUENCER_FEED();
     const gasAfterPaymentCalculation = await drCoordinator.connect(signer).GAS_AFTER_PAYMENT_CALCULATION();
     const fallbackWeiPerUnitLink = await drCoordinator.connect(signer).getFallbackWeiPerUnitLink();
     const permiryadFeeFactor = await drCoordinator.connect(signer).getPermiryadFeeFactor();
     const stalenessSeconds = await drCoordinator.connect(signer).getStalenessSeconds();
+    const l2SequencerGracePeriodSeconds = await drCoordinator.connect(signer).getL2SequencerGracePeriodSeconds();
     const linkBalance = await getLinkBalanceOf(hre, signer, drCoordinator.address, addressLink);
     const linkProfit = await drCoordinator.connect(signer).availableFunds(drCoordinator.address);
+
+    // Get feeds descriptions
+    let priceFeed1;
+    let priceFeed2;
+    let l2SequencerFeed;
+    try {
+      priceFeed1 = await hre.ethers.getContractAt(AggregatorV3Interface, addressPriceFeed1);
+    } catch (error) {
+      throw new Error(`Unexpected error reading Price Feed 1 at: ${addressPriceFeed1}. Reason: ${error}`);
+    }
+    if (isMultiPriceFeedDependant) {
+      try {
+        priceFeed2 = await hre.ethers.getContractAt(AggregatorV3Interface, addressPriceFeed2);
+      } catch (error) {
+        throw new Error(`Unexpected error reading Price Feed 2 at: ${addressPriceFeed2}. Reason: ${error}`);
+      }
+    }
+    if (isL2SequencerDependant) {
+      try {
+        l2SequencerFeed = await hre.ethers.getContractAt(AggregatorV3Interface, addressL2SequencerFeed);
+      } catch (error) {
+        throw new Error(
+          `Unexpected error reading L2 Sequencer Uptime Status Feed at: ${addressL2SequencerFeed}. Reason: ${error}`,
+        );
+      }
+    }
+    const descriptionPriceFeed1 = await priceFeed1.connect(signer).description();
+    const descriptionPriceFeed2 = isMultiPriceFeedDependant
+      ? await (priceFeed2 as ethers.Contract).connect(signer).description()
+      : "N/A";
+    const descriptionL2SequencerFeed2 = isL2SequencerDependant
+      ? await (l2SequencerFeed as ethers.Contract).connect(signer).description()
+      : "N/A";
+
     logger.info(
       {
         address: address,
@@ -570,12 +598,15 @@ export async function logDRCoordinatorDetail(
         profit: `${ethers.utils.formatUnits(linkProfit)} LINK`,
         LINK: addressLink,
         IS_MULTI_PRICE_FEED_DEPENDANT: isMultiPriceFeedDependant,
-        PRICE_FEED_1: addressPriceFeed1,
-        PRICE_FEED_2: addressPriceFeed2,
-        MAX_REQUEST_CONFIRMATIONS: `${maxRequestConfirmations}`,
-        IS_SEQUENCER_DEPENDANT: isSequencerPendant,
-        FLAG_SEQUENCER_OFFLINE: flagsSequencerOffline,
-        CHAINLINK_FLAGS: chainlinkFlags,
+        PRICE_FEED_1: `${addressPriceFeed1} (${descriptionPriceFeed1})`,
+        PRICE_FEED_2: `${addressPriceFeed2} (${descriptionPriceFeed2})`,
+        IS_L2_SEQUENCER_DEPENDANT: isL2SequencerDependant,
+        L2_SEQUENCER_FEEED: isL2SequencerDependant
+          ? `${addressL2SequencerFeed} (${descriptionL2SequencerFeed2})`
+          : `${addressL2SequencerFeed} (N/A)`,
+        L2_SEQUENCER_GRACE_PERIOD_SECONDS: isL2SequencerDependant
+          ? l2SequencerGracePeriodSeconds
+          : `${l2SequencerGracePeriodSeconds} (N/A)`,
         GAS_AFTER_PAYMENT_CALCULATION: `${gasAfterPaymentCalculation}`,
         fallbackWeiPerUnitLink: `${fallbackWeiPerUnitLink}`,
         permiryadFeeFactor: `${permiryadFeeFactor}`,
@@ -799,6 +830,24 @@ export async function setFallbackWeiPerUnitLink(
     await tx.wait();
   } catch (error) {
     logger.child(logObj).error(error, `setFallbackWeiPerUnitLink() failed due to:`);
+    throw error;
+  }
+}
+
+export async function setL2SequencerGracePeriodSeconds(
+  drCoordinator: DRCoordinator,
+  signer: ethers.Wallet | SignerWithAddress,
+  l2SequencerGracePeriodSeconds: BigNumber,
+  overrides: Overrides,
+): Promise<void> {
+  const logObj = { l2SequencerGracePeriodSeconds };
+  let tx: ContractTransaction;
+  try {
+    tx = await drCoordinator.connect(signer).setL2SequencerGracePeriodSeconds(l2SequencerGracePeriodSeconds, overrides);
+    logger.info(logObj, `setL2SequencerGracePeriodSeconds() | Tx hash: ${tx.hash}`);
+    await tx.wait();
+  } catch (error) {
+    logger.child(logObj).error(error, `setL2SequencerGracePeriodSeconds() failed due to:`);
     throw error;
   }
 }
@@ -1263,7 +1312,7 @@ export async function verifyDRCoordinator(
   description: string,
   fallbackWeiPerUnitLink: BigNumber,
   stalenessSeconds: BigNumber,
-  isSequencerDependant: boolean,
+  isL2SequencerDependant: boolean,
   addressL2SequencerFeed: string,
   l2SequencerGracePeriodSeconds: BigNumber,
 ): Promise<void> {
@@ -1278,7 +1327,7 @@ export async function verifyDRCoordinator(
       description,
       fallbackWeiPerUnitLink,
       stalenessSeconds,
-      isSequencerDependant,
+      isL2SequencerDependant,
       addressL2SequencerFeed,
       l2SequencerGracePeriodSeconds,
     ],

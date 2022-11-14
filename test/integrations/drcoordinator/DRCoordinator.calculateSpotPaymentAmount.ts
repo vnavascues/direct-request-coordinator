@@ -42,7 +42,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         paymentInEscrow: BigNumber.from("0"), // 0 LINK
         fee: BigNumber.from("1000000000000000000"), // 1 LINK
         feeType: FeeType.FLAT,
-        expectedAmount: BigNumber.from("1317608300240670914"), // 1.31 LINK (to pay)
+        expectedAmount: BigNumber.from("1318622611302631973"), // 1.31 LINK (to pay)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
@@ -54,7 +54,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         paymentInEscrow: BigNumber.from("100000000000000000"), // 0.1 LINK
         fee: BigNumber.from("1000000000000000000"), // 1 LINK
         feeType: FeeType.FLAT,
-        expectedAmount: BigNumber.from("1218227201905596306"), // 1.22 LINK (to pay)
+        expectedAmount: BigNumber.from("1219241512967557365"), // 1.22 LINK (to pay)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
@@ -66,7 +66,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         paymentInEscrow: BigNumber.from("2000000000000000000"), // 2 LINK
         fee: BigNumber.from("1000000000000000000"), // 1 LINK
         feeType: FeeType.FLAT,
-        expectedAmount: BigNumber.from("-681772798094403694"), // -0.68 LINK (to refund)
+        expectedAmount: BigNumber.from("-680758487032442635"), // -0.68 LINK (to refund)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
@@ -78,7 +78,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         paymentInEscrow: BigNumber.from("0"), // 0 LINK
         fee: BigNumber.from("1225"), // 12.25%
         feeType: FeeType.PERMIRYAD,
-        expectedAmount: BigNumber.from("356167958460713724"), // 0.36 LINK (to pay)
+        expectedAmount: BigNumber.from("357306522627765013"), // 0.36 LINK (to pay)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
@@ -90,7 +90,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         paymentInEscrow: BigNumber.from("100000000000000000"), // 0.1 LINK
         fee: BigNumber.from("1225"), // 12.25%
         feeType: FeeType.PERMIRYAD,
-        expectedAmount: BigNumber.from("256862675579592477"), // 0.26 LINK (to pay)
+        expectedAmount: BigNumber.from("258001239746643765"), // 0.26 LINK (to pay)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
@@ -102,7 +102,7 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
         paymentInEscrow: BigNumber.from("2000000000000000000"), // 2 LINK
         fee: BigNumber.from("1225"), // 12.25%
         feeType: FeeType.PERMIRYAD,
-        expectedAmount: BigNumber.from("-1643137324420407523"), // -1.64 LINK (to refund)
+        expectedAmount: BigNumber.from("-1641998760253356235"), // -1.64 LINK (to refund)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },

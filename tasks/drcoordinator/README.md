@@ -334,23 +334,24 @@ yarn hardhat drcoordinator:import-file \
 
 Task parameters:
 
-| Required? |          Name          |                                Description                                |   Type    |      Depends On      |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-----------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
-|    ✅     |        address         |                    The DRCoordinator contract address                     |  address  |                      |                                                  |             |
-|    ✅     |          mode          |                            The execution mode                             |  string   |                      |                `forking`, `prod`                 |  `forking`  |
-|           |      description       |                       The new contract description                        |  string   |                      |                                                  |    `''`     |
-|           | fallbackweiperunitlink |            The new fallback amount of network TKN wei per LINK            | BigNumber |                      |                                                  |             |
-|           |         owner          |                 The new address to transfer the ownership                 |  address  |                      |                                                  |             |
-|           |         pause          |                       Pause or unpause the contract                       |  boolean  |                      |                                                  |             |
-|           |   permiryadfeefactor   |              The factor to be applied to the permiryad `fee`              |  number   |                      |                                                  |             |
-|           |    stalenessseconds    | The new number of seconds after which the feed answer is considered stale | BigNumber |                      |                                                  |             |
-|           |       overrides        |         Allows customising the tx overrides (ethers.js Overrides)         |   Flag    |                      |                                                  |   `false`   |
-|           |        gaslimit        |                             The tx `gasLimit`                             |    int    |     --overrides      |                                                  |             |
-|           |         txtype         |                                The tx type                                |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
-|           |        gasprice        |                   The type 0 tx `gasPrice` (in `gwei`)                    |   float   | --overrides --type 0 |                                                  |             |
-|           |       gasmaxfee        |                 The type 0 tx `maxFeePerGas` (in `gwei`)                  |   float   | --overrides --type 2 |                                                  |             |
-|           |     gasmaxpriority     |                The type 0 tx `gasmaxpriority` (in `gwei`)                 |   float   | --overrides --type 2 |                                                  |             |
-|    ✅     |        network         |                          Hardhat `network` param                          |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |          Name          |                                         Description                                          |   Type    |      Depends On      |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :------------------------------------------------------------------------------------------: | :-------: | :------------------: | :----------------------------------------------: | :---------: |
+|    ✅     |        address         |                              The DRCoordinator contract address                              |  address  |                      |                                                  |             |
+|    ✅     |          mode          |                                      The execution mode                                      |  string   |                      |                `forking`, `prod`                 |  `forking`  |
+|           |      description       |                                 The new contract description                                 |  string   |                      |                                                  |    `''`     |
+|           | fallbackweiperunitlink |                     The new fallback amount of network TKN wei per LINK                      | BigNumber |                      |                                                  |             |
+|           | l2sequencergraceperiod | The new number of seconds after which the L2 Sequencer Uptime Status Feed answer is reliable | BigNumber |                      |                                                  |             |
+|           |         owner          |                          The new address to transfer the ownership                           |  address  |                      |                                                  |             |
+|           |         pause          |                                Pause or unpause the contract                                 |  boolean  |                      |                                                  |             |
+|           |   permiryadfeefactor   |                       The factor to be applied to the permiryad `fee`                        |  number   |                      |                                                  |             |
+|           |    stalenessseconds    |          The new number of seconds after which the feed answer is considered stale           | BigNumber |                      |                                                  |             |
+|           |       overrides        |                  Allows customising the tx overrides (ethers.js Overrides)                   |   Flag    |                      |                                                  |   `false`   |
+|           |        gaslimit        |                                      The tx `gasLimit`                                       |    int    |     --overrides      |                                                  |             |
+|           |         txtype         |                                         The tx type                                          |    int    |     --overrides      |           `0` (legacy), `2` (EIP-1559)           |             |
+|           |        gasprice        |                             The type 0 tx `gasPrice` (in `gwei`)                             |   float   | --overrides --type 0 |                                                  |             |
+|           |       gasmaxfee        |                           The type 0 tx `maxFeePerGas` (in `gwei`)                           |   float   | --overrides --type 2 |                                                  |             |
+|           |     gasmaxpriority     |                          The type 0 tx `gasmaxpriority` (in `gwei`)                          |   float   | --overrides --type 2 |                                                  |             |
+|    ✅     |        network         |                                   Hardhat `network` param                                    |  string   |                      | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
@@ -412,22 +413,39 @@ yarn hardhat drcoordinator:withdraw \
 
 Task parameters:
 
-| Required? |          Name          |                              Description                              |   Type    | Depends On |                     Options                      | Defaults to |
-| :-------: | :--------------------: | :-------------------------------------------------------------------: | :-------: | :--------: | :----------------------------------------------: | :---------: |
-|    ✅     |        address         |                  The DRCoordinator contract address                   |  address  |            |                                                  |             |
-|    ✅     |      description       |                       The contract description                        |  string   |            |                                                  |             |
-|    ✅     | fallbackweiperunitlink |            The fallback amount of network TKN wei per LINK            | BigNumber |            |                                                  |             |
-|    ✅     |    stalenessseconds    | The number of seconds after which the feed answer is considered stale | BigNumber |            |                                                  |             |
-|    ✅     |        network         |                        Hardhat `network` param                        |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
+| Required? |          Name          |                                       Description                                        |   Type    |     Depends On     |                     Options                      | Defaults to |
+| :-------: | :--------------------: | :--------------------------------------------------------------------------------------: | :-------: | :----------------: | :----------------------------------------------: | :---------: |
+|    ✅     |        address         |                            The DRCoordinator contract address                            |  address  |                    |                                                  |             |
+|    ✅     |      description       |                                 The contract description                                 |  string   |                    |                                                  |             |
+|    ✅     | fallbackweiperunitlink |                     The fallback amount of network TKN wei per LINK                      | BigNumber |                    |                                                  |             |
+|    ✅     |    stalenessseconds    |          The number of seconds after which the feed answer is considered stale           | BigNumber |                    |                                                  |             |
+|           |    ismultipricefeed    |              Enables the 2 Price Feed mode, i.e. GASTKN / TKN & LINK / TKN               |   Flag    |                    |                                                  |   `false`   |
+|           |       pricefeed1       |                        The address of the GASTKN / TKN Price Feed                        |  address  | --ismultipricefeed |                                                  |             |
+|           |       pricefeed2       |                         The address of the LINK / TKN Price Feed                         |  address  | --ismultipricefeed |                                                  |             |
+|           |    l2sequencerfeed     |                    The address of the L2 Sequencer Uptime Status Feed                    |  address  |                    |                                                  |             |
+|           | l2sequencergraceperiod | The number of seconds after which the L2 Sequencer Uptime Status Feed answer is reliable | BigNumber |                    |                                                  |             |
+|    ✅     |        network         |                                 Hardhat `network` param                                  |  string   |                    | See `networkUserConfigs` in `/utils/networks.ts` |             |
 
 Example calls:
 
 ```sh
 yarn hardhat drcoordinator:verify \
---description beta-2 \
+--address 0x09bC54253d986FD1a8A1E41ed0a9d218aeC52140 \
+--description beta-2 \ss
 --fallbackweiperunitlink "8000000000000000" \
 --stalenessseconds "86400" \
 --network eth-kovan
+```
+
+```sh
+yarn hardhat drcoordinator:verify \
+--address 0x09bC54253d986FD1a8A1E41ed0a9d218aeC52140 \
+--description beta-2 \
+--fallbackweiperunitlink "8000000000000000" \
+--stalenessseconds "86400" \
+--l2sequencerfeed 0x4C4814aa04433e0FB31310379a4D6946D5e1D353 \
+--l2sequencergraceperiod "3600" \
+--network opt-goerli
 ```
 
 ### Verify a DRCoordinatorConsumer

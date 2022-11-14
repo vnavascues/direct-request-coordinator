@@ -12,7 +12,7 @@ import {
   getNetworkLinkTknFeedAddress,
   validateLinkAddressFunds,
 } from "../../utils/chainlink";
-import { MIN_CONSUMER_GAS_LIMIT, chainIdFlags, chainIdL2SequencerFeed } from "../../utils/chainlink-constants";
+import { MIN_CONSUMER_GAS_LIMIT, chainIdL2SequencerFeed } from "../../utils/chainlink-constants";
 import { getNumberOfConfirmations, getOverrides } from "../../utils/deployment";
 import { logger } from "../../utils/logger";
 import {
@@ -37,6 +37,7 @@ import {
   pause,
   setDescription,
   setFallbackWeiPerUnitLink,
+  setL2SequencerGracePeriodSeconds,
   setPermiryadFeeFactor,
   setStalenessSeconds,
   setupDRCoordinatorAfterDeploy,
@@ -228,7 +229,7 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
       description,
       fallbackWeiPerUnitLink,
       stalenessSeconds,
-      isSequencerDependant,
+      isL2SequencerDependant,
       addressL2SequencerFeed,
       l2SequencerGracePeriodSeconds,
     } = await deployDRCoordinator(
@@ -262,7 +263,7 @@ task("drcoordinator:deploy", "Deploy a DRCoordinator")
       description,
       fallbackWeiPerUnitLink,
       stalenessSeconds,
-      isSequencerDependant,
+      isL2SequencerDependant,
       addressL2SequencerFeed,
       l2SequencerGracePeriodSeconds,
     );
@@ -339,7 +340,6 @@ task("drcoordinator:detail", "Log the DRCoordinator storage")
     const [signer] = await hre.ethers.getSigners();
     logger.info(`connecting to DRCoordinator at: ${taskArguments.address}`);
     const drCoordinator = await getDRCoordinator(hre, taskArguments.address, TaskExecutionMode.PROD);
-
     await logDRCoordinatorDetail(
       hre,
       drCoordinator,
@@ -470,6 +470,7 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
   )
   .addOptionalParam("description", "The new 'description'", undefined, types.string)
   .addOptionalParam("fallbackweiperunitlink", "The new 'fallbackWeiPerUnitLink'", undefined, typeBignumber)
+  .addOptionalParam("l2sequencergraceperiod", "The new 'l2SequencerGracePeriodSeconds'", undefined, typeBignumber)
   .addOptionalParam("owner", "The new 'owner'", undefined, typeAddress)
   .addOptionalParam("pause", "Pause or unpause the contract", undefined, types.boolean)
   .addOptionalParam("stalenessseconds", "The new 'stalenessSeconds'", undefined, typeBignumber)
@@ -496,6 +497,11 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
     // Set fallbackWeiPerUnitLink
     if (taskArguments.fallbackweiperunitlink) {
       await setFallbackWeiPerUnitLink(drCoordinator, signer, taskArguments.fallbackweiperunitlink, overrides);
+    }
+
+    // Set l2SequencerGracePeriodSeconds
+    if (taskArguments.l2sequencergraceperiod) {
+      await setL2SequencerGracePeriodSeconds(drCoordinator, signer, taskArguments.l2sequencergraceperiod, overrides);
     }
 
     // Transfer ownerwhip
@@ -536,16 +542,44 @@ task("drcoordinator:verify", "Verify a DRCoordinator on an Etherscan-like block 
     undefined,
     typeBignumber,
   )
+  .addFlag("ismultipricefeed", "Enables the 2 Price Feed mode, i.e. GASTKN / TKN & LINK / TKN")
+  .addOptionalParam("pricefeed1", "The address of the GASTKN / TKN Price Feed", undefined, typeAddress)
+  .addOptionalParam("pricefeed2", "The address of the LINK / TKN Price Feed", undefined, typeAddress)
+  .addOptionalParam("l2sequencerfeed", "The address of the L2 Sequencer Uptime Status Feed", undefined, typeAddress)
+  .addOptionalParam(
+    "l2sequencergraceperiod",
+    "The number of seconds before trusting the L2 Sequencer Uptime Status Feed answer",
+    undefined,
+    typeBignumber,
+  )
   .setAction(async function (taskArguments: TaskArguments, hre) {
     const chainId = hre.network.config.chainId as number;
+    const isL2WithSequencerChain = chainIdL2SequencerFeed.has(chainId);
+
+    // Custom checks
+    if (isL2WithSequencerChain) {
+      if (!taskArguments.l2sequencerfeed) {
+        throw new Error(`Verifying on a L2 with Sequencer requires task argument 'l2sequencerfeed'`);
+      }
+      if (!taskArguments.l2sequencergraceperiod) {
+        throw new Error(`Verifying on a L2 with Sequencer requires task argument 'l2sequencergraceperiod'`);
+      }
+    }
     const addressLink = getNetworkLinkAddress(hre.network);
-    // TODO: support multiple price feeds
-    const isMultiPriceFeedDependant = false;
-    const addressPriceFeed1 = getNetworkLinkTknFeedAddress(hre.network);
-    const addressPriceFeed2 = ethers.constants.AddressZero;
-    const sequencerOfflineFlag = chainIdSequencerOfflineFlag.get(chainId) || "";
-    const isSequencerDependant = !!sequencerOfflineFlag;
-    const addressChainlinkFlags = chainIdFlags.get(chainId) || "";
+
+    const isMultiPriceFeedDependant = taskArguments.ismultipricefeed;
+    const addressPriceFeed1 = isMultiPriceFeedDependant
+      ? taskArguments.pricefeed1
+      : getNetworkLinkTknFeedAddress(hre.network);
+    const addressPriceFeed2 = isMultiPriceFeedDependant ? taskArguments.pricefeed2 : ethers.constants.AddressZero;
+
+    const isL2SequencerDependant = isL2WithSequencerChain;
+    const addressL2SequencerFeed = isL2WithSequencerChain
+      ? taskArguments.l2sequencerfeed
+      : ethers.constants.AddressZero;
+    const l2SequencerGracePeriodSeconds = isL2WithSequencerChain
+      ? taskArguments.l2sequencergraceperiod
+      : BigNumber.from("0");
     await verifyDRCoordinator(
       hre,
       taskArguments.address,
@@ -556,9 +590,9 @@ task("drcoordinator:verify", "Verify a DRCoordinator on an Etherscan-like block 
       taskArguments.description,
       taskArguments.fallbackweiperunitlink,
       taskArguments.stalenessseconds,
-      isSequencerDependant,
-      sequencerOfflineFlag,
-      addressChainlinkFlags,
+      isL2SequencerDependant,
+      addressL2SequencerFeed,
+      l2SequencerGracePeriodSeconds,
     );
   });
 
