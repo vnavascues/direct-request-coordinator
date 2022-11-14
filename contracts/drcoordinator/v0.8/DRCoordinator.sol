@@ -8,7 +8,6 @@ import { LinkTokenInterface } from "@chainlink/contracts/src/v0.8/interfaces/Lin
 import { OperatorInterface } from "@chainlink/contracts/src/v0.8/interfaces/OperatorInterface.sol";
 import { TypeAndVersionInterface } from "@chainlink/contracts/src/v0.8/interfaces/TypeAndVersionInterface.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IDRCoordinatorCallable } from "./interfaces/IDRCoordinatorCallable.sol";
 import { IDRCoordinatorOwnable } from "./interfaces/IDRCoordinatorOwnable.sol";
@@ -69,7 +68,6 @@ enum PaymentPreFeeType {
 contract DRCoordinator is
     ConfirmedOwner,
     Pausable,
-    ReentrancyGuard,
     TypeAndVersionInterface,
     IDRCoordinatorCallable,
     IDRCoordinatorOwnable
@@ -79,32 +77,33 @@ contract DRCoordinator is
     using Chainlink for Chainlink.Request;
     using SpecLibrary for SpecLibrary.Map;
 
-    uint256 private constant AMOUNT_OVERRIDE = 0; // 32 bytes
-    uint256 private constant OPERATOR_ARGS_VERSION = 2; // 32 bytes
+    uint256 private constant AMOUNT_OVERRIDE = 0;
+    uint256 private constant OPERATOR_ARGS_VERSION = 2;
     uint256 private constant OPERATOR_REQUEST_EXPIRATION_TIME = 5 minutes;
-    bytes32 private constant NO_SPEC_ID = bytes32(0); // 32 bytes
-    uint256 private constant TKN_TO_WEI_FACTOR = 1e18; // 32 bytes
-    address private constant SENDER_OVERRIDE = address(0); // 20 bytes
-    uint96 private constant LINK_TOTAL_SUPPLY = 1e27; // 12 bytes
-    uint64 private constant LINK_TO_JUELS_FACTOR = 1e18; // 8 bytes
-    bytes4 private constant OPERATOR_REQUEST_SELECTOR = OperatorInterface.operatorRequest.selector; // 4 bytes
-    bytes4 private constant FULFILL_DATA_SELECTOR = this.fulfillData.selector; // 4 bytes
-    uint16 public constant PERMIRYAD = 10_000; // 2 bytes
-    uint32 private constant MIN_REQUEST_GAS_LIMIT = 400_000; // 6 bytes, from Operator.sol MINIMUM_CONSUMER_GAS_LIMIT
+    bytes32 private constant NO_SPEC_ID = bytes32(0);
+    uint256 private constant TKN_TO_WEI_FACTOR = 1e18;
+    address private constant SENDER_OVERRIDE = address(0);
+    uint96 private constant LINK_TOTAL_SUPPLY = 1e27;
+    uint64 private constant LINK_TO_JUELS_FACTOR = 1e18;
+    bytes4 private constant OPERATOR_REQUEST_SELECTOR = OperatorInterface.operatorRequest.selector;
+    bytes4 private constant FULFILL_DATA_SELECTOR = this.fulfillData.selector;
+    uint16 private constant PERMIRYAD = 10_000;
+    uint32 private constant MIN_REQUEST_GAS_LIMIT = 400_000; // From Operator.sol MINIMUM_CONSUMER_GAS_LIMIT
     // NB: with the current balance model & actions after calculating the payment, it is safe setting the
-    // GAS_AFTER_PAYMENT_CALCULATION to 50_000 as a constant. Exact amount used is 42422 gas
-    uint32 public constant GAS_AFTER_PAYMENT_CALCULATION = 50_000; // 6 bytes
-    bool public immutable IS_L2_SEQUENCER_DEPENDANT; // 1 byte
-    LinkTokenInterface public immutable LINK; // 20 bytes
-    AggregatorV3Interface public immutable L2_SEQUENCER_FEED; // 20 bytes
-    AggregatorV3Interface public immutable PRICE_FEED_1; // 20 bytes - LINK/TKN (single feed) or TKN/USD (multi feed)
-    AggregatorV3Interface public immutable PRICE_FEED_2; // 20 bytes - address(0) (single feed) or LINK/USD (multi feed)
-    bool public immutable IS_MULTI_PRICE_FEED_DEPENDANT; // 1 byte
-    uint8 private s_permiryadFeeFactor = 1; // 1 byte
-    uint256 private s_requestCount = 1; // 32 bytes
-    uint256 private s_stalenessSeconds; // 32 bytes
-    uint256 private s_l2SequencerGracePeriodSeconds; // 32 bytes
-    uint256 private s_fallbackWeiPerUnitLink; // 32 bytes
+    // GAS_AFTER_PAYMENT_CALCULATION to 50_000 as a constant. Exact amount used is 42945 gas
+    uint32 private constant GAS_AFTER_PAYMENT_CALCULATION = 50_000;
+    LinkTokenInterface private immutable i_link;
+    AggregatorV3Interface private immutable i_l2SequencerFeed;
+    AggregatorV3Interface private immutable i_priceFeed1; // LINK/TKN (single feed) or TKN/USD (multi feed)
+    AggregatorV3Interface private immutable i_priceFeed2; // address(0) (single feed) or LINK/USD (multi feed)
+    bool private immutable i_isMultiPriceFeedDependant;
+    bool private immutable i_isL2SequencerDependant;
+    bool private s_isReentrancyLocked;
+    uint8 private s_permiryadFeeFactor = 1;
+    uint256 private s_requestCount = 1;
+    uint256 private s_stalenessSeconds;
+    uint256 private s_l2SequencerGracePeriodSeconds;
+    uint256 private s_fallbackWeiPerUnitLink;
     string private s_description;
     mapping(bytes32 => address) private s_pendingRequests; /* requestId */ /* operatorAddr */
     mapping(address => uint96) private s_consumerToLinkBalance; /* mgs.sender */ /* LINK */
@@ -141,6 +140,15 @@ contract DRCoordinator is
     event SpecSet(bytes32 indexed key, Spec spec);
     event StalenessSecondsSet(uint256 stalenessSeconds);
 
+    modifier nonReentrant() {
+        if (s_isReentrancyLocked) {
+            revert IDRCoordinatorCallable.DRCoordinator__CallIsReentrant();
+        }
+        s_isReentrancyLocked = true;
+        _;
+        s_isReentrancyLocked = false;
+    }
+
     constructor(
         address _link,
         bool _isMultiPriceFeedDependant,
@@ -156,14 +164,14 @@ contract DRCoordinator is
         _requirePriceFeed(_isMultiPriceFeedDependant, _priceFeed1, _priceFeed2);
         _requireFallbackWeiPerUnitLinkIsGtZero(_fallbackWeiPerUnitLink);
         _requireL2SequencerFeed(_isL2SequencerDependant, _l2SequencerFeed);
-        LINK = LinkTokenInterface(_link);
-        IS_MULTI_PRICE_FEED_DEPENDANT = _isMultiPriceFeedDependant;
-        PRICE_FEED_1 = AggregatorV3Interface(_priceFeed1);
-        PRICE_FEED_2 = _isMultiPriceFeedDependant
+        i_link = LinkTokenInterface(_link);
+        i_isMultiPriceFeedDependant = _isMultiPriceFeedDependant;
+        i_priceFeed1 = AggregatorV3Interface(_priceFeed1);
+        i_priceFeed2 = _isMultiPriceFeedDependant
             ? AggregatorV3Interface(_priceFeed2)
             : AggregatorV3Interface(address(0));
-        IS_L2_SEQUENCER_DEPENDANT = _isL2SequencerDependant;
-        L2_SEQUENCER_FEED = _isL2SequencerDependant
+        i_isL2SequencerDependant = _isL2SequencerDependant;
+        i_l2SequencerFeed = _isL2SequencerDependant
             ? AggregatorV3Interface(_l2SequencerFeed)
             : AggregatorV3Interface(address(0));
         s_description = _description;
@@ -175,11 +183,11 @@ contract DRCoordinator is
     /* ========== EXTERNAL FUNCTIONS ========== */
 
     function addFunds(address _consumer, uint96 _amount) external nonReentrant {
-        _requireLinkAllowanceIsSufficient(msg.sender, uint96(LINK.allowance(msg.sender, address(this))), _amount);
-        _requireLinkBalanceIsSufficient(msg.sender, uint96(LINK.balanceOf(msg.sender)), _amount);
+        _requireLinkAllowanceIsSufficient(msg.sender, uint96(i_link.allowance(msg.sender, address(this))), _amount);
+        _requireLinkBalanceIsSufficient(msg.sender, uint96(i_link.balanceOf(msg.sender)), _amount);
         s_consumerToLinkBalance[_consumer] += _amount;
         emit FundsAdded(msg.sender, _consumer, _amount);
-        if (!LINK.transferFrom(msg.sender, address(this), _amount)) {
+        if (!i_link.transferFrom(msg.sender, address(this), _amount)) {
             revert IDRCoordinatorCallable.DRCoordinator__LinkTransferFromFailed(msg.sender, address(this), _amount);
         }
     }
@@ -243,7 +251,7 @@ contract DRCoordinator is
             fulfillConfig.feeType,
             fulfillConfig.fee
         );
-        // NB: statemens below cost 42422 gas -> GAS_AFTER_PAYMENT_CALCULATION = 50k gas
+        // NB: statemens below cost 42945 gas -> GAS_AFTER_PAYMENT_CALCULATION = 50k gas
         // Calculate the LINK payment to either pay (consumer -> DRCoordinator) or refund (DRCoordinator -> consumer),
         // check whether the payer has enough balance, and adjust their balances (payer and payee)
         uint96 consumerLinkBalance = s_consumerToLinkBalance[fulfillConfig.msgSender];
@@ -466,7 +474,7 @@ contract DRCoordinator is
         _requireLinkBalanceIsSufficient(consumer, consumerLinkBalance, _amount);
         s_consumerToLinkBalance[consumer] = consumerLinkBalance - _amount;
         emit FundsWithdrawn(consumer, _payee, _amount);
-        if (!LINK.transfer(_payee, _amount)) {
+        if (!i_link.transfer(_payee, _amount)) {
             revert IDRCoordinatorCallable.DRCoordinator__LinkTransferFailed(_payee, _amount);
         }
     }
@@ -534,6 +542,26 @@ contract DRCoordinator is
         return s_requestIdToFulfillConfig[_requestId];
     }
 
+    function getIsL2SequencerDependant() external view returns (bool) {
+        return i_isL2SequencerDependant;
+    }
+
+    function getIsMultiPriceFeedDependant() external view returns (bool) {
+        return i_isMultiPriceFeedDependant;
+    }
+
+    function getIsReentrancyLocked() external view returns (bool) {
+        return s_isReentrancyLocked;
+    }
+
+    function getLinkToken() external view returns (LinkTokenInterface) {
+        return i_link;
+    }
+
+    function getL2SequencerFeed() external view returns (AggregatorV3Interface) {
+        return i_l2SequencerFeed;
+    }
+
     function getL2SequencerGracePeriodSeconds() external view returns (uint256) {
         return s_l2SequencerGracePeriodSeconds;
     }
@@ -544,6 +572,14 @@ contract DRCoordinator is
 
     function getPermiryadFeeFactor() external view returns (uint8) {
         return s_permiryadFeeFactor;
+    }
+
+    function getPriceFeed1() external view returns (AggregatorV3Interface) {
+        return i_priceFeed1;
+    }
+
+    function getPriceFeed2() external view returns (AggregatorV3Interface) {
+        return i_priceFeed2;
     }
 
     function getRequestCount() external view returns (uint256) {
@@ -577,6 +613,12 @@ contract DRCoordinator is
         // NB: s_authorizedConsumerMap only stores keys that exist in s_keyToSpec
         _requireSpecIsInserted(_key);
         return s_keyToAuthorizedConsumerMap[_key]._isInserted(_consumer);
+    }
+
+    /* ========== EXTERNAL PURE FUNCTIONS ========== */
+
+    function getGasAfterPaymentCalculation() external pure returns (uint32) {
+        return GAS_AFTER_PAYMENT_CALCULATION;
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
@@ -643,7 +685,7 @@ contract DRCoordinator is
         bytes32 requestId = keccak256(abi.encodePacked(this, nonce));
         s_pendingRequests[requestId] = _operatorAddr;
         emit ChainlinkRequested(requestId);
-        if (!LINK.transferAndCall(_operatorAddr, _payment, encodedRequest)) {
+        if (!i_link.transferAndCall(_operatorAddr, _payment, encodedRequest)) {
             revert IDRCoordinatorCallable.DRCoordinator__LinkTransferAndCallFailed(
                 _operatorAddr,
                 _payment,
@@ -717,16 +759,16 @@ contract DRCoordinator is
     }
 
     function _getFeedData() private view returns (uint256) {
-        if (IS_L2_SEQUENCER_DEPENDANT) {
-            (, int256 answer, , uint256 startedAt, ) = L2_SEQUENCER_FEED.latestRoundData();
+        if (i_isL2SequencerDependant) {
+            (, int256 answer, , uint256 startedAt, ) = i_l2SequencerFeed.latestRoundData();
             if (answer == 1 || block.timestamp - startedAt <= s_l2SequencerGracePeriodSeconds) {
                 return s_fallbackWeiPerUnitLink;
             }
         }
         uint256 stalenessSeconds = s_stalenessSeconds;
-        uint256 weiPerUnitLink = _calculateWeiPerUnitLink(true, PRICE_FEED_1, stalenessSeconds, 0);
-        if (!IS_MULTI_PRICE_FEED_DEPENDANT) return weiPerUnitLink;
-        return _calculateWeiPerUnitLink(false, PRICE_FEED_2, stalenessSeconds, weiPerUnitLink);
+        uint256 weiPerUnitLink = _calculateWeiPerUnitLink(true, i_priceFeed1, stalenessSeconds, 0);
+        if (!i_isMultiPriceFeedDependant) return weiPerUnitLink;
+        return _calculateWeiPerUnitLink(false, i_priceFeed2, stalenessSeconds, weiPerUnitLink);
     }
 
     function _requireCallerIsAuthorizedConsumer(

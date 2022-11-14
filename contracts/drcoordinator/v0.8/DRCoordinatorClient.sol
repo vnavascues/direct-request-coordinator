@@ -20,7 +20,7 @@ import { ChainlinkFulfillment } from "./ChainlinkFulfillment.sol";
 contract DRCoordinatorClient is ChainlinkFulfillment {
     using Chainlink for Chainlink.Request;
 
-    LinkTokenInterface internal LINK;
+    LinkTokenInterface internal s_link;
     IDRCoordinator internal s_drCoordinator;
 
     event ChainlinkCancelled(bytes32 indexed id);
@@ -107,7 +107,7 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
      * @param _linkAddr The LINK token contract address.
      */
     function _setLink(address _linkAddr) internal {
-        LINK = LinkTokenInterface(_linkAddr);
+        s_link = LinkTokenInterface(_linkAddr);
     }
 
     /* ========== INTERNAL PURE FUNCTIONS ========== */

@@ -99,7 +99,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     const result = "0x"; // NB: emtpy string -> 0x
     const encodedResult = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, result]);
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
     const drCoordinatorAttackerTHBalanceBefore = await context.drCoordinator.availableFunds(
@@ -512,7 +512,7 @@ export function testRequestData(signers: Signers, context: Context): void {
       // Check FulfillConfig
       // NB: Waffle can't check bignumbers on arrays via .to.have.ordered.members([])
       const fulfillConfig = await context.drCoordinator.getFulfillConfig(expectedRequestId);
-      const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+      const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
       let paymentInEscrow: BigNumber;
       if (specConverted.paymentType === PaymentType.FLAT) {
         paymentInEscrow = specConverted.payment;
@@ -606,7 +606,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     // Check FulfillConfig
     // NB: Waffle can't check bignumbers on arrays via .to.have.ordered.members([])
     const fulfillConfig = await context.drCoordinator.getFulfillConfig(expectedRequestId);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
     expect(fulfillConfig.msgSender).to.equal(context.drCoordinatorConsumerTH.address);
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
@@ -697,7 +697,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     // Check FulfillConfig
     // NB: Waffle can't check bignumbers on arrays via .to.have.ordered.members([])
     const fulfillConfig = await context.drCoordinator.getFulfillConfig(expectedRequestId);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
     expect(fulfillConfig.msgSender).to.equal(context.drCoordinatorConsumerTH.address);
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
@@ -786,7 +786,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     // Check FulfillConfig
     // NB: Waffle can't check bignumbers on arrays via .to.have.ordered.members([])
     const fulfillConfig = await context.drCoordinator.getFulfillConfig(expectedRequestId);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
     expect(fulfillConfig.msgSender).to.equal(context.drCoordinatorConsumerTH.address);
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
