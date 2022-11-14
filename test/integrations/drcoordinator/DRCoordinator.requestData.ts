@@ -11,6 +11,7 @@ import { revertToSnapshot, takeSnapshot } from "../../helpers/snapshot";
 import type { Context, Signers } from "./DRCoordinator";
 
 export function testRequestData(signers: Signers, context: Context): void {
+  const CONSUMER_MAX_PAYMENT = BigNumber.from("0");
   const FIVE_MINUTES_IN_SECONDS = 60 * 5;
   const filePath = path.resolve(__dirname, "specs");
   let snapshotId: string;
@@ -41,7 +42,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, callbackGasLimit, chainlinkRequest),
+        .requestData(operatorAddr, callbackGasLimit, CONSUMER_MAX_PAYMENT, chainlinkRequest),
     ).to.be.revertedWith("Pausable: paused");
   });
 
@@ -84,6 +85,7 @@ export function testRequestData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         expectedCallbackFunctionId,
         {
           gasPrice: weiPerUnitGas,
@@ -165,7 +167,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, callbackGasLimit, chainlinkRequest),
+        .requestData(operatorAddr, callbackGasLimit, CONSUMER_MAX_PAYMENT, chainlinkRequest),
     ).to.be.revertedWith(`DRCoordinator__SpecIsNotInserted("${expectedKey}")`);
   });
 
@@ -194,7 +196,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, specConverted.gasLimit, chainlinkRequest),
+        .requestData(operatorAddr, specConverted.gasLimit, CONSUMER_MAX_PAYMENT, chainlinkRequest),
     ).to.be.revertedWith(`DRCoordinator__CallbackAddrIsNotContract("${signers.externalCaller.address}")`);
   });
 
@@ -223,7 +225,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, specConverted.gasLimit, chainlinkRequest),
+        .requestData(operatorAddr, specConverted.gasLimit, CONSUMER_MAX_PAYMENT, chainlinkRequest),
     ).to.be.revertedWith("DRCoordinator__CallbackAddrIsDRCoordinator");
   });
 
@@ -255,7 +257,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, specConverted.gasLimit, chainlinkRequest),
+        .requestData(operatorAddr, specConverted.gasLimit, CONSUMER_MAX_PAYMENT, chainlinkRequest),
     ).to.be.revertedWith(
       `DRCoordinator__CallerIsNotAuthorizedConsumer("${key}", "${operatorAddr}", "${specConverted.specId}")`,
     );
@@ -287,9 +289,50 @@ export function testRequestData(signers: Signers, context: Context): void {
     await expect(
       context.drCoordinator
         .connect(signers.externalCaller)
-        .requestData(operatorAddr, callbackGasLimit, chainlinkRequest),
+        .requestData(operatorAddr, callbackGasLimit, CONSUMER_MAX_PAYMENT, chainlinkRequest),
     ).to.be.revertedWith(
       `DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(${callbackGasLimit}, ${specConverted.gasLimit})`,
+    );
+  });
+
+  it("reverts when the MAX LINK payment amount is greater than the consumer's MAX payment amount", async function () {
+    // Arrange
+    // 1. Insert the Spec
+    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
+    specs.forEach(spec => {
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
+    });
+    const fileSpecMap = await getSpecItemConvertedMap(specs);
+    const [key] = [...fileSpecMap.keys()];
+    const specConverted = (fileSpecMap.get(key) as SpecItemConverted).specConverted;
+    await context.drCoordinator.connect(signers.owner).setSpec(key, specConverted);
+    // 2. Calculate maxPaymentAmount
+    const weiPerUnitGas = BigNumber.from("2500000000");
+    const maxPaymentAmount = await context.drCoordinator.calculateMaxPaymentAmount(
+      weiPerUnitGas,
+      0,
+      specConverted.gasLimit,
+      specConverted.feeType,
+      specConverted.fee,
+    );
+    const consumerMaxPaymentAmount = maxPaymentAmount.sub("1");
+
+    // Act & Assert
+    await expect(
+      context.drCoordinatorConsumerTH
+        .connect(signers.externalCaller)
+        .requestUint256(
+          context.drCoordinator.address,
+          context.operator.address,
+          specConverted.specId,
+          specConverted.gasLimit,
+          consumerMaxPaymentAmount,
+          {
+            gasPrice: weiPerUnitGas,
+          },
+        ),
+    ).to.be.revertedWith(
+      `DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(${maxPaymentAmount}, ${consumerMaxPaymentAmount})`,
     );
   });
 
@@ -323,6 +366,7 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
+          CONSUMER_MAX_PAYMENT,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -369,6 +413,7 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
+          CONSUMER_MAX_PAYMENT,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -456,6 +501,7 @@ export function testRequestData(signers: Signers, context: Context): void {
             context.operator.address,
             specConverted.specId,
             specConverted.gasLimit,
+            CONSUMER_MAX_PAYMENT,
             {
               gasPrice: weiPerUnitGas,
             },
@@ -549,6 +595,7 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
+          CONSUMER_MAX_PAYMENT,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -631,6 +678,7 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
+          CONSUMER_MAX_PAYMENT,
           callbackAddr,
           callbackFunctionId,
           {
@@ -719,6 +767,7 @@ export function testRequestData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
+          CONSUMER_MAX_PAYMENT,
           context.drcGenericFulfillmentTH.address,
           callbackFunctionId,
           {

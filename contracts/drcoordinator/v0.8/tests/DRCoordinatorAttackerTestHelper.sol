@@ -112,12 +112,13 @@ contract DRCoordinatorAttackerTestHelper is DRCoordinatorClient {
         address _operatorAddr,
         bytes32 _specId,
         uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment,
         bytes4 _functionSelector
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), _functionSelector);
-        _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, req);
+        _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, _consumerMaxPayment, req);
     }
 
     function withdraw(address payable _payee, uint256 _amount) external {

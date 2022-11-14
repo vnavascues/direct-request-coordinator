@@ -261,6 +261,12 @@ contract DRCoordinator is
             payerLinkBalance = drCoordinatorLinkBalance;
         }
         _requireLinkPaymentIsInRange(spotPayment);
+        if (fulfillConfig.consumerMaxPayment > 0) {
+            _requireLinkPaymentIsWithinConsumerMaxPaymentRange(
+                spotPaymentInt >= 0 ? fulfillConfig.payment + spotPayment : fulfillConfig.payment - spotPayment,
+                fulfillConfig.consumerMaxPayment
+            );
+        }
         _requireLinkBalanceIsSufficient(payer, payerLinkBalance, spotPayment);
         if (spotPaymentInt >= 0) {
             consumerLinkBalance -= spotPayment;
@@ -311,6 +317,7 @@ contract DRCoordinator is
     function requestData(
         address _operatorAddr,
         uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment,
         Chainlink.Request memory _req
     ) external whenNotPaused nonReentrant returns (bytes32) {
         // Validate parameters
@@ -338,6 +345,9 @@ contract DRCoordinator is
             )
         );
         _requireLinkPaymentIsInRange(maxPayment);
+        if (_consumerMaxPayment > 0) {
+            _requireLinkPaymentIsWithinConsumerMaxPaymentRange(maxPayment, _consumerMaxPayment);
+        }
         // Calculate the required consumer LINK balance, the LINK payment amount to be held escrow by the Operator,
         // check whether the consumer has enough balance, and adjust its balance
         uint96 consumerLinkBalance = s_consumerToLinkBalance[msg.sender];
@@ -353,6 +363,7 @@ contract DRCoordinator is
         fulfillConfig.payment = paymentInEscrow;
         fulfillConfig.callbackAddr = callbackAddr;
         fulfillConfig.fee = spec.fee;
+        fulfillConfig.consumerMaxPayment = _consumerMaxPayment;
         fulfillConfig.gasLimit = _callbackGasLimit + GAS_AFTER_PAYMENT_CALCULATION;
         fulfillConfig.feeType = spec.feeType;
         fulfillConfig.callbackFunctionId = _req.callbackFunctionId;
@@ -868,6 +879,18 @@ contract DRCoordinator is
     function _requireLinkPaymentIsInRange(uint96 _payment) private pure {
         if (_payment > LINK_TOTAL_SUPPLY) {
             revert IDRCoordinatorCallable.DRCoordinator__LinkPaymentIsGtLinkTotalSupply(_payment, LINK_TOTAL_SUPPLY);
+        }
+    }
+
+    function _requireLinkPaymentIsWithinConsumerMaxPaymentRange(uint96 _payment, uint96 _consumerMaxPayment)
+        private
+        pure
+    {
+        if (_payment > _consumerMaxPayment) {
+            revert IDRCoordinatorCallable.DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(
+                _payment,
+                _consumerMaxPayment
+            );
         }
     }
 

@@ -13,6 +13,7 @@ import { revertToSnapshot, takeSnapshot } from "../../helpers/snapshot";
 import type { Context, Signers } from "./DRCoordinator";
 
 export function testFulfillData(signers: Signers, context: Context): void {
+  const CONSUMER_MAX_PAYMENT = BigNumber.from("0");
   const filePath = path.resolve(__dirname, "specs");
   let snapshotId: string;
 
@@ -64,6 +65,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         expectedCallbackFunctionId,
         {
           gasPrice: weiPerUnitGas,
@@ -178,6 +180,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -225,6 +228,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -254,6 +258,132 @@ export function testFulfillData(signers: Signers, context: Context): void {
       }),
       // NB: skipped payment arg check due to variability
     ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtLinkTotalSupply`);
+  });
+
+  it("reverts when the total LINK payment amount is greater than the consumer's MAX payment amount (paymentInEscrow <= payment, consumer pays)", async function () {
+    // NB: from an Operator.sol point of view 'fulfillOracleRequest2()' can't revert, therefore
+    // this test will directly call DRCoordinator.fulfillData() impersonating Operator.sol
+    // Arrange
+    // 1. Insert the Spec
+    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
+    specs.forEach(spec => {
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
+    });
+    const fileSpecMap = await getSpecItemConvertedMap(specs);
+    const [key] = [...fileSpecMap.keys()];
+    const specConverted = (fileSpecMap.get(key) as SpecItemConverted).specConverted;
+    await context.drCoordinator.connect(signers.owner).setSpec(key, specConverted);
+    // 2. Set LINK_TKN_FEED last answer
+    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
+    // 3. Set consumer's LINK balance
+    const weiPerUnitGas = BigNumber.from("2500000000");
+    const maxPaymentAmount = await context.drCoordinator
+      .connect(signers.externalCaller)
+      .calculateMaxPaymentAmount(weiPerUnitGas, 0, specConverted.gasLimit, specConverted.feeType, specConverted.fee);
+    await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
+    await context.drCoordinator
+      .connect(signers.deployer)
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
+    // 4. Make consumer call DRCoordinator.requestData()
+    await context.drCoordinatorConsumerTH
+      .connect(signers.deployer)
+      .requestUint256(
+        context.drCoordinator.address,
+        context.operator.address,
+        specConverted.specId,
+        specConverted.gasLimit,
+        maxPaymentAmount,
+        {
+          gasPrice: weiPerUnitGas,
+        },
+      );
+    // 5. Impersonate Operator.sol to call DRCoordinator.fulfillData().
+    // It requires to fund Operator.sol with ETH, requestId and data (bytes)
+    const filterOperatorRequest = context.operator.filters.OracleRequest();
+    const [eventOperatorRequest] = await context.operator.queryFilter(filterOperatorRequest);
+    const { requestId } = eventOperatorRequest.args;
+    const result = BigNumber.from("777");
+    const encodedResult = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bool"],
+      [requestId, result, false],
+    );
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
+    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    await impersonateAccount(hardhat, context.operator.address);
+    await setAddressBalance(hardhat, context.operator.address, BigNumber.from("10000000000000000000"));
+    const operatorSigner = await ethers.getSigner(context.operator.address);
+
+    // Act & Assert
+    await expect(
+      context.drCoordinator.connect(operatorSigner).fulfillData(requestId, encodedData, {
+        gasLimit: BigNumber.from(specConverted.gasLimit).add(gasAfterPaymentCalculation),
+        gasPrice: weiPerUnitGas.mul("5"),
+      }),
+    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(444712758365991804, ${maxPaymentAmount})`);
+  });
+
+  it("reverts when the total LINK payment amount is greater than the consumer's MAX payment amount (paymentInEscrow > payment, operator refunds)", async function () {
+    // NB: from an Operator.sol point of view 'fulfillOracleRequest2()' can't revert, therefore
+    // this test will directly call DRCoordinator.fulfillData() impersonating Operator.sol
+    // Arrange
+    // 1. Insert the Spec
+    const specs = parseSpecsFile(path.join(filePath, "file2.json"));
+    specs.forEach(spec => {
+      spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
+      spec.configuration.payment = "10000"; // NB: put 100% in escrow, forcing refund logic
+      spec.configuration.paymentType = PaymentType.PERMIRYAD;
+    });
+    const fileSpecMap = await getSpecItemConvertedMap(specs);
+    const [key] = [...fileSpecMap.keys()];
+    const specConverted = (fileSpecMap.get(key) as SpecItemConverted).specConverted;
+    await context.drCoordinator.connect(signers.owner).setSpec(key, specConverted);
+    // 2. Set LINK_TKN_FEED last answer
+    await context.mockV3Aggregator.connect(signers.deployer).updateAnswer(BigNumber.from("3490053626306509"));
+    // 3. Set consumer's LINK balance
+    const weiPerUnitGas = BigNumber.from("2500000000");
+    const maxPaymentAmount = await context.drCoordinator
+      .connect(signers.externalCaller)
+      .calculateMaxPaymentAmount(weiPerUnitGas, 0, specConverted.gasLimit, specConverted.feeType, specConverted.fee);
+    await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, maxPaymentAmount);
+    await context.drCoordinator
+      .connect(signers.deployer)
+      .addFunds(context.drCoordinatorConsumerTH.address, maxPaymentAmount);
+    // 4. Make consumer call DRCoordinator.requestData()
+    await context.drCoordinatorConsumerTH
+      .connect(signers.deployer)
+      .requestUint256(
+        context.drCoordinator.address,
+        context.operator.address,
+        specConverted.specId,
+        specConverted.gasLimit,
+        maxPaymentAmount,
+        {
+          gasPrice: weiPerUnitGas,
+        },
+      );
+    // 5. Impersonate Operator.sol to call DRCoordinator.fulfillData().
+    // It requires to fund Operator.sol with ETH, requestId and data (bytes)
+    const filterOperatorRequest = context.operator.filters.OracleRequest();
+    const [eventOperatorRequest] = await context.operator.queryFilter(filterOperatorRequest);
+    const { requestId } = eventOperatorRequest.args;
+    const result = BigNumber.from("777");
+    const encodedResult = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bool"],
+      [requestId, result, false],
+    );
+    const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
+    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    await impersonateAccount(hardhat, context.operator.address);
+    await setAddressBalance(hardhat, context.operator.address, BigNumber.from("10000000000000000000"));
+    const operatorSigner = await ethers.getSigner(context.operator.address);
+
+    // Act & Assert
+    await expect(
+      context.drCoordinator.connect(operatorSigner).fulfillData(requestId, encodedData, {
+        gasLimit: BigNumber.from(specConverted.gasLimit).add(gasAfterPaymentCalculation),
+        gasPrice: weiPerUnitGas.mul("5"),
+      }),
+    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(444712758365991804, ${maxPaymentAmount})`);
   });
 
   it("reverts when the consumer does not have enough balance (paymentInEscrow <= payment, consumer pays)", async function () {
@@ -288,6 +418,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -359,6 +490,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -419,6 +551,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -598,6 +731,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
           context.operator.address,
           specConverted.specId,
           specConverted.gasLimit,
+          CONSUMER_MAX_PAYMENT,
           {
             gasPrice: weiPerUnitGas,
           },
@@ -705,6 +839,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         {
           gasPrice: weiPerUnitGas,
         },
@@ -804,6 +939,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         context.drcGenericFulfillmentTH.address,
         externalCallbackFunctionId,
         {

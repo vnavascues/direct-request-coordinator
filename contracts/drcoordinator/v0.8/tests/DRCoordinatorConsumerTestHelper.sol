@@ -44,24 +44,26 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorClient {
         address _drCoordinatorAddr,
         address _operatorAddr,
         bytes32 _specId,
-        uint32 _callbackGasLimit
+        uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), this.fulfillNothing.selector);
-        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, req);
+        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, _consumerMaxPayment, req);
     }
 
     function requestUint256(
         address _drCoordinatorAddr,
         address _operatorAddr,
         bytes32 _specId,
-        uint32 _callbackGasLimit
+        uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, address(this), this.fulfillUint256.selector);
-        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, req);
+        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, _consumerMaxPayment, req);
     }
 
     function requestUint256Externally(
@@ -69,13 +71,14 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorClient {
         address _operatorAddr,
         bytes32 _specId,
         uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment,
         address _callbackAddr,
         bytes4 _callbackFunctionId
     ) external {
         Chainlink.Request memory req;
         // NB: Chainlink.Request 'callbackAddr' and 'callbackFunctionId' will be overwritten by DRCoordinator
         req.initialize(_specId, _callbackAddr, _callbackFunctionId);
-        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, req);
+        _sendRequestTo(IDRCoordinator(_drCoordinatorAddr), _operatorAddr, _callbackGasLimit, _consumerMaxPayment, req);
     }
 
     function withdraw(address payable _payee, uint256 _amount) external {
