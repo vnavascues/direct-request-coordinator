@@ -5,14 +5,16 @@ requesters = [
     "0x0000000000000000000000000000000000000000"
 ]
 minContractPaymentLinkJuels = "1000000000000000" # Replace (2 of 4) with initial LINK payment amount
-name = "CryptoCompare Get Prices DRCoordinator"
+name = "CryptoCompare Get Prices DRCoordinator - DRC"
 contractAddress = "0x0000000000000000000000000000000000000000" # Replace (3 o 4) with Operator.sol address
 maxTaskDuration = "0s"
 observationSource = """
-    decode_log          [type="ethabidecodelog"
+    decode_log          [
+                         type="ethabidecodelog"
                          abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
                          data="$(jobRun.logData)"
-                         topics="$(jobRun.logTopics)"]
+                         topics="$(jobRun.logTopics)"
+                        ]
 
     decode_cbor         [type="cborparse" data="$(decode_log.data)"]
 
@@ -28,19 +30,42 @@ observationSource = """
     link_parse          [type="jsonparse" path="USD" data="$(link)"]
     link_multiply       [type="multiply" input="$(link_parse)", times="1000000"]
 
-    encode_result       [type="ethabiencode"
-                         abi="(bytes32 _requestId, uint256 _btc, uint256 _eth, uint256 _link)"
-                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_btc\\": $(btc_multiply),\\"_eth\\": $(eth_multiply),\\"_link\\": $(link_multiply)}"]
+    encode_result       [
+                         type="ethabiencode"
+                         abi="(bytes32 requestId, uint256 btc, uint256 eth, uint256 link)"
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "btc": $(btc_multiply),
+                            "eth": $(eth_multiply),
+                            "link": $(link_multiply)
+                         }>
+                        ]
 
-    encode_data         [type="ethabiencode"
-                         abi="(bytes32 _requestId, bytes calldata _data)"
-                         data="{\\"_requestId\\": $(decode_log.requestId),\\"_data\\": $(encode_result)}"]
+    encode_data         [
+                         type="ethabiencode"
+                         abi="(bytes32 requestId, bytes calldata data)"
+                         data=<{"requestId": $(decode_log.requestId), "data": $(encode_result)}>
+                        ]
 
-    encode_tx           [type="ethabiencode"
+    encode_tx           [
+                         type="ethabiencode"
                          abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
-                         data="{\\"requestId\\": $(decode_log.requestId),\\"payment\\": $(decode_log.payment),\\"callbackAddress\\": $(decode_log.callbackAddr),\\"callbackFunctionId\\": $(decode_log.callbackFunctionId),\\"expiration\\": $(decode_log.cancelExpiration),\\"data\\": $(encode_data)}"]
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "payment": $(decode_log.payment),
+                            "callbackAddress": $(decode_log.callbackAddr),
+                            "callbackFunctionId": $(decode_log.callbackFunctionId),
+                            "expiration": $(decode_log.cancelExpiration),
+                            "data": $(encode_data)
+                         }>
+                        ]
 
-    submit_tx           [type="ethtx" to="0x0000000000000000000000000000000000000000" data="$(encode_tx)" gasLimit="$(decode_cbor.gasLimit)"] // Replace (4 o 4) with Operator.sol address
+    submit_tx           [
+                         type="ethtx" to="0x0000000000000000000000000000000000000000"
+                         data="$(encode_tx)"
+                         gasLimit="$(decode_cbor.gasLimit)"
+                         failOnRevert=true
+                        ] // Replace (4 o 4) with Operator.sol address
 
     decode_log -> decode_cbor
     decode_cbor -> btc -> btc_parse -> btc_multiply -> encode_result
