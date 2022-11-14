@@ -86,7 +86,7 @@ contract DRCoordinatorAttackerTestHelper is DRCoordinatorClient {
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = address(s_drCoordinator).call(
-            abi.encodeWithSelector(s_drCoordinator.requestData.selector, operatorAddr, callbackGasLimit, req)
+            abi.encodeWithSelector(s_drCoordinator.requestData.selector, operatorAddr, callbackGasLimit, 0, req)
         );
         emit Attacked("attackRequestDataCall", success);
     }
@@ -123,7 +123,7 @@ contract DRCoordinatorAttackerTestHelper is DRCoordinatorClient {
 
     function withdraw(address payable _payee, uint256 _amount) external {
         emit FundsWithdrawn(_payee, _amount);
-        _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
+        _requireLinkTransfer(s_link.transfer(_payee, _amount), _payee, _amount);
     }
 
     function withdrawFunds(address _payee, uint96 _amount) external {

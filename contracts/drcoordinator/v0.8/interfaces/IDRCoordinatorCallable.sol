@@ -2,10 +2,16 @@
 pragma solidity 0.8.17;
 
 import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import { LinkTokenInterface } from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import { FeeType, PaymentType, Spec } from "../libraries/internal/SpecLibrary.sol";
-import { PaymentPreFeeType } from "../DRCoordinator.sol";
 
 interface IDRCoordinatorCallable {
+    enum PaymentPreFeeType {
+        MAX,
+        SPOT
+    }
+
     error DRCoordinator__CallbackAddrIsDRCoordinator(address callbackAddr);
     error DRCoordinator__CallbackAddrIsNotContract(address callbackAddr);
     error DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(uint32 callbackGasLimit, uint32 specGasLimit);
@@ -13,6 +19,7 @@ interface IDRCoordinatorCallable {
     error DRCoordinator__CallerIsNotAuthorizedConsumer(bytes32 key, address operatorAddr, bytes32 specId);
     error DRCoordinator__CallerIsNotRequester(address requester);
     error DRCoordinator__CallerIsNotRequestOperator(address operatorAddr);
+    error DRCoordinator__CallIsReentrant();
     error DRCoordinator__FeedAnswerIsNotGtZero(address priceFeed, int256 answer);
     error DRCoordinator__FeeTypeIsUnsupported(FeeType feeType);
     error DRCoordinator__LinkAllowanceIsInsufficient(address payer, uint96 allowance, uint96 amount);
@@ -84,11 +91,23 @@ interface IDRCoordinatorCallable {
 
     function getFulfillConfig(bytes32 _requestId) external view returns (FulfillConfig memory);
 
+    function getIsL2SequencerDependant() external view returns (bool);
+
+    function getIsMultiPriceFeedDependant() external view returns (bool);
+
+    function getLinkToken() external view returns (LinkTokenInterface);
+
+    function getL2SequencerFeed() external view returns (AggregatorV3Interface);
+
     function getL2SequencerGracePeriodSeconds() external view returns (uint256);
 
     function getNumberOfSpecs() external view returns (uint256);
 
     function getPermiryadFeeFactor() external view returns (uint8);
+
+    function getPriceFeed1() external view returns (AggregatorV3Interface);
+
+    function getPriceFeed2() external view returns (AggregatorV3Interface);
 
     function getRequestCount() external view returns (uint256);
 
@@ -103,4 +122,8 @@ interface IDRCoordinatorCallable {
     function getStalenessSeconds() external view returns (uint256);
 
     function isSpecAuthorizedConsumer(bytes32 _key, address _consumer) external view returns (bool);
+
+    /* ========== EXTERNAL PURE FUNCTIONS ========== */
+
+    function getGasAfterPaymentCalculation() external pure returns (uint32);
 }

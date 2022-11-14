@@ -83,7 +83,7 @@ contract DRCoordinatorConsumerTestHelper is DRCoordinatorClient {
 
     function withdraw(address payable _payee, uint256 _amount) external {
         emit FundsWithdrawn(_payee, _amount);
-        _requireLinkTransfer(LINK.transfer(_payee, _amount), _payee, _amount);
+        _requireLinkTransfer(s_link.transfer(_payee, _amount), _payee, _amount);
     }
 
     function withdrawFunds(

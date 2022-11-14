@@ -75,7 +75,7 @@ export function testWithdrawFunds(signers: Signers, context: Context): void {
     const result = "0x"; // NB: emtpy string -> 0x
     const encodedResult = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, result]);
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
     const drCoordinatorAttackerTHBalanceBefore = await context.drCoordinator.availableFunds(

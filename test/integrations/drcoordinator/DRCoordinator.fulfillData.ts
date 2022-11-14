@@ -79,7 +79,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     const result = "0x"; // NB: emtpy string -> 0x
     const encodedResult = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, result]);
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
     const drCoordinatorAttackerTHBalanceBefore = await context.drCoordinator.availableFunds(
@@ -246,7 +246,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     await impersonateAccount(hardhat, context.operator.address);
     await setAddressBalance(hardhat, context.operator.address, BigNumber.from("10000000000000000000"));
     const operatorSigner = await ethers.getSigner(context.operator.address);
@@ -308,7 +308,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     await impersonateAccount(hardhat, context.operator.address);
     await setAddressBalance(hardhat, context.operator.address, BigNumber.from("10000000000000000000"));
     const operatorSigner = await ethers.getSigner(context.operator.address);
@@ -319,7 +319,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         gasLimit: BigNumber.from(specConverted.gasLimit).add(gasAfterPaymentCalculation),
         gasPrice: weiPerUnitGas.mul("5"),
       }),
-    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(445181877232148795, ${maxPaymentAmount})`);
+    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(437183003005810969, ${maxPaymentAmount})`);
   });
 
   it("reverts when the total LINK payment amount is greater than the consumer's MAX payment amount (paymentInEscrow > payment, operator refunds)", async function () {
@@ -372,7 +372,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     await impersonateAccount(hardhat, context.operator.address);
     await setAddressBalance(hardhat, context.operator.address, BigNumber.from("10000000000000000000"));
     const operatorSigner = await ethers.getSigner(context.operator.address);
@@ -383,7 +383,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         gasLimit: BigNumber.from(specConverted.gasLimit).add(gasAfterPaymentCalculation),
         gasPrice: weiPerUnitGas.mul("5"),
       }),
-    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(445181877232148795, ${maxPaymentAmount})`);
+    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(437183003005810969, ${maxPaymentAmount})`);
   });
 
   it("reverts when the consumer does not have enough balance (paymentInEscrow <= payment, consumer pays)", async function () {
@@ -441,7 +441,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     await impersonateAccount(hardhat, context.operator.address);
     await setAddressBalance(hardhat, context.operator.address, BigNumber.from("10000000000000000000"));
     const operatorSigner = await ethers.getSigner(context.operator.address);
@@ -506,7 +506,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     await impersonateAccount(hardhat, context.operator.address);
     await setAddressBalance(hardhat, context.operator.address, BigNumber.from("10000000000000000000"));
     const operatorSigner = await ethers.getSigner(context.operator.address);
@@ -567,7 +567,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, true],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
     const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
@@ -673,7 +673,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     },
   ];
   for (const { name, testData } of testCases) {
-    it(`fulfills the request (${name})`, async function () {
+    it.only(`fulfills the request (${name})`, async function () {
       // Arrange
       // 1. Insert the Spec
       const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -747,7 +747,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         [requestId, result, false],
       );
       const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-      const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+      const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
       const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
       const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
       const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
@@ -809,7 +809,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     });
   }
 
-  it("fulfills the request (case response is '0x')", async function () {
+  it.only("fulfills the request (case response is '0x')", async function () {
     // Arrange
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -852,7 +852,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     const result = "0x"; // NB: emtpy string -> 0x
     const encodedResult = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, result]);
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
     const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
@@ -908,7 +908,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     );
   });
 
-  it("fulfills the request (case external request)", async function () {
+  it.only("fulfills the request (case external request)", async function () {
     // Arrange
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -957,7 +957,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       [requestId, result, false],
     );
     const encodedData = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes"], [requestId, encodedResult]);
-    const gasAfterPaymentCalculation = await context.drCoordinator.GAS_AFTER_PAYMENT_CALCULATION();
+    const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
     const drCoordinatorLinkBalanceBefore = await context.linkToken.balanceOf(context.drCoordinator.address);
     const drCoordinatorBalanceBefore = await context.drCoordinator.availableFunds(context.drCoordinator.address);
     const drCoordinatorConsumerTHBalanceBefore = await context.drCoordinator.availableFunds(
