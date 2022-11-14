@@ -15,12 +15,6 @@ import { IChainlinkExternalFulfillment } from "./interfaces/IChainlinkExternalFu
 import { FeeType, PaymentType, Spec, SpecLibrary } from "./libraries/internal/SpecLibrary.sol";
 import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries/internal/InsertedAddressLibrary.sol";
 
-// NB: enum placed outside due to Slither bug https://github.com/crytic/slither/issues/1166
-enum PaymentPreFeeType {
-    MAX,
-    SPOT
-}
-
 /**
  * @title The DRCoordinator (coOperator) contract.
  * @author LinkPool.
@@ -80,6 +74,7 @@ contract DRCoordinator is
     uint256 private constant AMOUNT_OVERRIDE = 0;
     uint256 private constant OPERATOR_ARGS_VERSION = 2;
     uint256 private constant OPERATOR_REQUEST_EXPIRATION_TIME = 5 minutes;
+    int256 private constant L2_SEQUENCER_IS_DOWN = 1;
     bytes32 private constant NO_SPEC_ID = bytes32(0);
     uint256 private constant TKN_TO_WEI_FACTOR = 1e18;
     address private constant SENDER_OVERRIDE = address(0);
@@ -142,7 +137,7 @@ contract DRCoordinator is
 
     modifier nonReentrant() {
         if (s_isReentrancyLocked) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallIsReentrant();
+            revert DRCoordinator__CallIsReentrant();
         }
         s_isReentrancyLocked = true;
         _;
@@ -188,7 +183,7 @@ contract DRCoordinator is
         s_consumerToLinkBalance[_consumer] += _amount;
         emit FundsAdded(msg.sender, _consumer, _amount);
         if (!i_link.transferFrom(msg.sender, address(this), _amount)) {
-            revert IDRCoordinatorCallable.DRCoordinator__LinkTransferFromFailed(msg.sender, address(this), _amount);
+            revert DRCoordinator__LinkTransferFromFailed(msg.sender, address(this), _amount);
         }
     }
 
@@ -214,7 +209,7 @@ contract DRCoordinator is
     function cancelRequest(bytes32 _requestId) external nonReentrant {
         address operatorAddr = s_pendingRequests[_requestId];
         _requireRequestIsPending(operatorAddr);
-        IDRCoordinatorCallable.FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
+        FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
         _requireCallerIsRequester(fulfillConfig.msgSender);
         s_consumerToLinkBalance[msg.sender] += fulfillConfig.payment;
         OperatorInterface operator = OperatorInterface(operatorAddr);
@@ -233,7 +228,7 @@ contract DRCoordinator is
         _requireCallerIsRequestOperator(s_pendingRequests[_requestId]);
         delete s_pendingRequests[_requestId];
         // Retrieve FulfillConfig by request ID
-        IDRCoordinatorCallable.FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
+        FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
         // Format off-chain data
         bytes memory data = abi.encodePacked(fulfillConfig.callbackFunctionId, _data);
         // Fulfill just with the gas amount requested by the consumer
@@ -366,7 +361,7 @@ contract DRCoordinator is
         _requireLinkBalanceIsSufficient(msg.sender, consumerLinkBalance, requiredConsumerLinkBalance);
         s_consumerToLinkBalance[msg.sender] = consumerLinkBalance - paymentInEscrow;
         // Initialise the fulfill configuration
-        IDRCoordinatorCallable.FulfillConfig memory fulfillConfig;
+        FulfillConfig memory fulfillConfig;
         fulfillConfig.msgSender = msg.sender;
         fulfillConfig.payment = paymentInEscrow;
         fulfillConfig.callbackAddr = callbackAddr;
@@ -475,7 +470,7 @@ contract DRCoordinator is
         s_consumerToLinkBalance[consumer] = consumerLinkBalance - _amount;
         emit FundsWithdrawn(consumer, _payee, _amount);
         if (!i_link.transfer(_payee, _amount)) {
-            revert IDRCoordinatorCallable.DRCoordinator__LinkTransferFailed(_payee, _amount);
+            revert DRCoordinator__LinkTransferFailed(_payee, _amount);
         }
     }
 
@@ -538,7 +533,7 @@ contract DRCoordinator is
         return s_fallbackWeiPerUnitLink;
     }
 
-    function getFulfillConfig(bytes32 _requestId) external view returns (IDRCoordinatorCallable.FulfillConfig memory) {
+    function getFulfillConfig(bytes32 _requestId) external view returns (FulfillConfig memory) {
         return s_requestIdToFulfillConfig[_requestId];
     }
 
@@ -652,7 +647,7 @@ contract DRCoordinator is
         uint256 authConsumersLength = _authConsumers.length;
         if (_isUncheckedCase) {
             if (_s_authorizedConsumerMap._size() == 0) {
-                revert IDRCoordinatorOwnable.DRCoordinator__SpecIsNotInserted(_key);
+                revert DRCoordinator__SpecIsNotInserted(_key);
             }
             _requireArrayIsNotEmpty("authConsumers", authConsumersLength);
         }
@@ -686,11 +681,7 @@ contract DRCoordinator is
         s_pendingRequests[requestId] = _operatorAddr;
         emit ChainlinkRequested(requestId);
         if (!i_link.transferAndCall(_operatorAddr, _payment, encodedRequest)) {
-            revert IDRCoordinatorCallable.DRCoordinator__LinkTransferAndCallFailed(
-                _operatorAddr,
-                _payment,
-                encodedRequest
-            );
+            revert DRCoordinator__LinkTransferAndCallFailed(_operatorAddr, _payment, encodedRequest);
         }
         return requestId;
     }
@@ -726,7 +717,7 @@ contract DRCoordinator is
                 (LINK_TO_JUELS_FACTOR * _weiPerUnitGas * (GAS_AFTER_PAYMENT_CALCULATION + _startGas - gasleft())) /
                 weiPerUnitLink;
         } else {
-            revert IDRCoordinatorCallable.DRCoordinator__PaymentPreFeeTypeIsUnsupported(_paymentPreFeeType);
+            revert DRCoordinator__PaymentPreFeeTypeIsUnsupported(_paymentPreFeeType);
         }
         uint256 paymentAfterFee;
         if (_feeType == FeeType.FLAT) {
@@ -734,7 +725,7 @@ contract DRCoordinator is
         } else if (_feeType == FeeType.PERMIRYAD) {
             paymentAfterFee = paymentPreFee + (paymentPreFee * _fee) / PERMIRYAD;
         } else {
-            revert IDRCoordinatorCallable.DRCoordinator__FeeTypeIsUnsupported(_feeType);
+            revert DRCoordinator__FeeTypeIsUnsupported(_feeType);
         }
         return int256(paymentAfterFee) - int256(uint256(_paymentInEscrow));
     }
@@ -749,7 +740,7 @@ contract DRCoordinator is
         uint256 timestamp;
         (, answer, , timestamp, ) = _priceFeed.latestRoundData();
         if (answer < 1) {
-            revert IDRCoordinatorCallable.DRCoordinator__FeedAnswerIsNotGtZero(address(_priceFeed), answer);
+            revert DRCoordinator__FeedAnswerIsNotGtZero(address(_priceFeed), answer);
         }
         // solhint-disable-next-line not-rely-on-time
         if (_stalenessSeconds > 0 && _stalenessSeconds < block.timestamp - timestamp) {
@@ -761,7 +752,7 @@ contract DRCoordinator is
     function _getFeedData() private view returns (uint256) {
         if (i_isL2SequencerDependant) {
             (, int256 answer, , uint256 startedAt, ) = i_l2SequencerFeed.latestRoundData();
-            if (answer == 1 || block.timestamp - startedAt <= s_l2SequencerGracePeriodSeconds) {
+            if (answer == L2_SEQUENCER_IS_DOWN || block.timestamp - startedAt <= s_l2SequencerGracePeriodSeconds) {
                 return s_fallbackWeiPerUnitLink;
             }
         }
@@ -778,35 +769,35 @@ contract DRCoordinator is
     ) private view {
         AuthorizedConsumerLibrary.Map storage s_authorizedConsumerMap = s_keyToAuthorizedConsumerMap[_key];
         if (s_authorizedConsumerMap._size() > 0 && !s_authorizedConsumerMap._isInserted(msg.sender)) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallerIsNotAuthorizedConsumer(_key, _operatorAddr, _specId);
+            revert DRCoordinator__CallerIsNotAuthorizedConsumer(_key, _operatorAddr, _specId);
         }
     }
 
     function _requireCallerIsRequester(address _requester) private view {
         if (_requester != msg.sender) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallerIsNotRequester(_requester);
+            revert DRCoordinator__CallerIsNotRequester(_requester);
         }
     }
 
     function _requireCallerIsRequestOperator(address _operatorAddr) private view {
         if (_operatorAddr != msg.sender) {
             _requireRequestIsPending(_operatorAddr);
-            revert IDRCoordinatorCallable.DRCoordinator__CallerIsNotRequestOperator(_operatorAddr);
+            revert DRCoordinator__CallerIsNotRequestOperator(_operatorAddr);
         }
     }
 
     function _requireSpecIsInserted(bytes32 _key) private view {
         if (!s_keyToSpec._isInserted(_key)) {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecIsNotInserted(_key);
+            revert DRCoordinator__SpecIsNotInserted(_key);
         }
     }
 
     function _validateCallbackAddress(address _callbackAddr) private view {
         if (!_callbackAddr.isContract()) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallbackAddrIsNotContract(_callbackAddr);
+            revert DRCoordinator__CallbackAddrIsNotContract(_callbackAddr);
         }
         if (_callbackAddr == address(this)) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallbackAddrIsDRCoordinator(_callbackAddr);
+            revert DRCoordinator__CallbackAddrIsDRCoordinator(_callbackAddr);
         }
     }
 
@@ -817,32 +808,24 @@ contract DRCoordinator is
     ) private view {
         if (_feeType == FeeType.FLAT) {
             if (_fee > LINK_TOTAL_SUPPLY) {
-                revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldFeeIsGtLinkTotalSupply(
-                    _key,
-                    _fee,
-                    LINK_TOTAL_SUPPLY
-                );
+                revert DRCoordinator__SpecFieldFeeIsGtLinkTotalSupply(_key, _fee, LINK_TOTAL_SUPPLY);
             }
         } else if (_feeType == FeeType.PERMIRYAD) {
             uint256 maxPermiryadFee = PERMIRYAD * s_permiryadFeeFactor;
             if (_fee > maxPermiryadFee) {
-                revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee(
-                    _key,
-                    _fee,
-                    maxPermiryadFee
-                );
+                revert DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee(_key, _fee, maxPermiryadFee);
             }
         } else {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldFeeTypeIsUnsupported(_key, _feeType);
+            revert DRCoordinator__SpecFieldFeeTypeIsUnsupported(_key, _feeType);
         }
     }
 
     function _validateSpecFieldOperator(bytes32 _key, address _operator) private view {
         if (!_operator.isContract()) {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldOperatorIsNotContract(_key, _operator);
+            revert DRCoordinator__SpecFieldOperatorIsNotContract(_key, _operator);
         }
         if (_operator == address(this)) {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldOperatorIsDRCoordinator(_key, _operator);
+            revert DRCoordinator__SpecFieldOperatorIsDRCoordinator(_key, _operator);
         }
     }
 
@@ -860,7 +843,7 @@ contract DRCoordinator is
         } else if (_paymentType == PaymentType.PERMIRYAD) {
             return (_maxPayment, (_maxPayment * _payment) / PERMIRYAD);
         } else {
-            revert IDRCoordinatorCallable.DRCoordinator__PaymentTypeIsUnsupported(_paymentType);
+            revert DRCoordinator__PaymentTypeIsUnsupported(_paymentType);
         }
     }
 
@@ -872,7 +855,7 @@ contract DRCoordinator is
 
     function _requireArrayIsNotEmpty(string memory _arrayName, uint256 _arrayLength) private pure {
         if (_arrayLength == 0) {
-            revert IDRCoordinatorOwnable.DRCoordinator__ArrayIsEmpty(_arrayName);
+            revert DRCoordinator__ArrayIsEmpty(_arrayName);
         }
     }
 
@@ -883,18 +866,13 @@ contract DRCoordinator is
         uint256 _array2Length
     ) private pure {
         if (_array1Length != _array2Length) {
-            revert IDRCoordinatorOwnable.DRCoordinator__ArrayLengthsAreNotEqual(
-                _array1Name,
-                _array1Length,
-                _array2Name,
-                _array2Length
-            );
+            revert DRCoordinator__ArrayLengthsAreNotEqual(_array1Name, _array1Length, _array2Name, _array2Length);
         }
     }
 
     function _requireFallbackWeiPerUnitLinkIsGtZero(uint256 _fallbackWeiPerUnitLink) private pure {
         if (_fallbackWeiPerUnitLink == 0) {
-            revert IDRCoordinatorOwnable.DRCoordinator__FallbackWeiPerUnitLinkIsZero();
+            revert DRCoordinator__FallbackWeiPerUnitLinkIsZero();
         }
     }
 
@@ -904,7 +882,7 @@ contract DRCoordinator is
         uint96 _amount
     ) private pure {
         if (_allowance < _amount) {
-            revert IDRCoordinatorCallable.DRCoordinator__LinkAllowanceIsInsufficient(_payer, _allowance, _amount);
+            revert DRCoordinator__LinkAllowanceIsInsufficient(_payer, _allowance, _amount);
         }
     }
 
@@ -914,13 +892,13 @@ contract DRCoordinator is
         uint96 _amount
     ) private pure {
         if (_balance < _amount) {
-            revert IDRCoordinatorCallable.DRCoordinator__LinkBalanceIsInsufficient(_payer, _balance, _amount);
+            revert DRCoordinator__LinkBalanceIsInsufficient(_payer, _balance, _amount);
         }
     }
 
     function _requireLinkPaymentIsInRange(uint96 _payment) private pure {
         if (_payment > LINK_TOTAL_SUPPLY) {
-            revert IDRCoordinatorCallable.DRCoordinator__LinkPaymentIsGtLinkTotalSupply(_payment, LINK_TOTAL_SUPPLY);
+            revert DRCoordinator__LinkPaymentIsGtLinkTotalSupply(_payment, LINK_TOTAL_SUPPLY);
         }
     }
 
@@ -929,16 +907,13 @@ contract DRCoordinator is
         pure
     {
         if (_payment > _consumerMaxPayment) {
-            revert IDRCoordinatorCallable.DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(
-                _payment,
-                _consumerMaxPayment
-            );
+            revert DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(_payment, _consumerMaxPayment);
         }
     }
 
     function _requireL2SequencerFeed(bool _isL2SequencerDependant, address _l2SequencerFeed) private view {
         if (_isL2SequencerDependant && !_l2SequencerFeed.isContract()) {
-            revert IDRCoordinatorOwnable.DRCoordinator__L2SequencerFeedIsNotContract(_l2SequencerFeed);
+            revert DRCoordinator__L2SequencerFeedIsNotContract(_l2SequencerFeed);
         }
     }
 
@@ -948,41 +923,31 @@ contract DRCoordinator is
         address _priceFeed2
     ) private view {
         if (!_priceFeed1.isContract()) {
-            revert IDRCoordinatorOwnable.DRCoordinator__PriceFeedIsNotContract(_priceFeed1);
+            revert DRCoordinator__PriceFeedIsNotContract(_priceFeed1);
         }
         if (_isMultiPriceFeedDependant && !_priceFeed2.isContract()) {
-            revert IDRCoordinatorOwnable.DRCoordinator__PriceFeedIsNotContract(_priceFeed2);
+            revert DRCoordinator__PriceFeedIsNotContract(_priceFeed2);
         }
     }
 
     function _requireRequestIsPending(address _operatorAddr) private pure {
         if (_operatorAddr == address(0)) {
-            revert IDRCoordinatorCallable.DRCoordinator__RequestIsNotPending();
+            revert DRCoordinator__RequestIsNotPending();
         }
     }
 
     function _validateCallbackGasLimit(uint32 _callbackGasLimit, uint32 _specGasLimit) private pure {
         if (_callbackGasLimit > _specGasLimit) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(
-                _callbackGasLimit,
-                _specGasLimit
-            );
+            revert DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(_callbackGasLimit, _specGasLimit);
         }
         if (_callbackGasLimit < MIN_REQUEST_GAS_LIMIT) {
-            revert IDRCoordinatorCallable.DRCoordinator__CallbackGasLimitIsLtMinRequestGasLimit(
-                _callbackGasLimit,
-                MIN_REQUEST_GAS_LIMIT
-            );
+            revert DRCoordinator__CallbackGasLimitIsLtMinRequestGasLimit(_callbackGasLimit, MIN_REQUEST_GAS_LIMIT);
         }
     }
 
     function _validateSpecFieldGasLimit(bytes32 _key, uint32 _gasLimit) private pure {
         if (_gasLimit < MIN_REQUEST_GAS_LIMIT) {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldGasLimitIsLtMinRequestGasLimit(
-                _key,
-                _gasLimit,
-                MIN_REQUEST_GAS_LIMIT
-            );
+            revert DRCoordinator__SpecFieldGasLimitIsLtMinRequestGasLimit(_key, _gasLimit, MIN_REQUEST_GAS_LIMIT);
         }
     }
 
@@ -993,24 +958,20 @@ contract DRCoordinator is
     ) private pure {
         if (_paymentType == PaymentType.FLAT) {
             if (_payment > LINK_TOTAL_SUPPLY) {
-                revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(
-                    _key,
-                    _payment,
-                    LINK_TOTAL_SUPPLY
-                );
+                revert DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(_key, _payment, LINK_TOTAL_SUPPLY);
             }
         } else if (_paymentType == PaymentType.PERMIRYAD) {
             if (_payment > PERMIRYAD) {
-                revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldPaymentIsGtPermiryad(_key, _payment, PERMIRYAD);
+                revert DRCoordinator__SpecFieldPaymentIsGtPermiryad(_key, _payment, PERMIRYAD);
             }
         } else {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldPaymentTypeIsUnsupported(_key, _paymentType);
+            revert DRCoordinator__SpecFieldPaymentTypeIsUnsupported(_key, _paymentType);
         }
     }
 
     function _validateSpecFieldSpecId(bytes32 _key, bytes32 _specId) private pure {
         if (_specId == NO_SPEC_ID) {
-            revert IDRCoordinatorOwnable.DRCoordinator__SpecFieldSpecIdIsZero(_key);
+            revert DRCoordinator__SpecFieldSpecIdIsZero(_key);
         }
     }
 }

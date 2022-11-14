@@ -5,9 +5,13 @@ import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import { LinkTokenInterface } from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import { FeeType, PaymentType, Spec } from "../libraries/internal/SpecLibrary.sol";
-import { PaymentPreFeeType } from "../DRCoordinator.sol";
 
 interface IDRCoordinatorCallable {
+    enum PaymentPreFeeType {
+        MAX,
+        SPOT
+    }
+
     error DRCoordinator__CallbackAddrIsDRCoordinator(address callbackAddr);
     error DRCoordinator__CallbackAddrIsNotContract(address callbackAddr);
     error DRCoordinator__CallbackGasLimitIsGtSpecGasLimit(uint32 callbackGasLimit, uint32 specGasLimit);
