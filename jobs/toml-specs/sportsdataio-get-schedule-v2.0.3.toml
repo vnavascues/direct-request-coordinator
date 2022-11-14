@@ -1,0 +1,65 @@
+type = "directrequest"
+schemaVersion = 1
+minContractPaymentLinkJuels = "1000000000000000000" # 0.1 LINK or 1 LINK
+name = "SDIO Sportsdataio LinkPool Get Schedule v2.0.3 - DRC"
+contractAddress = "0x0000000000000000000000000000000000000000" # Replace with Operator.sol address (also in submit_tx task)
+maxTaskDuration = "0s"
+observationSource = """
+    decode_log          [
+                         type="ethabidecodelog"
+                         abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+                         data="$(jobRun.logData)"
+                         topics="$(jobRun.logTopics)"
+                        ]
+
+    decode_cbor         [type="cborparse" data="$(decode_log.data)"]
+
+    merge_req_params    [type="merge" left=<{"gameIds": null}> right="$(decode_cbor)"]
+
+    sportsdataio_lp     [
+                         type="bridge"
+                         name="sportsdataio-lp"
+                         requestData=<{
+                            "data": {
+                                "endpoint": "schedule",
+                                "market": $(merge_req_params.market),
+                                "leagueId": $(merge_req_params.leagueId),
+                                "date": $(merge_req_params.date),
+                                "gameIds": $(merge_req_params.gameIds)
+                            }
+                         }>
+                        ]
+
+    parse_result        [type="jsonparse" data="$(sportsdataio_lp)" path="result"]
+
+    encode_data         [
+                         type="ethabiencode"
+                         abi="(bytes32 requestId, bytes32[] result)"
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "result": $(parse_result)
+                         }>
+                        ]
+
+    encode_tx           [
+                         type="ethabiencode"
+                         abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "payment": $(decode_log.payment),
+                            "callbackAddress": $(decode_log.callbackAddr),
+                            "callbackFunctionId": $(decode_log.callbackFunctionId),
+                            "expiration": $(decode_log.cancelExpiration),
+                            "data": $(encode_data)
+                         }>
+                        ]
+
+    submit_tx           [
+                         type="ethtx" to="0x0000000000000000000000000000000000000000"
+                         data="$(encode_tx)"
+                         gasLimit="$(decode_cbor.gasLimit)"
+                         failOnRevert=true
+                        ] // Replace (4 o 4) with Operator.sol address
+
+    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_tx -> submit_tx
+"""
