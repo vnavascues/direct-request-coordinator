@@ -7,7 +7,6 @@
     "const-name-snakecase": "off",
     "constructor-syntax": "error",
     "event-name-camelcase": "off",
-    "event-name-mixedcase": "off",
     "func-visibility": ["error", { "ignoreConstructors": true }],
     "max-line-length": ["error", 120],
     "not-rely-on-time": "off",

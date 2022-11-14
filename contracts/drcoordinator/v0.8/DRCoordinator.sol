@@ -94,7 +94,7 @@ contract DRCoordinator is
     // NB: with the current balance model & actions after calculating the payment, it is safe setting the
     // GAS_AFTER_PAYMENT_CALCULATION to 50_000 as a constant. Exact amount used is 42422 gas
     uint32 public constant GAS_AFTER_PAYMENT_CALCULATION = 50_000; // 6 bytes
-    bool public immutable IS_SEQUENCER_DEPENDANT; // 1 byte
+    bool public immutable IS_L2_SEQUENCER_DEPENDANT; // 1 byte
     LinkTokenInterface public immutable LINK; // 20 bytes
     AggregatorV3Interface public immutable L2_SEQUENCER_FEED; // 20 bytes
     AggregatorV3Interface public immutable PRICE_FEED_1; // 20 bytes - LINK/TKN (single feed) or TKN/USD (multi feed)
@@ -149,27 +149,27 @@ contract DRCoordinator is
         string memory _description,
         uint256 _fallbackWeiPerUnitLink,
         uint256 _stalenessSeconds,
-        bool _isSequencerDependant,
+        bool _isL2SequencerDependant,
         address _l2SequencerFeed,
         uint256 _l2SequencerGracePeriodSeconds
     ) ConfirmedOwner(msg.sender) {
         _requirePriceFeed(_isMultiPriceFeedDependant, _priceFeed1, _priceFeed2);
         _requireFallbackWeiPerUnitLinkIsGtZero(_fallbackWeiPerUnitLink);
-        _requireL2SequencerFeed(_isSequencerDependant, _l2SequencerFeed);
+        _requireL2SequencerFeed(_isL2SequencerDependant, _l2SequencerFeed);
         LINK = LinkTokenInterface(_link);
         IS_MULTI_PRICE_FEED_DEPENDANT = _isMultiPriceFeedDependant;
         PRICE_FEED_1 = AggregatorV3Interface(_priceFeed1);
         PRICE_FEED_2 = _isMultiPriceFeedDependant
             ? AggregatorV3Interface(_priceFeed2)
             : AggregatorV3Interface(address(0));
-        IS_SEQUENCER_DEPENDANT = _isSequencerDependant;
-        L2_SEQUENCER_FEED = _isSequencerDependant
+        IS_L2_SEQUENCER_DEPENDANT = _isL2SequencerDependant;
+        L2_SEQUENCER_FEED = _isL2SequencerDependant
             ? AggregatorV3Interface(_l2SequencerFeed)
             : AggregatorV3Interface(address(0));
         s_description = _description;
         s_fallbackWeiPerUnitLink = _fallbackWeiPerUnitLink;
         s_stalenessSeconds = _stalenessSeconds;
-        s_l2SequencerGracePeriodSeconds = _isSequencerDependant ? _l2SequencerGracePeriodSeconds : 0;
+        s_l2SequencerGracePeriodSeconds = _isL2SequencerDependant ? _l2SequencerGracePeriodSeconds : 0;
     }
 
     /* ========== EXTERNAL FUNCTIONS ========== */
@@ -717,7 +717,7 @@ contract DRCoordinator is
     }
 
     function _getFeedData() private view returns (uint256) {
-        if (IS_SEQUENCER_DEPENDANT) {
+        if (IS_L2_SEQUENCER_DEPENDANT) {
             (, int256 answer, , uint256 startedAt, ) = L2_SEQUENCER_FEED.latestRoundData();
             if (answer == 1 || block.timestamp - startedAt <= s_l2SequencerGracePeriodSeconds) {
                 return s_fallbackWeiPerUnitLink;
@@ -894,8 +894,8 @@ contract DRCoordinator is
         }
     }
 
-    function _requireL2SequencerFeed(bool _isSequencerDependant, address _l2SequencerFeed) private view {
-        if (_isSequencerDependant && !_l2SequencerFeed.isContract()) {
+    function _requireL2SequencerFeed(bool _isL2SequencerDependant, address _l2SequencerFeed) private view {
+        if (_isL2SequencerDependant && !_l2SequencerFeed.isContract()) {
             revert IDRCoordinatorOwnable.DRCoordinator__L2SequencerFeedIsNotContract(_l2SequencerFeed);
         }
     }

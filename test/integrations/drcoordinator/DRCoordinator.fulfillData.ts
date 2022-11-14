@@ -319,7 +319,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         gasLimit: BigNumber.from(specConverted.gasLimit).add(gasAfterPaymentCalculation),
         gasPrice: weiPerUnitGas.mul("5"),
       }),
-    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(444712758365991804, ${maxPaymentAmount})`);
+    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(445181877232148795, ${maxPaymentAmount})`);
   });
 
   it("reverts when the total LINK payment amount is greater than the consumer's MAX payment amount (paymentInEscrow > payment, operator refunds)", async function () {
@@ -383,7 +383,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
         gasLimit: BigNumber.from(specConverted.gasLimit).add(gasAfterPaymentCalculation),
         gasPrice: weiPerUnitGas.mul("5"),
       }),
-    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(444712758365991804, ${maxPaymentAmount})`);
+    ).to.be.revertedWith(`DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(445181877232148795, ${maxPaymentAmount})`);
   });
 
   it("reverts when the consumer does not have enough balance (paymentInEscrow <= payment, consumer pays)", async function () {

@@ -4,13 +4,7 @@ import { ethers } from "hardhat";
 import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  FeeType,
-  MAX_PERMIRYAD_FEE,
-  MAX_REQUEST_CONFIRMATIONS,
-  PERMIRYAD,
-  PaymentType,
-} from "../../../tasks/drcoordinator/constants";
+import { FeeType, MAX_PERMIRYAD_FEE, PERMIRYAD, PaymentType } from "../../../tasks/drcoordinator/constants";
 import { generateSpecKey, getSpecItemConvertedMap, parseSpecsFile } from "../../../tasks/drcoordinator/methods";
 import type { SpecItemConverted } from "../../../tasks/drcoordinator/types";
 import { LINK_TOTAL_SUPPLY, MIN_CONSUMER_GAS_LIMIT } from "../../../utils/chainlink-constants";

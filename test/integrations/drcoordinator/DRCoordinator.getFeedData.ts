@@ -35,7 +35,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const description = "Testing DRCoordinator";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
-    const isSequencerDependant = true;
+    const isL2SequencerDependant = true;
     const addressL2SequencerFeed = mockL2SequencerFeed.address;
     const l2SequencerGracePeriodSeconds = BigNumber.from("3600");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
@@ -49,7 +49,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         description,
         fallbackWeiPerUnitLink,
         stalenessSeconds,
-        isSequencerDependant,
+        isL2SequencerDependant,
         addressL2SequencerFeed,
         l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
@@ -78,7 +78,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const description = "Testing DRCoordinator";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
-    const isSequencerDependant = true;
+    const isL2SequencerDependant = true;
     const addressL2SequencerFeed = mockL2SequencerFeed.address;
     const l2SequencerGracePeriodSeconds = BigNumber.from("3600");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
@@ -92,7 +92,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         description,
         fallbackWeiPerUnitLink,
         stalenessSeconds,
-        isSequencerDependant,
+        isL2SequencerDependant,
         addressL2SequencerFeed,
         l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
@@ -167,7 +167,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const descriptionDRC = "Testing DRCoordinator Multi Price Feed";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
-    const isSequencerDependant = false;
+    const isL2SequencerDependant = false;
     const addressL2SequencerFeed = ethers.constants.AddressZero;
     const l2SequencerGracePeriodSeconds = BigNumber.from("0");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
@@ -181,7 +181,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         descriptionDRC,
         fallbackWeiPerUnitLink,
         stalenessSeconds,
-        isSequencerDependant,
+        isL2SequencerDependant,
         addressL2SequencerFeed,
         l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
@@ -216,7 +216,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const descriptionDRC = "Testing DRCoordinator Multi Price Feed";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
-    const isSequencerDependant = false;
+    const isL2SequencerDependant = false;
     const addressL2SequencerFeed = ethers.constants.AddressZero;
     const l2SequencerGracePeriodSeconds = BigNumber.from("0");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
@@ -230,7 +230,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         descriptionDRC,
         fallbackWeiPerUnitLink,
         stalenessSeconds,
-        isSequencerDependant,
+        isL2SequencerDependant,
         addressL2SequencerFeed,
         l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;
@@ -262,7 +262,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
     const descriptionDRC = "Testing DRCoordinator Multi Price Feed";
     const fallbackWeiPerUnitLink = BigNumber.from("8000000000000000");
     const stalenessSeconds = BigNumber.from("86400");
-    const isSequencerDependant = false;
+    const isL2SequencerDependant = false;
     const addressL2SequencerFeed = ethers.constants.AddressZero;
     const l2SequencerGracePeriodSeconds = BigNumber.from("0");
     const drCoordinatorFactory = await ethers.getContractFactory("DRCoordinator");
@@ -276,7 +276,7 @@ export function testGetFeedData(signers: Signers, context: Context): void {
         descriptionDRC,
         fallbackWeiPerUnitLink,
         stalenessSeconds,
-        isSequencerDependant,
+        isL2SequencerDependant,
         addressL2SequencerFeed,
         l2SequencerGracePeriodSeconds,
       )) as DRCoordinator;

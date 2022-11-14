@@ -54,7 +54,7 @@ export interface DeployData {
   description: string;
   fallbackWeiPerUnitLink: BigNumber;
   stalenessSeconds: BigNumber;
-  isSequencerDependant: boolean;
+  isL2SequencerDependant: boolean;
   addressL2SequencerFeed: string;
   l2SequencerGracePeriodSeconds: BigNumber;
 }
