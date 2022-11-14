@@ -52,15 +52,18 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
      * @param _operatorAddr The Operator contract address.
      * @param _callbackGasLimit The amount of gas to attach to directrequest fulfillment transaction. It is the gasLimit
      * parameter of the directrequest ethtx task.
+     * @param _consumerMaxPayment The maximum amount of LINK willing to pay for the request (initial payment +
+     * fulfill payment). Set it to 0 if there is no hard cap.
      * @param _req The initialized Chainlink.Request.
      * @return requestId The request ID.
      */
     function _sendRequest(
         address _operatorAddr,
         uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment,
         Chainlink.Request memory _req
     ) internal returns (bytes32) {
-        return _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, _req);
+        return _sendRequestTo(s_drCoordinator, _operatorAddr, _callbackGasLimit, _consumerMaxPayment, _req);
     }
 
     /**
@@ -73,6 +76,8 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
      * @param _operatorAddr The Operator contract address.
      * @param _callbackGasLimit The amount of gas to attach to directrequest fulfillment transaction. It is the gasLimit
      * parameter of the directrequest ethtx task.
+     * @param _consumerMaxPayment The maximum amount of LINK willing to pay for the request (initial payment +
+     * fulfill payment). Set it to 0 if there is no hard cap.
      * @param _req The initialized Chainlink.Request.
      * @return requestId The request ID.
      */
@@ -80,9 +85,10 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
         IDRCoordinator _drCoordinator,
         address _operatorAddr,
         uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment,
         Chainlink.Request memory _req
     ) internal returns (bytes32) {
-        bytes32 requestId = _drCoordinator.requestData(_operatorAddr, _callbackGasLimit, _req);
+        bytes32 requestId = _drCoordinator.requestData(_operatorAddr, _callbackGasLimit, _consumerMaxPayment, _req);
         _addPendingRequest(address(_drCoordinator), requestId);
         emit ChainlinkRequested(requestId);
         return requestId;

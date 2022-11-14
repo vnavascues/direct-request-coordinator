@@ -17,6 +17,7 @@ interface IDRCoordinatorCallable {
     error DRCoordinator__FeeTypeIsUnsupported(FeeType feeType);
     error DRCoordinator__LinkAllowanceIsInsufficient(address payer, uint96 allowance, uint96 amount);
     error DRCoordinator__LinkBalanceIsInsufficient(address payer, uint96 balance, uint96 amount);
+    error DRCoordinator__LinkPaymentIsGtConsumerMaxPayment(uint96 payment, uint96 consumerMaxPayment);
     error DRCoordinator__LinkPaymentIsGtLinkTotalSupply(uint96 payment, uint96 linkTotalSupply);
     error DRCoordinator__LinkTransferAndCallFailed(address to, uint96 amount, bytes encodedRequest);
     error DRCoordinator__LinkTransferFailed(address to, uint96 amount);
@@ -25,12 +26,13 @@ interface IDRCoordinatorCallable {
     error DRCoordinator__PaymentTypeIsUnsupported(PaymentType paymentType);
     error DRCoordinator__RequestIsNotPending();
 
-    // FulfillConfig size = slot0 (32) + slot1 (32) + slot2 (14) = 78 bytes
+    // FulfillConfig size = slot0 (32) + slot1 (32) + slot2 (26) = 90 bytes
     struct FulfillConfig {
         address msgSender; // 20 bytes -> slot0
         uint96 payment; // 12 bytes -> slot0
         address callbackAddr; // 20 bytes -> slot1
         uint96 fee; // 12 bytes -> slot 1
+        uint96 consumerMaxPayment; // 12 bytes -> slot 2
         uint32 gasLimit; // 4 bytes -> slot2
         FeeType feeType; // 1 byte -> slot2
         bytes4 callbackFunctionId; // 4 bytes -> slot2
@@ -48,6 +50,7 @@ interface IDRCoordinatorCallable {
     function requestData(
         address _operatorAddr,
         uint32 _callbackGasLimit,
+        uint96 _consumerMaxPayment,
         Chainlink.Request memory _req
     ) external returns (bytes32);
 

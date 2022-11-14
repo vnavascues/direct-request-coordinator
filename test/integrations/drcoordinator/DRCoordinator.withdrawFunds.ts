@@ -10,6 +10,7 @@ import { revertToSnapshot, takeSnapshot } from "../../helpers/snapshot";
 import type { Context, Signers } from "./DRCoordinator";
 
 export function testWithdrawFunds(signers: Signers, context: Context): void {
+  const CONSUMER_MAX_PAYMENT = BigNumber.from("0");
   const filePath = path.resolve(__dirname, "specs");
   let snapshotId: string;
 
@@ -60,6 +61,7 @@ export function testWithdrawFunds(signers: Signers, context: Context): void {
         context.operator.address,
         specConverted.specId,
         specConverted.gasLimit,
+        CONSUMER_MAX_PAYMENT,
         expectedCallbackFunctionId,
         {
           gasPrice: weiPerUnitGas,
