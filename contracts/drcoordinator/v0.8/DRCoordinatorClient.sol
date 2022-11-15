@@ -11,7 +11,7 @@ import { ChainlinkFulfillment } from "./ChainlinkFulfillment.sol";
  * @author Víctor Navascués.
  * @notice Contract writers can inherit this contract in order to create requests for the Chainlink network via a
  * DRCoordinator contract.
- * @dev Uses @chainlink/contracts 0.4.2.
+ * @dev Uses @chainlink/contracts 0.5.1.
  * @dev Like a standard ChainlinkClient it builds and sends a Chainlink request. The difference between a
  * ChainlinkClient and a DRCoordinatorClient is that the former sends the Chainlink.Request to the Operator contract
  * attached in the LINK token via LINK.transferAndCall(), whilst the latter does not transfer LINK to the DRCoordinator
@@ -50,8 +50,8 @@ contract DRCoordinatorClient is ChainlinkFulfillment {
      * @dev Calls sendDRCoordinatorRequestTo() with the stored DRCoordinator contract interface.
      * @dev It does not involve LINK.transferAndCall().
      * @param _operatorAddr The Operator contract address.
-     * @param _callbackGasLimit The amount of gas to attach to directrequest fulfillment transaction. It is the gasLimit
-     * parameter of the directrequest ethtx task.
+     * @param _callbackGasLimit The amount of gas to attach to the fulfillment transaction. It is the `gasLimit`
+     * parameter of the `ethtx` task of the `direcrequest` job.
      * @param _consumerMaxPayment The maximum amount of LINK willing to pay for the request (initial payment +
      * fulfill payment). Set it to 0 if there is no hard cap.
      * @param _req The initialized Chainlink.Request.

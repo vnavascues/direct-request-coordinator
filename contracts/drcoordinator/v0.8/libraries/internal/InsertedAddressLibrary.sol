@@ -4,7 +4,8 @@ pragma solidity 0.8.17;
 /**
  * @title The InsertedAddressLibrary library.
  * @author Víctor Navascués.
- * @notice An iterable mapping library for addresses. Useful to either grant or revoke by address.
+ * @notice An iterable mapping library for addresses. Useful to either grant or revoke by address whilst keeping track
+ * of them.
  */
 library InsertedAddressLibrary {
     error InsertedAddressLibrary__AddressAlreadyInserted(address key);

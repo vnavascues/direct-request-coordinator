@@ -1,20 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-// The kind of fee to apply on top of the LINK payment before fees (paymentPreFee)
 enum FeeType {
     FLAT, // A fixed LINK amount
-    PERMIRYAD // A dynamic LINK amount (a percentage of the paymentPreFee)
+    PERMIRYAD // A dynamic LINK amount (a percentage of the `paymentPreFee`)
 }
-// The kind of LINK payment DRCoordinator makes to the Operator (holds it in escrow) on requesting data
+
 enum PaymentType {
     FLAT, // A fixed LINK amount
     PERMIRYAD // A dynamic LINK amount (a percentage of the MAX LINK payment)
 }
 
-// A representation of the essential data of an Operator directrequest TOML job spec. It also includes specific
-// variables for dynamic LINK payments, e.g. fee, feeType.
-// Spec size = slot0 (32) + slot1 (32) + slot2 (18) = 82 bytes
+/**
+ * @notice The representation of a `directrequest` job spec for DRCoordinator requests. Composed of `directrequest`
+ * spec unique fields (e.g. `specId`, `operator`) DRCoordinator specific variables to address the LINK payment, e.g.
+ * `fee`, `feeType`, etc.
+ * @dev Size = slot0 (32) + slot1 (32) + slot2 (18) = 82 bytes
+ * @member specId The `externalJobID` (UUIDv4) as bytes32.
+ * @member operator The Operator address.
+ * @member payment The LINK amount that Consumer pays to Operator when requesting the job (and to be hold in escrow).
+ * It depends on the `paymentType`.
+ * @member paymentType The kind of `payment`; a fixed amount or a percentage of the LINK required to cover the gas costs
+ * if all the `gasLimit` was used (aka. MAX LINK payment).
+ * @member fee The LINK amount that DRCoordinator charges Consumer when fulfilling the request. It depends on the
+ * `feeType`.
+ * @member feeType The kind of `fee`; a fixed amount or a percentage of the LINK required to cover the gas costs
+ * incurred.
+ * @member gasLimit The amount of gas to attach to the transaction (via `gasLimit` parameter on the `ethtx` task of the
+ * `directrequest` job).
+ */
 struct Spec {
     bytes32 specId; // 32 bytes -> slot0
     address operator; // 20 bytes -> slot1
@@ -28,9 +42,7 @@ struct Spec {
 /**
  * @title The SpecLibrary library.
  * @author Víctor Navascués.
- * @notice An iterable mapping library for Spec. A Spec is the Solidity representation of the essential data of an
- * Operator directrequest TOML job spec. It also includes specific variables for dynamic LINK payments, e.g. payment,
- * fee, feeType.
+ * @notice An iterable mapping library for Spec.
  */
 library SpecLibrary {
     error SpecLibrary__SpecIsNotInserted(bytes32 key);

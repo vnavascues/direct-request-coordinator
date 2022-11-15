@@ -37,6 +37,9 @@ interface IDRCoordinator is IDRCoordinatorCallable {
 
     function addSpecsAuthorizedConsumers(bytes32[] calldata _keys, address[][] calldata _authConsumersArray) external;
 
+    /**
+     * @notice Pauses the DRCoordinator.
+     */
     function pause() external;
 
     function removeSpecAuthorizedConsumers(bytes32 _key, address[] calldata _authConsumers) external;

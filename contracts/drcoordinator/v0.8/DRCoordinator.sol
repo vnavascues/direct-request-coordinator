@@ -10,6 +10,7 @@ import { TypeAndVersionInterface } from "@chainlink/contracts/src/v0.8/interface
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IDRCoordinator } from "./interfaces/IDRCoordinator.sol";
+import { IDRCoordinatorCallable } from "./interfaces/IDRCoordinatorCallable.sol";
 import { IChainlinkExternalFulfillment } from "./interfaces/IChainlinkExternalFulfillment.sol";
 import { FeeType, PaymentType, Spec, SpecLibrary } from "./libraries/internal/SpecLibrary.sol";
 import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries/internal/InsertedAddressLibrary.sol";
@@ -170,6 +171,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /* ========== EXTERNAL FUNCTIONS ========== */
 
+    /// @inheritdoc IDRCoordinatorCallable
     function addFunds(address _consumer, uint96 _amount) external nonReentrant {
         _requireLinkAllowanceIsSufficient(msg.sender, uint96(i_link.allowance(msg.sender, address(this))), _amount);
         _requireLinkBalanceIsSufficient(msg.sender, uint96(i_link.balanceOf(msg.sender)), _amount);
@@ -199,6 +201,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         }
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function cancelRequest(bytes32 _requestId) external nonReentrant {
         address operatorAddr = s_pendingRequests[_requestId];
         _requireRequestIsPending(operatorAddr);
@@ -216,6 +219,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         );
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function fulfillData(bytes32 _requestId, bytes calldata _data) external whenNotPaused nonReentrant {
         // Validate sender is the Operator of the request
         _requireCallerIsRequestOperator(s_pendingRequests[_requestId]);
@@ -284,6 +288,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         );
     }
 
+    /// @inheritdoc IDRCoordinator
     function pause() external onlyOwner {
         _pause();
     }
@@ -310,6 +315,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         }
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function requestData(
         address _operatorAddr,
         uint32 _callbackGasLimit,
@@ -456,6 +462,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         _unpause();
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function withdrawFunds(address _payee, uint96 _amount) external nonReentrant {
         address consumer = msg.sender == owner() ? address(this) : msg.sender;
         uint96 consumerLinkBalance = s_consumerToLinkBalance[consumer];
@@ -469,10 +476,12 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /* ========== EXTERNAL VIEW FUNCTIONS ========== */
 
+    /// @inheritdoc IDRCoordinatorCallable
     function availableFunds(address _consumer) external view returns (uint96) {
         return s_consumerToLinkBalance[_consumer];
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function calculateMaxPaymentAmount(
         uint256 _weiPerUnitGas,
         uint96 _paymentInEscrow,
@@ -492,9 +501,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             );
     }
 
-    // NB: this method has limitations. It does not take into account the gas incurrend by
-    // Operator.fulfillOracleRequest2() nor DRCoordinator.fulfillData(). All of them are affected, among other things,
-    // by the data size and fulfillment function. Therefore it is needed to fine tune 'startGas'
+    /// @inheritdoc IDRCoordinatorCallable
     function calculateSpotPaymentAmount(
         uint32 _startGas,
         uint256 _weiPerUnitGas,
@@ -514,89 +521,110 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             );
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getDescription() external view returns (string memory) {
         return s_description;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getFeedData() external view returns (uint256) {
         return _getFeedData();
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getFallbackWeiPerUnitLink() external view returns (uint256) {
         return s_fallbackWeiPerUnitLink;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getFulfillConfig(bytes32 _requestId) external view returns (FulfillConfig memory) {
         return s_requestIdToFulfillConfig[_requestId];
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getIsL2SequencerDependant() external view returns (bool) {
         return i_isL2SequencerDependant;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getIsMultiPriceFeedDependant() external view returns (bool) {
         return i_isMultiPriceFeedDependant;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getIsReentrancyLocked() external view returns (bool) {
         return s_isReentrancyLocked;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getLinkToken() external view returns (LinkTokenInterface) {
         return i_link;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getL2SequencerFeed() external view returns (AggregatorV3Interface) {
         return i_l2SequencerFeed;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getL2SequencerGracePeriodSeconds() external view returns (uint256) {
         return s_l2SequencerGracePeriodSeconds;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getNumberOfSpecs() external view returns (uint256) {
         return s_keyToSpec._size();
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getPermiryadFeeFactor() external view returns (uint8) {
         return s_permiryadFeeFactor;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getPriceFeed1() external view returns (AggregatorV3Interface) {
         return i_priceFeed1;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getPriceFeed2() external view returns (AggregatorV3Interface) {
         return i_priceFeed2;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getRequestCount() external view returns (uint256) {
         return s_requestCount;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpec(bytes32 _key) external view returns (Spec memory) {
         _requireSpecIsInserted(_key);
         return s_keyToSpec._getSpec(_key);
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpecAuthorizedConsumers(bytes32 _key) external view returns (address[] memory) {
         // NB: s_authorizedConsumerMap only stores keys that exist in s_keyToSpec
         _requireSpecIsInserted(_key);
         return s_keyToAuthorizedConsumerMap[_key].keys;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpecKeyAtIndex(uint256 _index) external view returns (bytes32) {
         return s_keyToSpec._getKeyAtIndex(_index);
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpecMapKeys() external view returns (bytes32[] memory) {
         return s_keyToSpec.keys;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getStalenessSeconds() external view returns (uint256) {
         return s_stalenessSeconds;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function isSpecAuthorizedConsumer(bytes32 _key, address _consumer) external view returns (bool) {
         // NB: s_authorizedConsumerMap only stores keys that exist in s_keyToSpec
         _requireSpecIsInserted(_key);
@@ -605,6 +633,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /* ========== EXTERNAL PURE FUNCTIONS ========== */
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getGasAfterPaymentCalculation() external pure returns (uint32) {
         return GAS_AFTER_PAYMENT_CALCULATION;
     }
