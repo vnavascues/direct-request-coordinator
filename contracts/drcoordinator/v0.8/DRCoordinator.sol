@@ -9,8 +9,7 @@ import { OperatorInterface } from "@chainlink/contracts/src/v0.8/interfaces/Oper
 import { TypeAndVersionInterface } from "@chainlink/contracts/src/v0.8/interfaces/TypeAndVersionInterface.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { IDRCoordinatorCallable } from "./interfaces/IDRCoordinatorCallable.sol";
-import { IDRCoordinatorOwnable } from "./interfaces/IDRCoordinatorOwnable.sol";
+import { IDRCoordinator } from "./interfaces/IDRCoordinator.sol";
 import { IChainlinkExternalFulfillment } from "./interfaces/IChainlinkExternalFulfillment.sol";
 import { FeeType, PaymentType, Spec, SpecLibrary } from "./libraries/internal/SpecLibrary.sol";
 import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries/internal/InsertedAddressLibrary.sol";
@@ -59,13 +58,7 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
  * @dev This contract provides a wide range of external view methods to query Spec, Spec authorized consumers, and
  * calculating the MAX and SPOT LINK payment amount (per Spec).
  */
-contract DRCoordinator is
-    ConfirmedOwner,
-    Pausable,
-    TypeAndVersionInterface,
-    IDRCoordinatorCallable,
-    IDRCoordinatorOwnable
-{
+contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDRCoordinator {
     using Address for address;
     using AuthorizedConsumerLibrary for AuthorizedConsumerLibrary.Map;
     using Chainlink for Chainlink.Request;

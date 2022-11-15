@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import { IDRCoordinatorCallable } from "./IDRCoordinatorCallable.sol";
 import { FeeType, PaymentType, Spec } from "../libraries/internal/SpecLibrary.sol";
 
-interface IDRCoordinatorOwnable {
+interface IDRCoordinator is IDRCoordinatorCallable {
     error DRCoordinator__ArrayIsEmpty(string arrayName);
     error DRCoordinator__ArrayLengthsAreNotEqual(
         string array1Name,
