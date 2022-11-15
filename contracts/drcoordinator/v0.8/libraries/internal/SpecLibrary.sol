@@ -27,7 +27,7 @@ struct Spec {
 
 /**
  * @title The SpecLibrary library.
- * @author LinkPool.
+ * @author Víctor Navascués.
  * @notice An iterable mapping library for Spec. A Spec is the Solidity representation of the essential data of an
  * Operator directrequest TOML job spec. It also includes specific variables for dynamic LINK payments, e.g. payment,
  * fee, feeType.

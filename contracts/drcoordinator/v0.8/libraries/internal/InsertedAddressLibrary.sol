@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 /**
  * @title The InsertedAddressLibrary library.
- * @author LinkPool.
+ * @author Víctor Navascués.
  * @notice An iterable mapping library for addresses. Useful to either grant or revoke by address.
  */
 library InsertedAddressLibrary {

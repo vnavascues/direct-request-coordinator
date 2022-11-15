@@ -16,7 +16,7 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
 
 /**
  * @title The DRCoordinator (coOperator) contract.
- * @author LinkPool.
+ * @author Víctor Navascués.
  * @notice Node operators can deploy this contract to enable dynamic LINK payments on Direct Request, syncing the job
  * price (in LINK) with the network gas and token conditions.
  * @dev Uses @chainlink/contracts 0.5.1.

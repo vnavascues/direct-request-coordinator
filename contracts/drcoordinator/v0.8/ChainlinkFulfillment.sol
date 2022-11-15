@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 /**
  * @title The ChainlinkFulfillment contract.
- * @author LinkPool.
+ * @author Víctor Navascués.
  * @notice Contract writers can inherit this contract to fulfill Chainlink requests.
  * @dev Uses @chainlink/contracts 0.4.2.
  */

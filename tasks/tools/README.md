@@ -163,8 +163,8 @@ yarn hardhat tools:library:deploy \
 
 ```sh
 yarn hardhat tools:library:deploy \
---name EntryLibrary \
---contract 'contracts/linkpool/EntryLibrary.sol:EntryLibrary' \
+--name SpecLibrary \
+--contract 'contracts/drcoordinator/v0.8/libraries/internal/SpecLibrary.sol:SpecLibrary' \
 --verify \
 --network eth-kovan
 ```
@@ -235,7 +235,7 @@ yarn hardhat tools:verify:by-address \
 ```sh
 yarn hardhat tools:verify:by-address \
 --address 0xfAdc73c2972757E0EE3a291f1f4A206E294ca68A \
---contract 'contracts/linkpool/EntryLibrary.sol:EntryLibrary' \
+--contract 'contracts/drcoordinator/v0.8/libraries/internal/SpecLibrary.sol:SpecLibrary' \
 --network eth-kovan
 ```
 
@@ -243,6 +243,6 @@ yarn hardhat tools:verify:by-address \
 yarn hardhat tools:verify:Consumer \
 --address 0xb9cF17BA6E2ea0042Ebe98c1Ce8B1350fa3D544F \
 --oracle 0x480dDa3952b78F0A6318F5F0F1C5cc3C19043d6D \
---contract contracts/sportsdataio-linkpool/SportsdataioLinkPoolConsumer.sol:SportsdataioLinkPoolConsumer \
+--contract contracts/sportsdataio/SportsdataioConsumer.sol:SportsdataioConsumer \
 --network eth-kovan
 ```

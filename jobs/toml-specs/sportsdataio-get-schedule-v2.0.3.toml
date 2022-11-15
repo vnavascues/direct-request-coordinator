@@ -1,7 +1,7 @@
 type = "directrequest"
 schemaVersion = 1
 minContractPaymentLinkJuels = "1000000000000000000" # 0.1 LINK or 1 LINK
-name = "SDIO Sportsdataio LinkPool Get Schedule v2.0.3 - DRC"
+name = "SDIO Sportsdataio Get Schedule v2.0.3 - DRC"
 contractAddress = "0x0000000000000000000000000000000000000000" # Replace with Operator.sol address (also in submit_tx task)
 maxTaskDuration = "0s"
 observationSource = """

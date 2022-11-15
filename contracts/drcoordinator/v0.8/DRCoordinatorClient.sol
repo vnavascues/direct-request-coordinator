@@ -8,7 +8,7 @@ import { ChainlinkFulfillment } from "./ChainlinkFulfillment.sol";
 
 /**
  * @title The DRCoordinatorClient contract.
- * @author LinkPool.
+ * @author Víctor Navascués.
  * @notice Contract writers can inherit this contract in order to create requests for the Chainlink network via a
  * DRCoordinator contract.
  * @dev Uses @chainlink/contracts 0.4.2.
