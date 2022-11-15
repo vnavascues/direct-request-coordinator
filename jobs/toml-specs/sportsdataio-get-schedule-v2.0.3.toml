@@ -1,8 +1,12 @@
 type = "directrequest"
 schemaVersion = 1
-minContractPaymentLinkJuels = "1000000000000000000" # 0.1 LINK or 1 LINK
-name = "SDIO Sportsdataio LinkPool Get Schedule v2.0.3 - DRC"
-contractAddress = "0x0000000000000000000000000000000000000000" # Replace with Operator.sol address (also in submit_tx task)
+# Replace (1 of 3) with DRCoordinator.sol address
+requesters = [
+    "0x0000000000000000000000000000000000000000"
+]
+minContractPaymentLinkJuels = "0"
+name = "SDIO Sportsdataio Get Schedule v2.0.3 - DRC"
+contractAddress = "0x0000000000000000000000000000000000000000"  # Replace (2 of 3) with Operator.sol address
 maxTaskDuration = "0s"
 observationSource = """
     decode_log          [
@@ -59,7 +63,7 @@ observationSource = """
                          data="$(encode_tx)"
                          gasLimit="$(decode_cbor.gasLimit)"
                          failOnRevert=true
-                        ] // Replace (4 o 4) with Operator.sol address
+                        ] // Replace (3 of 3) with Operator.sol address
 
     decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_tx -> submit_tx
 """

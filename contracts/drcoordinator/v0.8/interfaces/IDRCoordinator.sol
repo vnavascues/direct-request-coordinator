@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import { IDRCoordinatorCallable } from "./IDRCoordinatorCallable.sol";
 import { FeeType, PaymentType, Spec } from "../libraries/internal/SpecLibrary.sol";
 
-interface IDRCoordinatorOwnable {
+interface IDRCoordinator is IDRCoordinatorCallable {
     error DRCoordinator__ArrayIsEmpty(string arrayName);
     error DRCoordinator__ArrayLengthsAreNotEqual(
         string array1Name,
@@ -32,34 +33,101 @@ interface IDRCoordinatorOwnable {
 
     /* ========== EXTERNAL FUNCTIONS ========== */
 
+    /**
+     * @notice Authorizes consumer addresses on the given `Spec` (by key).
+     * @param _key The `Spec` key.
+     * @param _authConsumers The array of consumer addresses.
+     */
     function addSpecAuthorizedConsumers(bytes32 _key, address[] calldata _authConsumers) external;
 
+    /**
+     * @notice Authorizes consumer addresses on the given specs (by keys).
+     * @param _keys The array of `Spec` keys.
+     * @param _authConsumersArray The array of consumer addresses (per `Spec`).
+     */
     function addSpecsAuthorizedConsumers(bytes32[] calldata _keys, address[][] calldata _authConsumersArray) external;
 
+    /**
+     * @notice Pauses DRCoordinator.
+     */
     function pause() external;
 
+    /**
+     * @notice Withdrawns authorization for consumer addresses on the given `Spec` (by key).
+     * @param _key The `Spec` key.
+     * @param _authConsumers The array of consumer addresses.
+     */
     function removeSpecAuthorizedConsumers(bytes32 _key, address[] calldata _authConsumers) external;
 
+    /**
+     * @notice Withdrawns authorization for consumer addresses on the given specs (by keys).
+     * @param _keys The array of `Spec` keys.
+     * @param _authConsumersArray The array of consumer addresses (per `Spec`).
+     */
     function removeSpecsAuthorizedConsumers(bytes32[] calldata _keys, address[][] calldata _authConsumersArray)
         external;
 
+    /**
+     * @notice Removes a `Spec` by key.
+     * @param _key The `Spec` key.
+     */
     function removeSpec(bytes32 _key) external;
 
+    /**
+     * @notice Removes specs by keys.
+     * @param _keys The array of `Spec` keys.
+     */
     function removeSpecs(bytes32[] calldata _keys) external;
 
+    /**
+     * @notice Sets the DRCoordinator description.
+     * @param _description The explanation.
+     */
     function setDescription(string calldata _description) external;
 
+    /**
+     * @notice Sets the fallback amount of GASTKN wei per unit of LINK.
+     * @dev This amount is used when any Price Feed answer is stale, or the L2 Sequencer Uptime Status Feed is down, or
+     * its answer has been reported before the grace period.
+     * @param _fallbackWeiPerUnitLink The wei amount.
+     */
     function setFallbackWeiPerUnitLink(uint256 _fallbackWeiPerUnitLink) external;
 
+    /**
+     * @notice Sets the number of seconds to wait before trusting the L2 Sequencer Uptime Status Feed answer.
+     * @param _l2SequencerGracePeriodSeconds The number of seconds.
+     */
     function setL2SequencerGracePeriodSeconds(uint256 _l2SequencerGracePeriodSeconds) external;
 
+    /**
+     * @notice Sets the permiryad factor (1 by default).
+     * @dev Allows to bump the fee percentage above 100%.
+     * @param _permiryadFactor The factor.
+     */
     function setPermiryadFeeFactor(uint8 _permiryadFactor) external;
 
+    /**
+     * @notice Sets a `Spec` by key.
+     * @param _key The `Spec` key.
+     * @param _spec The Spec` tuple.
+     */
     function setSpec(bytes32 _key, Spec calldata _spec) external;
 
+    /**
+     * @notice Sets specs by keys.
+     * @param _keys The array of `Spec` keys.
+     * @param _specs The array of `Spec` tuples.
+     */
     function setSpecs(bytes32[] calldata _keys, Spec[] calldata _specs) external;
 
+    /**
+     * @notice Sets the number of seconds after which any Price Feed answer is considered stale and invalid.
+     * @param _stalenessSeconds The number of seconds.
+     */
     function setStalenessSeconds(uint256 _stalenessSeconds) external;
 
+    /**
+     * @notice Unpauses DRCoordinator.
+     */
     function unpause() external;
 }

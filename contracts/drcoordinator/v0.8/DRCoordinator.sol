@@ -9,27 +9,32 @@ import { OperatorInterface } from "@chainlink/contracts/src/v0.8/interfaces/Oper
 import { TypeAndVersionInterface } from "@chainlink/contracts/src/v0.8/interfaces/TypeAndVersionInterface.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IDRCoordinator } from "./interfaces/IDRCoordinator.sol";
 import { IDRCoordinatorCallable } from "./interfaces/IDRCoordinatorCallable.sol";
-import { IDRCoordinatorOwnable } from "./interfaces/IDRCoordinatorOwnable.sol";
 import { IChainlinkExternalFulfillment } from "./interfaces/IChainlinkExternalFulfillment.sol";
 import { FeeType, PaymentType, Spec, SpecLibrary } from "./libraries/internal/SpecLibrary.sol";
 import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries/internal/InsertedAddressLibrary.sol";
 
 /**
  * @title The DRCoordinator (coOperator) contract.
- * @author LinkPool.
- * @notice Node operators can deploy this contract to enable dynamic LINK payments on Direct Request, syncing the job
- * price (in LINK) with the network gas and token conditions.
+ * @author Víctor Navascués.
+ * @notice Node operators (NodeOp(s)) can deploy this contract to enable dynamic LINK payments on Direct Request
+ * (Any API), syncing the job price (in LINK) with the network gas token (GASTKN) and its conditions.
  * @dev Uses @chainlink/contracts 0.5.1.
- * @dev This contract cooperates with the Operator contract. DRCoordinator interfaces 1..N DRCoordinatorClient contracts
- * with 1..N Operator contracts, forwarding Chainlink requests and responses. Compared to the standard Direct Request
- * model/flow (via a ChainlinkClient and an Operator), DRCoordinator does:
+ * @dev This contract cooperates with the Chainlink Operator contract. DRCoordinator interfaces 1..N DRCoordinatorClient
+ * contracts (Consumer(s)) with 1..N Operator contracts (Operator(s)) by forwarding Chainlink requests and responses.
+ * These are the main differences that using DRCoordinator has compared with the standard Direct Request via a
+ * ChainlinkClient Consumer and an Operator:
  *
- * - Request: first, it stores essential client and request data to be used upon fulfillment. Then, it extends the
- * Chainlink.Request built by the DRCoordinatorClient. And finally, it sends the Chainlink.Request to the aimed Operator
- * (forward request). At this stage, the LINK payment amount sent to the Operator (and to be held in escrow) is either a
- * flat or a percentage amount (both configured by the operator). The latter is a percentage of the maximum LINK payment
- * amount (MAX) if all the gasLimit (configured per Spec by the operator) was used fulfilling the request.
+ * - Creating the job spec and sharing its details: after adding a DRCoordinator TOML spec in the Chainlink node, the
+ * NodeOp must create the related Spec in the DRCoordinator storage (see SpecLibrary.sol).
+ *
+ * - Request: first, it stores essential Consumer, request & Spec data to be used upon fulfillment. Then, it extends the
+ * Chainlink.Request (built by the DRCoordinatorClient) and finally sends it to the Operator. At this stage, the
+ * LINK payment amount sent to the Operator (and to be held in escrow) is either a flat or a percentage amount (both
+ * configured by the NodeOp). The latter is a percentage of the maximum LINK payment amount (MAX LINK payment) if all
+ * the tx gasLimit was used fulfilling the request. Each job spec configuration details, e.g. fee, feeType, oracle, etc.
+ * are stored as Spec(s) in the DRCoordinator storage by the NodeOp.
  *
  * - Fulfillment: first, it loads the request data previously stored. Then, it fulfills the request (forwards response).
  * And finally, it deals with the LINK internal balances with regards to paying for the job done. At this stage, the
@@ -43,7 +48,7 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
  * by the operator on deployment), which provides the TKN wei amount per unit of LINK. The ideal scenario is to use the
  * LINK / TKN price feed, although two feeds can be configured, i.e. TKN / USD (priceFeed1) and LINK / USD (priceFeed2).
  * @dev This contract implements the following Chainlink Price Feed risk mitigation strategies for: stale answer, and
- * L2 Sequencer outage. The wei value per unit of LINK will default to a value set by the operator.
+ * L2 Sequencer outage & grace period. The wei value per unit of LINK will default to a value set by the operator.
  * @dev This contract implements an emergency stop mechanism (triggered by the operator). Only request data, and fulfill
  * data are the functionalities disabled when the contract is paused.
  * @dev This contract allows CRUD Spec. A Spec is the Solidity representation of the essential data of a directrequest
@@ -59,13 +64,7 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
  * @dev This contract provides a wide range of external view methods to query Spec, Spec authorized consumers, and
  * calculating the MAX and SPOT LINK payment amount (per Spec).
  */
-contract DRCoordinator is
-    ConfirmedOwner,
-    Pausable,
-    TypeAndVersionInterface,
-    IDRCoordinatorCallable,
-    IDRCoordinatorOwnable
-{
+contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDRCoordinator {
     using Address for address;
     using AuthorizedConsumerLibrary for AuthorizedConsumerLibrary.Map;
     using Chainlink for Chainlink.Request;
@@ -177,6 +176,7 @@ contract DRCoordinator is
 
     /* ========== EXTERNAL FUNCTIONS ========== */
 
+    /// @inheritdoc IDRCoordinatorCallable
     function addFunds(address _consumer, uint96 _amount) external nonReentrant {
         _requireLinkAllowanceIsSufficient(msg.sender, uint96(i_link.allowance(msg.sender, address(this))), _amount);
         _requireLinkBalanceIsSufficient(msg.sender, uint96(i_link.balanceOf(msg.sender)), _amount);
@@ -187,10 +187,12 @@ contract DRCoordinator is
         }
     }
 
+    /// @inheritdoc IDRCoordinator
     function addSpecAuthorizedConsumers(bytes32 _key, address[] calldata _authConsumers) external onlyOwner {
         _addSpecAuthorizedConsumers(_key, _authConsumers);
     }
 
+    /// @inheritdoc IDRCoordinator
     function addSpecsAuthorizedConsumers(bytes32[] calldata _keys, address[][] calldata _authConsumersArray)
         external
         onlyOwner
@@ -206,6 +208,7 @@ contract DRCoordinator is
         }
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function cancelRequest(bytes32 _requestId) external nonReentrant {
         address operatorAddr = s_pendingRequests[_requestId];
         _requireRequestIsPending(operatorAddr);
@@ -223,6 +226,7 @@ contract DRCoordinator is
         );
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function fulfillData(bytes32 _requestId, bytes calldata _data) external whenNotPaused nonReentrant {
         // Validate sender is the Operator of the request
         _requireCallerIsRequestOperator(s_pendingRequests[_requestId]);
@@ -291,15 +295,18 @@ contract DRCoordinator is
         );
     }
 
+    /// @inheritdoc IDRCoordinator
     function pause() external onlyOwner {
         _pause();
     }
 
+    /// @inheritdoc IDRCoordinator
     function removeSpecAuthorizedConsumers(bytes32 _key, address[] calldata _authConsumers) external onlyOwner {
         AuthorizedConsumerLibrary.Map storage s_authorizedConsumerMap = s_keyToAuthorizedConsumerMap[_key];
         _removeSpecAuthorizedConsumers(_key, _authConsumers, s_authorizedConsumerMap, true);
     }
 
+    /// @inheritdoc IDRCoordinator
     function removeSpecsAuthorizedConsumers(bytes32[] calldata _keys, address[][] calldata _authConsumersArray)
         external
         onlyOwner
@@ -317,6 +324,7 @@ contract DRCoordinator is
         }
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function requestData(
         address _operatorAddr,
         uint32 _callbackGasLimit,
@@ -391,6 +399,7 @@ contract DRCoordinator is
         return requestId;
     }
 
+    /// @inheritdoc IDRCoordinator
     function removeSpec(bytes32 _key) external onlyOwner {
         // Remove first Spec authorized consumers
         AuthorizedConsumerLibrary.Map storage s_authorizedConsumerMap = s_keyToAuthorizedConsumerMap[_key];
@@ -400,6 +409,7 @@ contract DRCoordinator is
         _removeSpec(_key);
     }
 
+    /// @inheritdoc IDRCoordinator
     function removeSpecs(bytes32[] calldata _keys) external onlyOwner {
         uint256 keysLength = _keys.length;
         _requireArrayIsNotEmpty("keys", keysLength);
@@ -417,31 +427,37 @@ contract DRCoordinator is
         }
     }
 
+    /// @inheritdoc IDRCoordinator
     function setDescription(string calldata _description) external onlyOwner {
         s_description = _description;
         emit DescriptionSet(_description);
     }
 
+    /// @inheritdoc IDRCoordinator
     function setFallbackWeiPerUnitLink(uint256 _fallbackWeiPerUnitLink) external onlyOwner {
         _requireFallbackWeiPerUnitLinkIsGtZero(_fallbackWeiPerUnitLink);
         s_fallbackWeiPerUnitLink = _fallbackWeiPerUnitLink;
         emit FallbackWeiPerUnitLinkSet(_fallbackWeiPerUnitLink);
     }
 
+    /// @inheritdoc IDRCoordinator
     function setL2SequencerGracePeriodSeconds(uint256 _l2SequencerGracePeriodSeconds) external onlyOwner {
         s_l2SequencerGracePeriodSeconds = _l2SequencerGracePeriodSeconds;
         emit L2SequencerGracePeriodSecondsSet(_l2SequencerGracePeriodSeconds);
     }
 
+    /// @inheritdoc IDRCoordinator
     function setPermiryadFeeFactor(uint8 _permiryadFactor) external onlyOwner {
         s_permiryadFeeFactor = _permiryadFactor;
         emit PermiryadFeeFactorSet(_permiryadFactor);
     }
 
+    /// @inheritdoc IDRCoordinator
     function setSpec(bytes32 _key, Spec calldata _spec) external onlyOwner {
         _setSpec(_key, _spec);
     }
 
+    /// @inheritdoc IDRCoordinator
     function setSpecs(bytes32[] calldata _keys, Spec[] calldata _specs) external onlyOwner {
         uint256 keysLength = _keys.length;
         _requireArrayIsNotEmpty("keys", keysLength);
@@ -454,15 +470,18 @@ contract DRCoordinator is
         }
     }
 
+    /// @inheritdoc IDRCoordinator
     function setStalenessSeconds(uint256 _stalenessSeconds) external onlyOwner {
         s_stalenessSeconds = _stalenessSeconds;
         emit StalenessSecondsSet(_stalenessSeconds);
     }
 
+    /// @inheritdoc IDRCoordinator
     function unpause() external onlyOwner {
         _unpause();
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function withdrawFunds(address _payee, uint96 _amount) external nonReentrant {
         address consumer = msg.sender == owner() ? address(this) : msg.sender;
         uint96 consumerLinkBalance = s_consumerToLinkBalance[consumer];
@@ -476,10 +495,12 @@ contract DRCoordinator is
 
     /* ========== EXTERNAL VIEW FUNCTIONS ========== */
 
+    /// @inheritdoc IDRCoordinatorCallable
     function availableFunds(address _consumer) external view returns (uint96) {
         return s_consumerToLinkBalance[_consumer];
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function calculateMaxPaymentAmount(
         uint256 _weiPerUnitGas,
         uint96 _paymentInEscrow,
@@ -499,9 +520,7 @@ contract DRCoordinator is
             );
     }
 
-    // NB: this method has limitations. It does not take into account the gas incurrend by
-    // Operator.fulfillOracleRequest2() nor DRCoordinator.fulfillData(). All of them are affected, among other things,
-    // by the data size and fulfillment function. Therefore it is needed to fine tune 'startGas'
+    /// @inheritdoc IDRCoordinatorCallable
     function calculateSpotPaymentAmount(
         uint32 _startGas,
         uint256 _weiPerUnitGas,
@@ -521,89 +540,110 @@ contract DRCoordinator is
             );
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getDescription() external view returns (string memory) {
         return s_description;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getFeedData() external view returns (uint256) {
         return _getFeedData();
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getFallbackWeiPerUnitLink() external view returns (uint256) {
         return s_fallbackWeiPerUnitLink;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getFulfillConfig(bytes32 _requestId) external view returns (FulfillConfig memory) {
         return s_requestIdToFulfillConfig[_requestId];
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getIsL2SequencerDependant() external view returns (bool) {
         return i_isL2SequencerDependant;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getIsMultiPriceFeedDependant() external view returns (bool) {
         return i_isMultiPriceFeedDependant;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getIsReentrancyLocked() external view returns (bool) {
         return s_isReentrancyLocked;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getLinkToken() external view returns (LinkTokenInterface) {
         return i_link;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getL2SequencerFeed() external view returns (AggregatorV3Interface) {
         return i_l2SequencerFeed;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getL2SequencerGracePeriodSeconds() external view returns (uint256) {
         return s_l2SequencerGracePeriodSeconds;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getNumberOfSpecs() external view returns (uint256) {
         return s_keyToSpec._size();
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getPermiryadFeeFactor() external view returns (uint8) {
         return s_permiryadFeeFactor;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getPriceFeed1() external view returns (AggregatorV3Interface) {
         return i_priceFeed1;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getPriceFeed2() external view returns (AggregatorV3Interface) {
         return i_priceFeed2;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getRequestCount() external view returns (uint256) {
         return s_requestCount;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpec(bytes32 _key) external view returns (Spec memory) {
         _requireSpecIsInserted(_key);
         return s_keyToSpec._getSpec(_key);
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpecAuthorizedConsumers(bytes32 _key) external view returns (address[] memory) {
         // NB: s_authorizedConsumerMap only stores keys that exist in s_keyToSpec
         _requireSpecIsInserted(_key);
         return s_keyToAuthorizedConsumerMap[_key].keys;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpecKeyAtIndex(uint256 _index) external view returns (bytes32) {
         return s_keyToSpec._getKeyAtIndex(_index);
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getSpecMapKeys() external view returns (bytes32[] memory) {
         return s_keyToSpec.keys;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getStalenessSeconds() external view returns (uint256) {
         return s_stalenessSeconds;
     }
 
+    /// @inheritdoc IDRCoordinatorCallable
     function isSpecAuthorizedConsumer(bytes32 _key, address _consumer) external view returns (bool) {
         // NB: s_authorizedConsumerMap only stores keys that exist in s_keyToSpec
         _requireSpecIsInserted(_key);
@@ -612,6 +652,7 @@ contract DRCoordinator is
 
     /* ========== EXTERNAL PURE FUNCTIONS ========== */
 
+    /// @inheritdoc IDRCoordinatorCallable
     function getGasAfterPaymentCalculation() external pure returns (uint32) {
         return GAS_AFTER_PAYMENT_CALCULATION;
     }
