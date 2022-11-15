@@ -38,7 +38,7 @@ interface IDRCoordinatorCallable {
     error DRCoordinator__RequestIsNotPending();
 
     /**
-     * @notice Stores the essential Spec request data to be used by DRCoordinator when fulfilling the request.
+     * @notice Stores the essential `Spec` request data to be used by DRCoordinator when fulfilling the request.
      * @dev Size = slot0 (32) + slot1 (32) + slot2 (26) = 90 bytes
      * @member msgSender The Consumer address.
      * @member payment The LINK amount Operator holds in escrow (aka. initial LINK payment).
@@ -81,7 +81,7 @@ interface IDRCoordinatorCallable {
     function cancelRequest(bytes32 _requestId) external;
 
     /**
-     * @notice Called by Operator (via `fulfillOracleRequest2`) to fulfill requests with multi-word support.
+     * @notice Called by `Operator.fulfillOracleRequest2()` to fulfill requests with multi-word support.
      * @param _requestId The request ID.
      * @param _data The data to return to Consumer.
      */
@@ -214,13 +214,13 @@ interface IDRCoordinatorCallable {
 
     /**
      * @notice Returns the LinkToken on the network.
-     * @return The LinkTokenInterface.
+     * @return The `LinkTokenInterface`.
      */
     function getLinkToken() external view returns (LinkTokenInterface);
 
     /**
      * @notice Returns the L2 Sequencer Uptime Status Feed address (as interface) on the network.
-     * @return The AggregatorV3Interface.
+     * @return The `AggregatorV3Interface`.
      */
     function getL2SequencerFeed() external view returns (AggregatorV3Interface);
 
@@ -231,14 +231,14 @@ interface IDRCoordinatorCallable {
     function getL2SequencerGracePeriodSeconds() external view returns (uint256);
 
     /**
-     * @notice Returns the amount of Spec in DRCoordinator storage.
-     * @return The amount of Spec.
+     * @notice Returns the amount of `Spec` in DRCoordinator storage.
+     * @return The amount of `Spec`.
      */
     function getNumberOfSpecs() external view returns (uint256);
 
     /**
      * @notice Returns the current permiryad factor that determines the maximum fee on permiryiad fee types.
-     * @dev The number is multiplied by PERMIRYAD to calculate the `maxPeriryadFee`.
+     * @dev The number is multiplied by `PERMIRYAD` to calculate the `maxPeriryadFee`.
      * @return The factor.
      */
     function getPermiryadFeeFactor() external view returns (uint8);
@@ -247,7 +247,7 @@ interface IDRCoordinatorCallable {
      * @notice Returns the Price Feed 1 on the network.
      * @dev LINK / GASTKN on a single Price Feed setup.
      * @dev GASTKN / TKN on a multi Price Feed setup.
-     * @return The AggregatorV3Interface.
+     * @return The `AggregatorV3Interface`.
      */
     function getPriceFeed1() external view returns (AggregatorV3Interface);
 
@@ -255,7 +255,7 @@ interface IDRCoordinatorCallable {
      * @notice Returns the Price Feed 2 on the network.
      * @dev Ignored (i.e. Zero address) on a single Price Feed setup.
      * @dev LINK / TKN on a multi Price Feed setup.
-     * @return The AggregatorV3Interface.
+     * @return The `AggregatorV3Interface`.
      */
     function getPriceFeed2() external view returns (AggregatorV3Interface);
 
@@ -267,31 +267,31 @@ interface IDRCoordinatorCallable {
     function getRequestCount() external view returns (uint256);
 
     /**
-     * @notice Returns a Spec by key.
-     * @param _key The Spec key.
+     * @notice Returns a `Spec` by key.
+     * @param _key The `Spec` key.
      * @return The `Spec`.
      */
     function getSpec(bytes32 _key) external view returns (Spec memory);
 
     /**
-     * @notice Returns the auhtorized consumer addresses (aka. requesters) by the given Spec (by key).
-     * @param _key The Spec key.
+     * @notice Returns the authorized consumer addresses (aka. requesters) by the given `Spec` (by key).
+     * @param _key The `Spec` key.
      * @return The array of addresses.
      */
     function getSpecAuthorizedConsumers(bytes32 _key) external view returns (address[] memory);
 
     /**
-     * @notice Returns the Spec key at the given position.
-     * @dev Spec key = keccak256(abi.encodePacked(operator, specId)).
-     * @param _index The Spec index.
-     * @return The Spec key.
+     * @notice Returns the `Spec` key at the given position.
+     * @dev Spec `key = keccak256(abi.encodePacked(operator, specId))`.
+     * @param _index The `Spec` index.
+     * @return The `Spec` key.
      */
     function getSpecKeyAtIndex(uint256 _index) external view returns (bytes32);
 
     /**
-     * @notice Returns all the Spec keys.
-     * @dev Spec key = keccak256(abi.encodePacked(operator, specId)).
-     * @return The Spec keys array.
+     * @notice Returns all the `Spec` keys.
+     * @dev Spec `key = keccak256(abi.encodePacked(operator, specId))`.
+     * @return The `Spec` keys array.
      */
     function getSpecMapKeys() external view returns (bytes32[] memory);
 
@@ -302,8 +302,8 @@ interface IDRCoordinatorCallable {
     function getStalenessSeconds() external view returns (uint256);
 
     /**
-     * @notice Returns whether the Consumer (aka requester) is authorized to request the given Spec (by key).
-     * @param _key The Spec key.
+     * @notice Returns whether Consumer (aka requester) is authorized to request the given `Spec` (by key).
+     * @param _key The `Spec` key.
      * @param _consumer The Consumer address.
      * @return A boolean.
      */
@@ -313,7 +313,7 @@ interface IDRCoordinatorCallable {
 
     /**
      * @notice Returns the amount of gas needed by DRCoordinator to execute any fulfillment logic left on the
-     * `fulfillData` method after calling the Consumer with the response data.
+     * `fulfillData()` method after calling Consumer with the response data.
      * @return The gas units.
      */
     function getGasAfterPaymentCalculation() external pure returns (uint32);

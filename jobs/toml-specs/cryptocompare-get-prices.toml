@@ -1,12 +1,12 @@
 type = "directrequest"
 schemaVersion = 1
-# Replace (1 of 4) with DRCoordinator.sol address
+# Replace (1 of 3) with DRCoordinator.sol address
 requesters = [
     "0x0000000000000000000000000000000000000000"
 ]
-minContractPaymentLinkJuels = "1000000000000000" # Replace (2 of 4) with initial LINK payment amount
+minContractPaymentLinkJuels = "0"
 name = "CryptoCompare Get Prices DRCoordinator - DRC"
-contractAddress = "0x0000000000000000000000000000000000000000" # Replace (3 o 4) with Operator.sol address
+contractAddress = "0x0000000000000000000000000000000000000000" # Replace (2 of 3) with Operator.sol address
 maxTaskDuration = "0s"
 observationSource = """
     decode_log          [
@@ -65,7 +65,7 @@ observationSource = """
                          data="$(encode_tx)"
                          gasLimit="$(decode_cbor.gasLimit)"
                          failOnRevert=true
-                        ] // Replace (4 o 4) with Operator.sol address
+                        ] // Replace (3 of 3) with Operator.sol address
 
     decode_log -> decode_cbor
     decode_cbor -> btc -> btc_parse -> btc_multiply -> encode_result
