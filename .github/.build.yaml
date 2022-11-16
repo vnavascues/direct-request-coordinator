@@ -1,0 +1,76 @@
+name: Build, lint & test
+
+on:
+  pull_request: ~
+  push:
+    branches:
+      - main
+
+env:
+  NODE_ENV: ci
+
+jobs:
+  packages:
+    name: Verify dependency package archives
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install Yarn
+        run: npm install -g yarn
+      - name: Install dependencies & verify checksum
+        run: yarn install --check-cache
+
+  compile:
+    name: Compile contracts and generate TypeChain artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install Yarn
+        run: npm install -g yarn
+      - name: Install dependencies
+        run: yarn install
+      - name: Compile contracts
+        run: yarn compile
+      - name: Generate TypeChain artifacts
+        run: yarn typechain
+
+  lint:
+    name: Run linters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install Yarn
+        run: npm install -g yarn
+      - name: Install dependencies
+        run: yarn install
+      - name: Lint Solidity and TypeScript
+        run: yarn lint
+
+  test-integration-drcoordinator:
+    name: Run integration tests (DRCoordinator)
+    needs: [compile]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+      - name: Install Yarn
+        run: npm install -g yarn
+      - name: Install dependencies
+        run: yarn install
+      - name: Compile contracts
+        run: yarn compile
+      - name: Generate TypeChain artifacts
+        run: yarn typechain
+      - name: Run integration tests
+        run: yarn test:integration:drcoordinator
