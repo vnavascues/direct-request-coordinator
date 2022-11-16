@@ -9,6 +9,7 @@ import "hardhat-gas-reporter";
 import type { HardhatUserConfig } from "hardhat/config";
 import { resolve } from "path";
 import "solidity-coverage";
+dotenvConfig({ path: resolve(__dirname, process.env.NODE_ENV ? "./.env.ci" : "./.env"), override: true });
 
 import "./tasks/accounts";
 import "./tasks/chainlink";
@@ -16,8 +17,6 @@ import "./tasks/drcoordinator";
 import "./tasks/tools";
 import { ChainId, DEFAULT_HARDHAT_MNEMONIC } from "./utils/constants";
 import { getHardhatNetworkForkingUserConfig, networkUserConfigs } from "./utils/networks";
-
-dotenvConfig({ path: resolve(__dirname, process.env.NODE_ENV ? "./.env.ci" : "./.env"), override: true });
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",

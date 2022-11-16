@@ -6,8 +6,9 @@
 //
 // The issue has been reported on Hardhat Discord. If it's ever being fixed, remove this patch.
 // Otherwise, please keep it up to date (call tasks that use custom types).
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ErrorDescriptor, ERRORS, getErrorCode } from "./errors-list";
+import { ERRORS, ErrorDescriptor, getErrorCode } from "./errors-list";
 
 const inspect = Symbol.for("nodejs.util.inspect.custom");
 

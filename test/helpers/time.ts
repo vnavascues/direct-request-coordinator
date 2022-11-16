@@ -5,8 +5,8 @@
  * Hardhat Network JSON-RPC methods:
  *  - https://hardhat.org/hardhat-network/reference/#json-rpc-methods-support
  */
-import { waffle, network } from "hardhat";
-import { BigNumberish, BigNumber } from "ethers";
+import { BigNumber, BigNumberish } from "ethers";
+import { network, waffle } from "hardhat";
 
 const { provider } = waffle;
 

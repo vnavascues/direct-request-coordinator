@@ -17,6 +17,8 @@
 *.log
 .pnp.*
 coverage.json
+hardhat.config.ts
 npm-debug.log*
+slither.db.json
 yarn-debug.log*
 yarn-error.log*
