@@ -41,7 +41,7 @@ interface IDRCoordinatorCallable {
      * @notice Stores the essential `Spec` request data to be used by DRCoordinator when fulfilling the request.
      * @dev Size = slot0 (32) + slot1 (32) + slot2 (26) = 90 bytes
      * @member msgSender The Consumer address.
-     * @member payment The LINK amount Operator holds in escrow (aka. initial LINK payment).
+     * @member payment The LINK amount Operator holds in escrow (aka. REQUEST LINK payment).
      * @member callbackAddr The Consumer address where to fulfill the request.
      * @member fee From `Spec.fee`. The LINK amount that DRCoordinator charges Consumer when fulfilling the request.
      * It depends on the `feeType`.
@@ -93,9 +93,9 @@ interface IDRCoordinatorCallable {
      * @param _operatorAddr The Operator contract address.
      * @param _callbackGasLimit The amount of gas to attach to the fulfillment transaction. It is the `gasLimit`
      * parameter of the `ethtx` task of the `direcrequest` job.
-     * @param _consumerMaxPayment The maximum amount of LINK willing to pay for the request (initial payment +
-     * fulfill payment). Set it to 0 if there is no hard cap.
-     * @param _req The initialized Chainlink.Request.
+     * @param _consumerMaxPayment The maximum amount of LINK willing to pay for the request (REQUEST LINK payment +
+     * SPOT LINK payment). Set it to 0 if there is no hard cap.
+     * @param _req The initialized `Chainlink.Request`.
      */
     function requestData(
         address _operatorAddr,
@@ -122,12 +122,12 @@ interface IDRCoordinatorCallable {
     function availableFunds(address _consumer) external view returns (uint96);
 
     /**
-     * @notice Calculates the maximum LINK amount to pay for the request (aka MAX LINK payment amount). The amount is
+     * @notice Calculates the maximum LINK amount to pay for the request (aka. MAX LINK payment amount). The amount is
      * the result of simulating the usage of all the request `callbackGasLimit` (set by Consumer) with the current
      * LINK and GASTKN prices (via Chainlink Price Feeds on the network).
      * @dev Consumer can call this method to know in advance the request MAX LINK payment and act upon it.
      * @param _weiPerUnitGas The amount of LINK per unit of GASTKN.
-     * @param _paymentInEscrow The initial LINK payment amount (if exists) hold in escrow by Operator.
+     * @param _paymentInEscrow The REQUEST LINK payment amount (if exists) hold in escrow by Operator.
      * @param _gasLimit The `callbackGasLimit` set by the Consumer request.
      * @param _feeType The requested `Spec.feeType`.
      * @param _fee The requested `Spec.fee`.
@@ -142,14 +142,14 @@ interface IDRCoordinatorCallable {
     ) external view returns (int256);
 
     /**
-     * @notice Estimates the LINK amount to pay for fulfilling the request (aka SPOT LINK payment amount). The amount
+     * @notice Estimates the LINK amount to pay for fulfilling the request (aka. SPOT LINK payment amount). The amount
      * is the result of calculating the LINK amount used to cover the gas costs with the current
      * LINK and GASTKN prices (via Chainlink Price Feeds on the network).
      * @dev This method has limitations. It does not take into account the gas incurrend by
      * `Operator.fulfillOracleRequest2()` nor `DRCoordinator.fulfillData()`. All of them are affected, among other
      * things, by the data size and the fulfillment method logic. Therefore it is needed to fine tune `startGas`.
      * @param _weiPerUnitGas The amount of LINK per unit of GASTKN.
-     * @param _paymentInEscrow The initial LINK payment amount (if exists) hold in escrow by Operator.
+     * @param _paymentInEscrow The REQUEST LINK payment amount (if exists) hold in escrow by Operator.
      * @param _feeType The requested `Spec.feeType`.
      * @param _fee The requested `Spec.fee`.
      * @return The LINK payment amount.
@@ -302,7 +302,7 @@ interface IDRCoordinatorCallable {
     function getStalenessSeconds() external view returns (uint256);
 
     /**
-     * @notice Returns whether Consumer (aka requester) is authorized to request the given `Spec` (by key).
+     * @notice Returns whether Consumer (aka. requester) is authorized to request the given `Spec` (by key).
      * @param _key The `Spec` key.
      * @param _consumer The Consumer address.
      * @return A boolean.

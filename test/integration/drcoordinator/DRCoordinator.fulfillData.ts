@@ -112,14 +112,14 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      initialPayment: cfInitialPayment,
+      requestPayment: cfRequestPayment,
       spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.true;
     expect(cfCallbackAddr).to.equal(context.drCoordinatorAttackerTH.address);
     expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
-    expect(cfInitialPayment).to.equal(payment);
+    expect(cfRequestPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(cfSpotPayment),
@@ -604,14 +604,14 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      initialPayment: cfInitialPayment,
+      requestPayment: cfRequestPayment,
       spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.false;
     expect(cfCallbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
     expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
-    expect(cfInitialPayment).to.equal(payment);
+    expect(cfRequestPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(cfSpotPayment),
@@ -673,7 +673,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     },
   ];
   for (const { name, testData } of testCases) {
-    it.only(`fulfills the request (${name})`, async function () {
+    it(`fulfills the request (${name})`, async function () {
       // Arrange
       // 1. Insert the Spec
       const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -786,14 +786,14 @@ export function testFulfillData(signers: Signers, context: Context): void {
         success: cfSuccess,
         callbackAddr: cfCallbackAddr,
         callbackFunctionId: cfCallbackFunctionId,
-        initialPayment: cfInitialPayment,
+        requestPayment: cfRequestPayment,
         spotPayment: cfSpotPayment,
       } = eventChainlinkFulfilled.args;
       expect(cfRequestId).to.equal(requestId);
       expect(cfSuccess).to.be.true;
       expect(cfCallbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
       expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
-      expect(cfInitialPayment).to.equal(payment);
+      expect(cfRequestPayment).to.equal(payment);
       expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
       expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
         drCoordinatorBalanceBefore.add(cfSpotPayment),
@@ -809,7 +809,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     });
   }
 
-  it.only("fulfills the request (case response is '0x')", async function () {
+  it("fulfills the request (case response is '0x')", async function () {
     // Arrange
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -891,14 +891,14 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      initialPayment: cfInitialPayment,
+      requestPayment: cfRequestPayment,
       spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.true;
     expect(cfCallbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
     expect(cfCallbackFunctionId).to.equal(expectedCallbackFunctionId);
-    expect(cfInitialPayment).to.equal(payment);
+    expect(cfRequestPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(cfSpotPayment),
@@ -908,7 +908,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     );
   });
 
-  it.only("fulfills the request (case external request)", async function () {
+  it("fulfills the request (case external request)", async function () {
     // Arrange
     // 1. Insert the Spec
     const specs = parseSpecsFile(path.join(filePath, "file2.json"));
@@ -995,14 +995,14 @@ export function testFulfillData(signers: Signers, context: Context): void {
       success: cfSuccess,
       callbackAddr: cfCallbackAddr,
       callbackFunctionId: cfCallbackFunctionId,
-      initialPayment: cfInitialPayment,
+      requestPayment: cfRequestPayment,
       spotPayment: cfSpotPayment,
     } = eventChainlinkFulfilled.args;
     expect(cfRequestId).to.equal(requestId);
     expect(cfSuccess).to.be.true;
     expect(cfCallbackAddr).to.equal(context.drcGenericFulfillmentTH.address);
     expect(cfCallbackFunctionId).to.equal(externalCallbackFunctionId);
-    expect(cfInitialPayment).to.equal(payment);
+    expect(cfRequestPayment).to.equal(payment);
     expect(await context.linkToken.balanceOf(context.drCoordinator.address)).to.equal(drCoordinatorLinkBalanceBefore);
     expect(await context.drCoordinator.availableFunds(context.drCoordinator.address)).to.equal(
       drCoordinatorBalanceBefore.add(cfSpotPayment),
