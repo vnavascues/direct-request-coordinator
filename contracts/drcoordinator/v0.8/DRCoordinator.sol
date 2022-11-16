@@ -23,46 +23,91 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
  * @dev Uses @chainlink/contracts 0.5.1.
  * @dev This contract cooperates with the Chainlink Operator contract. DRCoordinator interfaces 1..N DRCoordinatorClient
  * contracts (Consumer(s)) with 1..N Operator contracts (Operator(s)) by forwarding Chainlink requests and responses.
- * These are the main differences that using DRCoordinator has compared with the standard Direct Request via a
- * ChainlinkClient Consumer and an Operator:
+ * This is a high level overview of a DRCoordinator Direct Request:
  *
- * - Creating the job spec and sharing its details: after adding a DRCoordinator TOML spec in the Chainlink node, the
- * NodeOp must create the related Spec in the DRCoordinator storage (see SpecLibrary.sol).
+ * 1. Adding the job on the Chainlink node
+ * ------------------------------------
+ * NodeOps have to add a DRCoordinator-friendly TOML spec, which only requires to:
+ * - Set the `minContractPaymentLinkJuels` field to 0 Juels. Make sure to set first the node env var
+ * `MINIMUM_CONTRACT_PAYMENT_LINK_JUELS` to 0 as well.
+ * - Add the DRCoordinator address in `requesters` to prevent the job being spammed (due to 0 Juels payment).
  *
- * - Request: first, it stores essential Consumer, request & Spec data to be used upon fulfillment. Then, it extends the
- * Chainlink.Request (built by the DRCoordinatorClient) and finally sends it to the Operator. At this stage, the
- * LINK payment amount sent to the Operator (and to be held in escrow) is either a flat or a percentage amount (both
- * configured by the NodeOp). The latter is a percentage of the maximum LINK payment amount (MAX LINK payment) if all
- * the tx gasLimit was used fulfilling the request. Each job spec configuration details, e.g. fee, feeType, oracle, etc.
- * are stored as Spec(s) in the DRCoordinator storage by the NodeOp.
+ * 2. Making the job requestable
+ * -----------------------------
+ * NodeOps have to:
+ * 1. Create the `Spec` (see `SpecLibrary.sol`) of the TOML spec added above and upload it in the DRCoordinator storage
+ * via `DRCoordinator.setSpec()`.
+ * 2. Use `DRCoordinator.addSpecAuthorizedConsumers()` if on-chain whitelisting of consumers is desired.
+ * 3. Share/communicate the `Spec` details (via its key) so the Consumer devs can monitor the `Spec` and act upon any
+ * change on it, e.g. `fee`, `payment`, etc.
  *
- * - Fulfillment: first, it loads the request data previously stored. Then, it fulfills the request (forwards response).
- * And finally, it deals with the LINK internal balances with regards to paying for the job done. At this stage, the
- * LINK payment amount (SPOT) is calculated using the exact gas amount used fulfilling the request and subtracting the
- * initial payment (held in escrow by the Operator contract) and optionally adding a fee (either a flat or a percentage
- * amount configured per Spec by the operator). It is worth mentioning that DRCoordinator can refund a consumer if the
- * initial payment amount was greater than the SPOT payment amount, and DRCoordinator's balance is greater or equal than
- * the SPOT payment amount. Tuning the Spec payment and fee properties should make this case very rare.
+ * 3. Implementing the Consumer
+ * ----------------------------
+ * Devs have to:
+ * - Make Consumer inherit from `DRCoordinatorClient.sol` (an equivalent of `ChainlinkClient.sol` for DRCoordinator
+ * requests). This library only builds the `Chainlink.Request` and then sends it to DRCoordinator (via
+ * `DRCoordinator.requestData()`), which is responsible for extending it and ultimately send it to Operator.
+ * - Request a `Spec` by passing the Operator address, the maximum amount of gas willing to spend, the maximum amount of
+ * LINK willing to pay and the `Chainlink.Request` (which includes the `Spec.specId` as `id` and the request parameters
+ * CBOR encoded).
  *
- * @dev The MAX and SPOT LINK payment amounts are calculated using the Chainlink Price Feeds on the network (configured
- * by the operator on deployment), which provides the TKN wei amount per unit of LINK. The ideal scenario is to use the
- * LINK / TKN price feed, although two feeds can be configured, i.e. TKN / USD (priceFeed1) and LINK / USD (priceFeed2).
- * @dev This contract implements the following Chainlink Price Feed risk mitigation strategies for: stale answer, and
- * L2 Sequencer outage & grace period. The wei value per unit of LINK will default to a value set by the operator.
- * @dev This contract implements an emergency stop mechanism (triggered by the operator). Only request data, and fulfill
+ * Devs can time the request with any of these strategies if gas prices are a concern:
+ * - Call `DRCoordinator.calculateMaxPaymentAmount()`.
+ * - Call `DRCoordinator.calculateSpotPaymentAmount()`.
+ * - Call `DRCoordinator.getFeedData()`.
+ *
+ * 4. Requesting the job spec
+ * --------------------------
+ * When Consumer calls `DRCoordinator.requestData()` DRCoordinator does:
+ * 1. Validates the arguments.
+ * 2. Calculates MAX LINK payment amount, which is the amount of LINK Consumer would pay if all the
+ * `callbackGasLimit` was used fulfilling the request (tx `gasLimit`).
+ * 3. Checks that the Consumer balance can afford MAX LINK payment and that Consumer is willing to pay the amount.
+ * 4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be
+ * either a flat amount or a percentage (permiryad) of MAX LINK payment. The `paymentType` and `payment` are set in the
+ * `Spec` by NodeOp.
+ * 5. Updates Consumer balancee.
+ * 6. Stores essential data from Consumer, `Chainlink.Request` and `Spec` in a `FulfillConfig` (by request ID) struct to
+ * be used upon fulfillment.
+ * 7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount).
+ *
+ * 5. Fulfilling the request
+ * -------------------------
+ * 1. Validates the request and its caller.
+ * 2. Loads the request configuration (`FulfillConfig`) and attempts to fulfill the request by calling the Consumer
+ * callback method passing the response data.
+ * 3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus
+ * the REQUEST LINK payment, plus the fulfillment fee. The fee can be either a flat amount of a percentage (permiryad)
+ * of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
+ * 4. Checks that the Consumer balance can afford SPOT LINK payment and that Consumer is willing to pay the amount.
+ * It is worth mentioning that DRCoordinator can refund Consumer if REQUEST LINK payment was greater than SPOT LINK
+ * payment and DRCoordinator's balance is greater or equal than SPOT payment. Tuning the `Spec.payment` and `Spec.fee`
+ * should make this particular case very rare.
+ * 5.Updates Consumer and DRCoordinator balances.
+ *
+ * @dev The MAX and SPOT LINK payment amounts are calculated using Chainlink Price Feeds on the network (configured by
+ * NodeOp on deployment), which provide the GASTKN wei amount per unit of LINK. The ideal scenario is to use the
+ * LINK / GASTKN Price Feed on the network, however two Price Feed (GASTKN / TKN (priceFeed1) & LINK / TKN (priceFeed2))
+ * can be set up on deployment.
+ * @dev This contract implements the following Chainlink Price Feed risk mitigation strategies: stale answer.
+ * The wei value per unit of LINK will default to `fallbackWeiPerUnitLink` (set by NodeOp).
+ * @dev This contract implements the following L2 Sequencer Uptime Status Feed risk mitigation strategies: availability
+ * and grace period. The wei value per unit of LINK will default to `fallbackWeiPerUnitLink` (set by NodeOp).
+ * @dev BE AWARE: this contract currently does not take into account L1 fees when calculating MAX & SPOT LINK payment
+ * amounts on L2s.
+ * @dev This contract implements an emergency stop mechanism (triggered by NodeOp). Only request data, and fulfill
  * data are the functionalities disabled when the contract is paused.
- * @dev This contract allows CRUD Spec. A Spec is the Solidity representation of the essential data of a directrequest
- * TOML job spec. It also includes specific variables for dynamic LINK payments.
- * @dev This contract allows CRD authorized consumers (whitelisted requesters) per Spec on-chain. Off-chain
- * whitelisting at TOML job spec level using the 'requesters' field is unfortunately not possible.
- * @dev This contract allows to fulfill requests in a contract different from the one who built it (aka. Chainlink
- * external requests, splitted consumer pattern).
- * @dev This contract has internal LINK balances for itself and any consumer, and any address (EOA/contract) can fund
- * them. Only the operator (owner) is able to withdraw the LINK from the DRCoordinator balances. And only the consumer
- * is able to withdraw the LINK from its balances. Be aware that the initial LINK payment is in the Operator contract
+ * @dev This contract allows CRUD `Spec`. A `Spec` is the representation of a `directrequest` job spec for DRCoordinator
+ * requests. Composed of `directrequest` spec unique fields (e.g. `specId`, `operator`) DRCoordinator specific variables
+ * to address the LINK payment, e.g. `fee`, `feeType`, etc.
+ * @dev This contract allows CRD authorized consumers (whitelisted `requesters`) per `Spec` on-chain. Unfortunately,
+ * off-chain whitelisting at TOML job spec level via the `requesters` field is not possible.
+ * @dev This contract allows to fulfill requests in a contract different than Consumer who built the `Chainlink.Request`
+ * (aka. Chainlink external requests).
+ * @dev This contract has an internal LINK balances for itself and any Consumer. Any address (EOA/contract) can fund
+ * them. Only the NodeOp (owner) is able to withdraw LINK from the DRCoordinator balance. Only the Consumer is able to
+ * withdraw LINK from its balance. Be aware that the REQUEST LINK payment amount is located in the Operator contract
  * (either held in escrow or as earned LINK).
- * @dev This contract provides a wide range of external view methods to query Spec, Spec authorized consumers, and
- * calculating the MAX and SPOT LINK payment amount (per Spec).
  */
 contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDRCoordinator {
     using Address for address;
@@ -108,6 +153,28 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
     mapping(bytes32 => AuthorizedConsumerLibrary.Map) private s_keyToAuthorizedConsumerMap;
     SpecLibrary.Map private s_keyToSpec; /* keccak256(abi.encodePacked(operatorAddr, specId)) */ /* Spec */
 
+    /**
+     * @notice versions:
+     * - DRCoordinator 1.0.0: release Chainlink Hackaton Fall 2022
+     *                      : adopt fulfillData as fulfillment method and remove fallback
+     *                      : standardise and improve custom errors and remove unused ones
+     *                      : standardise and improve events
+     *                      : add paymentType (permiryad support on the requestData LINK payment)
+     *                      : allow whitelist consumers per Spec (authorized consumers)
+     *                      : add refund mode (DRC refunds LINK if the requestData payment exceeds the fulfillData one)
+     *                      : add consumerMaxPayment (requestData & fulfillData revert if LINK payment is greater than)
+     *                      : add multi Price Feed (2-hop mode via GASTKN / TKN and LINK / TKN feeds)
+     *                      : replace L2 Sequencer Flag with L2 Sequencer Uptime Status Feed
+     *                      : improve contract inheritance, e.g. add IDRCoordinator, remove ChainlinkClient, etc.
+     *                      : add permiryadFactor (allow setting fees greater than 100%)
+     *                      : remove minConfirmations requirement
+     *                      : add a public lock
+     *                      : improve Consumer tools, e.g. DRCoordinatorClient, ChainlinkExternalFulfillmentCompatible
+     *                      : apply Chainlink Solidity Style Guide (skipped args without '_', and contract layout)
+     *                      : add NatSpec
+     *                      : upgrade to solidity v0.8.17
+     * - DRCoordinator 0.1.0: initial release Chainlink Hackaton Spring 2022
+     */
     string public constant override typeAndVersion = "DRCoordinator 1.0.0";
 
     event AuthorizedConsumersAdded(bytes32 indexed key, address[] consumers);
@@ -118,7 +185,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         bool success,
         address indexed callbackAddr,
         bytes4 callbackFunctionId,
-        uint96 initialPayment,
+        uint96 requestPayment,
         int256 spotPayment
     );
     event ChainlinkRequested(bytes32 indexed id);
@@ -228,19 +295,19 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /// @inheritdoc IDRCoordinatorCallable
     function fulfillData(bytes32 _requestId, bytes calldata _data) external whenNotPaused nonReentrant {
-        // Validate sender is the Operator of the request
+        // Validate sender is the request Operator
         _requireCallerIsRequestOperator(s_pendingRequests[_requestId]);
         delete s_pendingRequests[_requestId];
-        // Retrieve FulfillConfig by request ID
+        // Retrieve the request `FulfillConfig` by request ID
         FulfillConfig memory fulfillConfig = s_requestIdToFulfillConfig[_requestId];
         // Format off-chain data
         bytes memory data = abi.encodePacked(fulfillConfig.callbackFunctionId, _data);
-        // Fulfill just with the gas amount requested by the consumer
+        // Fulfill just with the gas amount requested by Consumer
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = fulfillConfig.callbackAddr.call{
             gas: fulfillConfig.gasLimit - GAS_AFTER_PAYMENT_CALCULATION
         }(data);
-        // Calculate the SPOT LINK payment amount
+        // Calculate SPOT LINK payment
         int256 spotPaymentInt = _calculatePaymentAmount(
             PaymentPreFeeType.SPOT,
             fulfillConfig.gasLimit,
@@ -251,8 +318,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             fulfillConfig.fee
         );
         // NB: statemens below cost 42945 gas -> GAS_AFTER_PAYMENT_CALCULATION = 50k gas
-        // Calculate the LINK payment to either pay (consumer -> DRCoordinator) or refund (DRCoordinator -> consumer),
-        // check whether the payer has enough balance, and adjust their balances (payer and payee)
+        // Calculate SPOT LINK payment to either pay (Consumer -> DRCoordinator) or refund (DRCoordinator -> Consumer)
         uint96 consumerLinkBalance = s_consumerToLinkBalance[fulfillConfig.msgSender];
         uint96 drCoordinatorLinkBalance = s_consumerToLinkBalance[address(this)];
         uint96 spotPayment;
@@ -268,13 +334,16 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             payerLinkBalance = drCoordinatorLinkBalance;
         }
         _requireLinkPaymentIsInRange(spotPayment);
+        // Check whether Consumer is willing to pay REQUEST LINK payment + SPOT LINK payment
         if (fulfillConfig.consumerMaxPayment > 0) {
             _requireLinkPaymentIsWithinConsumerMaxPaymentRange(
                 spotPaymentInt >= 0 ? fulfillConfig.payment + spotPayment : fulfillConfig.payment - spotPayment,
                 fulfillConfig.consumerMaxPayment
             );
         }
+        // Check whether payer has enough LINK balance
         _requireLinkBalanceIsSufficient(payer, payerLinkBalance, spotPayment);
+        // Update Consumer and DRCoordinator LINK balances
         if (spotPaymentInt >= 0) {
             consumerLinkBalance -= spotPayment;
             drCoordinatorLinkBalance += spotPayment;
@@ -336,12 +405,12 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         _requireSpecIsInserted(key);
         address callbackAddr = _req.callbackAddress;
         _validateCallbackAddress(callbackAddr); // NB: prevents malicious loops
-        // Validate consumer (requester) is authorized to request the Spec
+        // Validate Consumer is authorized to request the `Spec`
         _requireCallerIsAuthorizedConsumer(key, _operatorAddr, _req.id);
-        // Validate arguments against Spec parameters
+        // Validate arguments against `Spec` parameters
         Spec memory spec = s_keyToSpec._getSpec(key);
         _validateCallbackGasLimit(_callbackGasLimit, spec.gasLimit);
-        // Calculate the MAX LINK payment amount
+        // Calculate MAX LINK payment amount
         uint96 maxPayment = uint96(
             uint256(
                 _calculatePaymentAmount(
@@ -356,22 +425,24 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             )
         );
         _requireLinkPaymentIsInRange(maxPayment);
+        // Check whether Consumer is willing to pay MAX LINK payment
         if (_consumerMaxPayment > 0) {
             _requireLinkPaymentIsWithinConsumerMaxPaymentRange(maxPayment, _consumerMaxPayment);
         }
-        // Calculate the required consumer LINK balance, the LINK payment amount to be held escrow by the Operator,
-        // check whether the consumer has enough balance, and adjust its balance
+        // Re-calculate MAX LINK payment (from `Spec.payment`) and calculate REQUEST LINK payment (to be hold in escrow
+        // by Operator)
         uint96 consumerLinkBalance = s_consumerToLinkBalance[msg.sender];
         (
             uint96 requiredConsumerLinkBalance,
-            uint96 paymentInEscrow
-        ) = _calculateRequiredConsumerLinkBalanceAndPaymentInEscrow(maxPayment, spec.paymentType, spec.payment);
+            uint96 requestPayment
+        ) = _calculateRequiredConsumerLinkBalanceAndRequestPayment(maxPayment, spec.paymentType, spec.payment);
+        // Check whether Consumer has enough LINK balance and update it
         _requireLinkBalanceIsSufficient(msg.sender, consumerLinkBalance, requiredConsumerLinkBalance);
-        s_consumerToLinkBalance[msg.sender] = consumerLinkBalance - paymentInEscrow;
+        s_consumerToLinkBalance[msg.sender] = consumerLinkBalance - requestPayment;
         // Initialise the fulfill configuration
         FulfillConfig memory fulfillConfig;
         fulfillConfig.msgSender = msg.sender;
-        fulfillConfig.payment = paymentInEscrow;
+        fulfillConfig.payment = requestPayment;
         fulfillConfig.callbackAddr = callbackAddr;
         fulfillConfig.fee = spec.fee;
         fulfillConfig.consumerMaxPayment = _consumerMaxPayment;
@@ -379,15 +450,14 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         fulfillConfig.feeType = spec.feeType;
         fulfillConfig.callbackFunctionId = _req.callbackFunctionId;
         fulfillConfig.expiration = uint40(block.timestamp + OPERATOR_REQUEST_EXPIRATION_TIME);
-        // Replace Chainlink.Request 'callbackAddress', 'callbackFunctionId'
-        // and extend 'buffer' with the dynamic TOML jobspec params
+        // Replace `callbackAddress` & `callbackFunctionId` in `Chainlink.Request`. Extend its `buffer` with `gasLimit`.
         _req.callbackAddress = address(this);
         _req.callbackFunctionId = FULFILL_DATA_SELECTOR;
         _req.addUint("gasLimit", uint256(fulfillConfig.gasLimit));
-        // Send an Operator request, and store the fulfill configuration by 'requestId'
-        bytes32 requestId = _sendOperatorRequestTo(_operatorAddr, _req, paymentInEscrow);
+        // Send an Operator request, and store the fulfill configuration by request ID
+        bytes32 requestId = _sendOperatorRequestTo(_operatorAddr, _req, requestPayment);
         s_requestIdToFulfillConfig[requestId] = fulfillConfig;
-        // In case of "external request" (i.e. requester !== callbackAddr) notify the fulfillment contract about the
+        // In case of "external request" (i.e. r`equester !== callbackAddr`) notify the fulfillment contract about the
         // pending request
         if (callbackAddr != msg.sender) {
             IChainlinkExternalFulfillment fulfillmentContract = IChainlinkExternalFulfillment(callbackAddr);
@@ -401,7 +471,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /// @inheritdoc IDRCoordinator
     function removeSpec(bytes32 _key) external onlyOwner {
-        // Remove first Spec authorized consumers
+        // Remove first `Spec` authorized consumers
         AuthorizedConsumerLibrary.Map storage s_authorizedConsumerMap = s_keyToAuthorizedConsumerMap[_key];
         if (s_authorizedConsumerMap._size() > 0) {
             _removeSpecAuthorizedConsumers(_key, s_authorizedConsumerMap.keys, s_authorizedConsumerMap, false);
@@ -415,7 +485,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         _requireArrayIsNotEmpty("keys", keysLength);
         for (uint256 i = 0; i < keysLength; ) {
             bytes32 key = _keys[i];
-            // Remove first Spec authorized consumers
+            // Remove first `Spec` authorized consumers
             AuthorizedConsumerLibrary.Map storage s_authorizedConsumerMap = s_keyToAuthorizedConsumerMap[key];
             if (s_authorizedConsumerMap._size() > 0) {
                 _removeSpecAuthorizedConsumers(key, s_authorizedConsumerMap.keys, s_authorizedConsumerMap, false);
@@ -623,7 +693,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /// @inheritdoc IDRCoordinatorCallable
     function getSpecAuthorizedConsumers(bytes32 _key) external view returns (address[] memory) {
-        // NB: s_authorizedConsumerMap only stores keys that exist in s_keyToSpec
+        // NB: `s_authorizedConsumerMap` only stores keys that exist in `s_keyToSpec`
         _requireSpecIsInserted(_key);
         return s_keyToAuthorizedConsumerMap[_key].keys;
     }
@@ -645,7 +715,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /// @inheritdoc IDRCoordinatorCallable
     function isSpecAuthorizedConsumer(bytes32 _key, address _consumer) external view returns (bool) {
-        // NB: s_authorizedConsumerMap only stores keys that exist in s_keyToSpec
+        // NB: `s_authorizedConsumerMap` only stores keys that exist in `s_keyToSpec`
         _requireSpecIsInserted(_key);
         return s_keyToAuthorizedConsumerMap[_key]._isInserted(_consumer);
     }
@@ -710,8 +780,8 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         s_requestCount = nonce + 1;
         bytes memory encodedRequest = abi.encodeWithSelector(
             OPERATOR_REQUEST_SELECTOR,
-            SENDER_OVERRIDE, // Sender value - overridden by onTokenTransfer by the requesting contract's address
-            AMOUNT_OVERRIDE, // Amount value - overridden by onTokenTransfer by the actual amount of LINK sent
+            SENDER_OVERRIDE, // Sender value - overridden by `onTokenTransfer()` by the requesting contract's address
+            AMOUNT_OVERRIDE, // Amount value - overridden by `onTokenTransfer()` by the actual amount of LINK sent
             _req.id,
             _req.callbackFunctionId,
             nonce,
@@ -872,13 +942,13 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
 
     /* ========== PRIVATE PURE FUNCTIONS ========== */
 
-    function _calculateRequiredConsumerLinkBalanceAndPaymentInEscrow(
+    function _calculateRequiredConsumerLinkBalanceAndRequestPayment(
         uint96 _maxPayment,
         PaymentType _paymentType,
         uint96 _payment
     ) private pure returns (uint96, uint96) {
         if (_paymentType == PaymentType.FLAT) {
-            // NB: spec.payment could be greater than Max LINK payment
+            // NB: `Spec.payment` could be greater than MAX LINK payment
             uint96 requiredConsumerLinkBalance = _maxPayment >= _payment ? _maxPayment : _payment;
             return (requiredConsumerLinkBalance, _payment);
         } else if (_paymentType == PaymentType.PERMIRYAD) {
@@ -889,8 +959,8 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
     }
 
     function _generateSpecKey(address _operatorAddr, bytes32 _specId) private pure returns (bytes32) {
-        // (operatorAddr, specId) composite key allows storing N specs with the same externalJobID but different
-        // operator address
+        // `(operatorAddr, specId)` composite key allows storing N specs with the same `externalJobID` but different
+        // Operator address
         return keccak256(abi.encodePacked(_operatorAddr, _specId));
     }
 
