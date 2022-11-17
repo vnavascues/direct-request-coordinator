@@ -47,7 +47,7 @@ A framework composed of contracts and job spec management tools, that enable a d
 
 ### Architecture & Flow
 
-<img src="./images/architecture_flow.svg">
+<img src="./media/images/architecture_flow.svg">
 
 To describe the framework tool, a [similar job spec](./specs-toml/drcoordinator/sportsdataio-get-schedule-v1.0.0-fallback.toml) to the [MultiWord Example Job Spec](https://docs.chain.link/docs/direct-request-multi-word/) from the Chainlink docs will be used as an example:
 
@@ -364,27 +364,27 @@ Inspecting the `ChainlinkRequested` logged event (Topics 1), the `requestId` is 
 
 4. Go to the job detail on your Chainlink node and check how `gasLimit` made it into the job run (`minConfirmations` excluded due to the bug). Worth mentioning that the `gasLimit` amount is not `777000` but `827000`. The reason is that the requester has specified `777000` gas units on fulfillment, but `DRCoordinator` needs gas too for few operations after fulfilling the request (calculating and subtracting the LINK payment amount, deleting the pending request, and emitting ane event). The minimum amount of gas needed to do so is `GAS_AFTER_PAYMENT_CALCULATION = 50_000` (a constant in the contract). Therefore `ethx gasLimit (827000) = consumer gasLimit (777000) + DRCoordinator GAS_AFTER_PAYMENT_CALCULATION (50000)`.
 
-<img src="./images/cryptocompare_jobrun_cborparse.png">
+<img src="./media/images/cryptocompare_jobrun_cborparse.png">
 
 Detail of how `gasLimit` from `cborparse` output is used on the `ethtx` task:
 
-<img src="./images/cryptocompare_jobrun_cborparse.png">
+<img src="./media/images/cryptocompare_jobrun_cborparse.png">
 
 Transaction detail:
 
-<img src="./images/cryptocompare_jobrun_tx_detail.png">
+<img src="./media/images/cryptocompare_jobrun_tx_detail.png">
 
 https://kovan.etherscan.io/tx/0x60b2b6ede0f0e231a05620fed943fed1567b00ed96971c2281c23235a0bfe9e3
 
 5. The tx had a `gasLimit` of `827000` and used `176543` gas units. The `gasPrice` was `2.5` gwei. Inspecting the event logs, we see that all 3 events emitted (`OracleResponse`, `ChainlinkFulfilled`, and `DRCoordinator__RequestFulfilled`) were related with the previous requestId `0x7b36d2a47730838a619a0d25faa3e0f2ab8755571b4fe2fe06f643539f66f5b5`.
 
-<img src="./images/cryptocompare_requestfulfilled_event.png">
+<img src="./media/images/cryptocompare_requestfulfilled_event.png">
 
 A more in detail look at the event emitted by `DRCoordinator` tell us that fulfilling the request to `0xc798dD4cCf60320271603639eaab324Bb7A95450` (callback address) on `2638B44B` (the function selector) succeeded (`true`). Also that the LINK payment amount subtracted by `DRCoordinator` to `DRCConsumerCryptoCompare` balances was `172514761526913608`. These 0.1725 LINK discounted first the initial 0.001 LINK payment, and then applied the 10% fee set in our JSON spec.
 
 6. Going to [DRCConsumerCryptoCompare Read Contract Information](https://kovan.etherscan.io/address/0xc798dD4cCf60320271603639eaab324Bb7A95450#readContract), expanding the `1. getPriceData` dropdown, and introducing the requestId `0x7b36d2a47730838a619a0d25faa3e0f2ab8755571b4fe2fe06f643539f66f5b5`, we'll load the result; the USD price of BTC, ETH, and LINK (each one multiplied by 100000).
 
-<img src="./images/cryptocompare_fulfilled_result.png">
+<img src="./media/images/cryptocompare_fulfilled_result.png">
 
 7. Going to [DRCoordinator Read Contract Information](https://kovan.etherscan.io/address/0xc64dafa2e60d26f7baae7de618297bbc03eb4f26#readContract), expanding the `8. availableFunds` dropdown, and adding the addresses of `DRCConsumerCryptoCompare` and `DRCoordinator`, we check their current balances:
 
