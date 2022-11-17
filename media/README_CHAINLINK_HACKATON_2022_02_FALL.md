@@ -22,6 +22,7 @@ The first version of DRCoordinator presented at the Spring 2022 hackaton was rus
 - Added public lock in `DRCoordinator.sol` as per [Read-only Reentrancy](https://www.youtube.com/watch?v=8D5ZJyU-dX0). It may be useful for Consumer devs as DRCoordinator has methods like `availableFunds` which result varies if read during `requestData()` and `fulfillData()` execution.
 - Added `permiryadFactor`, which allows tuning the fee percentage limits.
 - Improved interfaces and contracts inheritance.
+- Simplified `DRCoordinator.cancelRequest()` by loading `FulfillConfig.expiration` and `FulfillConfig.payment`.
 - Improved the Consumer libraries (contracts), e.g. `DRCoordinatorClient.sol`, `ChainlinkExternalFulfillmentCompatible.sol`.
 - Removed `minConfirmations` logic after understanding that the Consumer plays no role on it (see [Chainlink release v1.5.0](https://github.com/smartcontractkit/chainlink/releases/tag/v1.5.0) and [Adjusting Minimum Outgoing Confirmations for high throughput jobs](https://www.notion.so/EVM-performance-configuration-handbook-a36b9f84dcac4569ba68772aa0c1368c#e9998c2f722540b597301a640f53cfd4)). Also that it is still not possible [setting `minConfirmations` from a job pipeline variable](https://github.com/smartcontractkit/chainlink/issues/6680).
 - Applied [Chainlink's Solidity Style Guide](https://github.com/smartcontractkit/chainlink/blob/00330f50f020e73d0280210c6073c4db9702dcf9/contracts/style.md).
@@ -95,9 +96,20 @@ When Consumer calls `DRCoordinator.requestData()` DRCoordinator does:
 4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be either a flat amount or a percentage (permiryad) of MAX LINK payment. The `paymentType` and `payment` are set in the `Spec` by NodeOp.
 5. Updates Consumer balancee.
 6. Stores essential data from Consumer, `Chainlink.Request` and `Spec` in a `FulfillConfig` (by request ID) struct to be used upon fulfillment.
-7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount).
+7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount), which emits the `OracleRequest` event.
 
-### 6. Fulfilling the request
+### 7. Requesting the Data Provider(s) API(s), processing its response and submitting the result on-chain
+
+NB: all these steps are follow the standard Chainlink Direct Request Model.
+
+1. The Chainlink node subscribed to the event triggers a `directrequest` job run.
+2. The `OracleRequest` event data is decoded and the log and request parameters are processed and used to request the Data Povider(s) API(s).
+3. The API(s) response(s) are processed and the result is submitted on-chain back to DRCoordinator via `Operator.fulfillOracleRequest2()`.
+
+- NB: forwarding the response twice (i.e. Operator -> DRCoordinator -> Consumer) requires to encode the result as `bytes` twice (via `ethabiencode` or `ethabiencode2`)./
+- NB: the `gasLimit` parameter of the `ethtx` task has set the amount defined by Consumer when called `DRCoordinator.requestData()`.
+
+### 7. Fulfilling the request
 
 1. Validates the request and its caller.
 2. Loads the request configuration (`FulfillConfig`) and attempts to fulfill the request by calling the Consumer callback method passing the response data.
@@ -116,7 +128,7 @@ None of them came to fruiton due to the `Operator.sol` subclass limitations; the
 
 ## Accomplishments that I'm proud of
 
-Having the willpower of revamping the version presented at the previous Chainlink Hackaton knowing OCR2DR is in the works. Definitely DRCoordinator 1.0.0 is a more mature product.
+Having the willpower of revamping the version presented at the previous Chainlink Hackaton knowing OCR2DR is in the works. DRCoordinator 1.0.0 is a more mature product and I've achieved many of the "What's Next?" bulletpoints listed on the previous hackaton.
 
 Also running lots of experiments with `directrequest` jobs and trying the new built-in core tasks, e.g. `ethabiencode2`.
 
@@ -124,6 +136,8 @@ Also running lots of experiments with `directrequest` jobs and trying the new bu
 
 - Factor in the L1 fees when having to calculate MAX / SPOT LINK payment amount on L2s. The [Chainlink KeeperRegistryBase1_3 does it for Arbitrum and Optimism](https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/KeeperRegistryBase1_3.sol#L176).
 - Add Hardhat tasks to query and decode fulfillment transactions, like in [DRAFT](https://github.com/linkpoolio/draft).
+- Consider extending `Spec` (or a related mapping) with job spec metadata, e.g. an optional IPFS CID that points to the integration docs.
+- Fuzz testing.
 - Support any NodeOp that wants to give it a try and consider generic tweaks.
 - Improve the repository README.md and How To guides.
 - Trying to understand DRCoordinator place in the ecosystem once OCR2DR is released.

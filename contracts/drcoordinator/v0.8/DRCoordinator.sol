@@ -166,6 +166,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
      *                      : add multi Price Feed (2-hop mode via GASTKN / TKN and LINK / TKN feeds)
      *                      : replace L2 Sequencer Flag with L2 Sequencer Uptime Status Feed
      *                      : improve contract inheritance, e.g. add IDRCoordinator, remove ChainlinkClient, etc.
+     *                      : make simple cancelRequest by storing payment and expiration
      *                      : add permiryadFactor (allow setting fees greater than 100%)
      *                      : remove minConfirmations requirement
      *                      : add a public lock
