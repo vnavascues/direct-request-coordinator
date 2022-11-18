@@ -24,6 +24,7 @@ The first version of DRCoordinator presented at the Spring 2022 hackaton was rus
 - Improved interfaces and contracts inheritance.
 - Simplified `DRCoordinator.cancelRequest()` by loading `FulfillConfig.expiration` and `FulfillConfig.payment`.
 - Improved the Consumer libraries (contracts), e.g. `DRCoordinatorClient.sol`, `ChainlinkExternalFulfillmentCompatible.sol`.
+- Removed `sha1` logic for syncing (CUD) JSON specs in DRCoordinator storage.
 - Removed `minConfirmations` logic after understanding that the Consumer plays no role on it (see [Chainlink release v1.5.0](https://github.com/smartcontractkit/chainlink/releases/tag/v1.5.0) and [Adjusting Minimum Outgoing Confirmations for high throughput jobs](https://www.notion.so/EVM-performance-configuration-handbook-a36b9f84dcac4569ba68772aa0c1368c#e9998c2f722540b597301a640f53cfd4)). Also that it is still not possible [setting `minConfirmations` from a job pipeline variable](https://github.com/smartcontractkit/chainlink/issues/6680).
 - Applied [Chainlink's Solidity Style Guide](https://github.com/smartcontractkit/chainlink/blob/00330f50f020e73d0280210c6073c4db9702dcf9/contracts/style.md).
 - Added NatSpec.
@@ -94,7 +95,7 @@ When Consumer calls `DRCoordinator.requestData()` DRCoordinator does:
 2. Calculates MAX LINK payment amount, which is the amount of LINK Consumer would pay if all the `callbackGasLimit` was used fulfilling the request (tx `gasLimit`).
 3. Checks that the Consumer balance can afford MAX LINK payment and that Consumer is willing to pay the amount.
 4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be either a flat amount or a percentage (permiryad) of MAX LINK payment. The `paymentType` and `payment` are set in the `Spec` by NodeOp.
-5. Updates Consumer balancee.
+5. Updates Consumer balance.
 6. Stores essential data from Consumer, `Chainlink.Request` and `Spec` in a `FulfillConfig` (by request ID) struct to be used upon fulfillment.
 7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount), which emits the `OracleRequest` event.
 
@@ -119,16 +120,16 @@ NB: all these steps are follow the standard Chainlink Direct Request Model.
 
 ## Challenges I ran into
 
-The current DRCoordinator design makes it work as a "forwarder", as it forwards requests and responses between the Consumer & Operator contracts. I call this design DRCoordinator-Cooperator. The first task I addressed for this hackaton was prototyping a DRCoordinator-Operator, which would be a DRCoordinator that inherited from Operator and extended its functionallity for a new kind of requests using any of these approaches:
+The current DRCoordinator design makes it work as a "forwarder", as it forwards requests and responses between the Consumer & Operator contracts. I call this design DRCoordinator-Cooperator. The first task I addressed for this hackaton was prototyping a DRCoordinator-Operator, which would be a DRCoordinator that inherited from Operator and extended its functionality for a new kind of requests using any of these approaches:
 
-- Implement internal LINK balances (do not use `LINK.transferAndCall()`) and just emit an `OracleRequest` event (which is required to trigger `directrequest` jobs, but it does not require to be preceeded by a LINK payment).
+- Implement internal LINK balances (do not use `LINK.transferAndCall()`) and just emit an `OracleRequest` event (which is required to trigger `directrequest` jobs, but it does not require to be preceded by a LINK payment).
 - Use `LINK.transferAndCall()` and implement a new `DRCOORDINATOR_REQUEST_SELECTOR`.
 
-None of them came to fruiton due to the `Operator.sol` subclass limitations; the key methods have `private` visibility. Despite either modifying `Operator.sol` or getting rid of it was an option, I wanted to stick to the Chainlink standards and do not increase the risk of NodeOps (`Operator.sol` has been audited & widely tested).
+None of them came to fruition due to the `Operator.sol` subclass limitations; the key methods have `private` visibility. Despite either modifying `Operator.sol` or getting rid of it was an option, I wanted to stick to the Chainlink standards and do not increase the risk of NodeOps (`Operator.sol` has been audited & widely tested).
 
 ## Accomplishments that I'm proud of
 
-Having the willpower of revamping the version presented at the previous Chainlink Hackaton knowing OCR2DR is in the works. DRCoordinator 1.0.0 is a more mature product and I've achieved many of the "What's Next?" bulletpoints listed on the previous hackaton.
+Having the willpower of revamping the version presented at the previous Chainlink Hackaton knowing OCR2DR is in the works. DRCoordinator 1.0.0 is a more mature product and I've achieved many of the "What's Next?" bullet points listed on the previous hackaton.
 
 Also running lots of experiments with `directrequest` jobs and trying the new built-in core tasks, e.g. `ethabiencode2`.
 
@@ -143,14 +144,15 @@ Contract improvements:
 
 Tasks & tools improvements:
 
-- Add any missing task and/or tool based on users' feedback.
+- Add any missing task and/or tool based on users' feedback, for instance "add funds".
 - Incorporate some of the [DRAFT](https://github.com/linkpoolio/draft) tasks & concepts that help troubleshooting requests, e.g. decoding
   fulfillment transactions.
-- Improve the README.md, and How To guides. Include more examples using different DRCoordinator configs and TOML/JSON specs.
+- Improve the README.md and How To guides. For instance include examples of different DRCoordinator configs (e.g. multi price feed, L2 Sequencer Uptime), TOML/JSON specs, showcase the refund mode, etc.
+- Keep track of all the above introducing a changelog.
 
 But also:
 
-- Support any NodeOp that wants to give it a try.
+- Support any NodeOp that wants to give it a try. For instance and improved `ethabiencode2` task would allow NodeOps not having to list, price & manage N Get jobs (e.g. `(uint256)`, `(uint256,uint256)`, `(uint256, uint256, uint256)`, ...) cause each Consumer could enforce its desired ABI per request.
 - Try to understand DRCoordinator's place in the ecosystem once OCR2DR is released.
 
 ## What I learned

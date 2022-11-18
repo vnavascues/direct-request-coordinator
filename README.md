@@ -30,7 +30,7 @@ In the current model the LINK payment is statically defined in the TOML job spec
 - Consumers don't have access to the exact amount and NodeOps must let them know about any change on it.
 - Consumer transfers to Operator the LINK amount before the job runs and without knowing the outcome.
 - NodeOps must calculate the LINK payment amount factoring in at least:
-  - The gas units incurred by the fulfillment tx (result-size dependant).
+  - The gas units incurred by the fulfillment tx (result-size-dependant).
   - The gas price (in GASTKN) and the LINK price in the network.
 - However, there are other factors too, e.g. changes on the result-size, frequency of gas spikes/network usage, gas bumps done by the Chainlink Node to assure tx inclusion, the L1 tx fees on L2s, etc. It is reasonable then that NodeOps set the LINK payment amount high enough to offset any potential losses.
 - Adding a Direct Request job implies having to spend time calculating the LINK amount.
@@ -53,6 +53,8 @@ A framework composed of contracts (on-chain) and job spec management tools (off-
 ## Architecture & Flow
 
 This is a high level overview of the Direct Request Model with DRCoordinator:
+
+NB: the image below must be updated and put in context. For instance, it applies only for deployments on L1s in single Price Feed mode, DRCoordinator is not a `ChainlinkClient` anymore, etc. Also, the numbers are not related with the `h3` sections listed below, but with some of the listed steps.
 
 <img src="./media/images/architecture_flow.svg">
 
@@ -87,7 +89,7 @@ NodeOps have to:
 
 Devs have to:
 
-- Make Consumer inherit from `DRCoordinatorClient.sol` (an equivalent of `ChainlinkClient.sol` for DRCoordinator requests). This library only builds the `Chainlink.Request` and then sends it to DRCoordinator (via `DRCoordinator.requestData()`), which is responsible for extending it and ultimately send it to Operator.
+- Make Consumer inherit from `DRCoordinatorClient.sol` (an equivalent of `ChainlinkClient.sol` for DRCoordinator requests). This library only builds the `Chainlink.Request` and then sends it to DRCoordinator (via `DRCoordinator.requestData()`), which is responsible for extending it and ultimately sending it to Operator.
 - Request a `Spec` by passing the Operator address, the maximum amount of gas willing to spend, the maximum amount of LINK willing to pay and the `Chainlink.Request` (which includes the `Spec.specId` as `id` and the request parameters CBOR encoded).
 
 Devs can time the request with any of these strategies if gas prices are a concern:
@@ -112,7 +114,7 @@ When Consumer calls `DRCoordinator.requestData()` DRCoordinator does:
 
 ### 6. Requesting the Data Provider(s) API(s), processing the response(s) and submitting the result on-chain
 
-NB: all these steps are follow the standard Chainlink Direct Request Model.
+NB: all these steps follow the standard Chainlink Direct Request Model.
 
 1. The Chainlink node subscribed to the event triggers a `directrequest` job run.
 2. The `OracleRequest` event data is decoded and the log and request parameters are processed and used to request the Data Povider(s) API(s).
@@ -153,9 +155,17 @@ NB: all these steps are follow the standard Chainlink Direct Request Model.
 
 - [JSON specs](./jobs/drcoordinator-specs/)
 
-## Usage
+## How To's & More
 
-TODO
+### DRCoordinatior 1.0.0
+
+- [How To 01: Introduction to DRCoordinator](./media/how_to_01_introduction_to_drcoordinator_1_0_0.md)
+
+### DRCoordinator 0.1.0 (deprecated)
+
+- [README.md](./media/README_drcoordinator_0_1_0.md)
+- [How To 01: Introduction to DRCoordinator](./media/how_to_01_introduction_to_drcoordinator_0_1_0.md)
+- [Chainlink Hackaton 2022 Spring submission](./media/README_CHAINLINK_HACKATON_2022_01_SPRING.md)
 
 ## Resources
 
