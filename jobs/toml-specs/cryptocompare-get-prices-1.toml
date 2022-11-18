@@ -25,7 +25,7 @@ observationSource = """
     encode_data         [
                          type="ethabiencode2"
                          abi=<{
-                            "inputs" [
+                            "inputs": [
                               {
                                  "name": "requestId",
                                  "type": "bytes32"
@@ -45,7 +45,7 @@ observationSource = """
     encode_data_drc     [
                          type="ethabiencode2"
                          abi=<{
-                            "inputs" [
+                            "inputs": [
                               {
                                  "name": "requestId",
                                  "type": "bytes32"

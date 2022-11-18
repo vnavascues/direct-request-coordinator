@@ -36,6 +36,7 @@ export enum ChainlinkNodeId {
   ETH_KOVAN = "eth_kovan",
   ETH_GOERLI = "eth_goerli",
   ETH_RINKEBY = "eth_rinkeby",
+  OPT_GOERLI = "opt_goerli",
 }
 
 export enum ExternalAdapterId {

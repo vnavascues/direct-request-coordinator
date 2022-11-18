@@ -134,13 +134,24 @@ Also running lots of experiments with `directrequest` jobs and trying the new bu
 
 ## What's next for DRCoordinator
 
+Contract improvements:
+
 - Factor in the L1 fees when having to calculate MAX / SPOT LINK payment amount on L2s. The [Chainlink KeeperRegistryBase1_3 does it for Arbitrum and Optimism](https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.8/KeeperRegistryBase1_3.sol#L176).
-- Add Hardhat tasks to query and decode fulfillment transactions, like in [DRAFT](https://github.com/linkpoolio/draft).
-- Consider extending `Spec` (or a related mapping) with job spec metadata, e.g. an optional IPFS CID that points to the integration docs.
 - Fuzz testing.
-- Support any NodeOp that wants to give it a try and consider generic tweaks.
-- Improve the repository README.md and How To guides.
-- Trying to understand DRCoordinator place in the ecosystem once OCR2DR is released.
+- Consider extending `Spec` (or a related mapping) with job spec metadata, e.g. an optional IPFS CID that points to the integration docs.
+- See if there is a way to improve the Etherscan experience. NatSpec is not well displayed (is it because of inheriting from the interfaces?) and custom errors revert reasons are not well displayed either.
+
+Tasks & tools improvements:
+
+- Add any missing task and/or tool based on users' feedback.
+- Incorporate some of the [DRAFT](https://github.com/linkpoolio/draft) tasks & concepts that help troubleshooting requests, e.g. decoding
+  fulfillment transactions.
+- Improve the README.md, and How To guides. Include more examples using different DRCoordinator configs and TOML/JSON specs.
+
+But also:
+
+- Support any NodeOp that wants to give it a try.
+- Try to understand DRCoordinator's place in the ecosystem once OCR2DR is released.
 
 ## What I learned
 

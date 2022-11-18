@@ -24,7 +24,7 @@ observationSource = """
 
     get_eth             [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD"]
     parse_eth           [type="jsonparse" path="USD" data="$(get_eth)"]
-    multiply_eth        [type="multiply" input="$(multiply_eth)", times="1000000"]
+    multiply_eth        [type="multiply" input="$(parse_eth)", times="1000000"]
 
     get_link            [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD"]
     parse_link          [type="jsonparse" path="USD" data="$(get_link)"]
@@ -33,7 +33,7 @@ observationSource = """
     encode_data         [
                          type="ethabiencode2"
                          abi=<{
-                            "inputs" [
+                            "inputs": [
                               {
                                  "name": "requestId",
                                  "type": "bytes32"
@@ -63,7 +63,7 @@ observationSource = """
     encode_data_drc     [
                          type="ethabiencode2"
                          abi=<{
-                            "inputs" [
+                            "inputs": [
                               {
                                  "name": "requestId",
                                  "type": "bytes32"

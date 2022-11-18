@@ -37,24 +37,83 @@ observationSource = """
     parse_result        [type="jsonparse" data="$(sportsdataio_lp)" path="result"]
 
     encode_data         [
-                         type="ethabiencode"
-                         abi="(bytes32 requestId, bytes32[] result)"
+                         type="ethabiencode2"
+                         abi=<{
+                            "inputs": [
+                              {
+                                 "name": "requestId",
+                                 "type": "bytes32"
+                              },
+                              {
+                                 "name": "data",
+                                 "type": "bytes32[]"
+                              }
+                            ]
+                         }>
                          data=<{
                             "requestId": $(decode_log.requestId),
-                            "result": $(parse_result)
+                            "data": $(parse_result)
+                         }>
+                        ]
+
+    encode_data_drc     [
+                         type="ethabiencode2"
+                         abi=<{
+                            "inputs": [
+                              {
+                                 "name": "requestId",
+                                 "type": "bytes32"
+                              },
+                              {
+                                 "name": "data",
+                                 "type": "bytes"
+                              }
+                            ]
+                         }>
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "data": $(encode_data)
                          }>
                         ]
 
     encode_tx           [
-                         type="ethabiencode"
-                         abi="fulfillOracleRequest2(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes calldata data)"
+                         type="ethabiencode2"
+                         abi=<{
+                           "name": "fulfillOracleRequest2",
+                           "inputs": [
+                              {
+                                 "name": "requestId",
+                                 "type": "bytes32"
+                              },
+                              {
+                                 "name": "payment",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "callbackAddress",
+                                 "type": "address"
+                              },
+                              {
+                                 "name": "callbackFunctionId",
+                                 "type": "bytes4"
+                              },
+                              {
+                                 "name": "expiration",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "data",
+                                 "type": "bytes"
+                              }
+                           ]
+                         }>
                          data=<{
                             "requestId": $(decode_log.requestId),
                             "payment": $(decode_log.payment),
                             "callbackAddress": $(decode_log.callbackAddr),
                             "callbackFunctionId": $(decode_log.callbackFunctionId),
                             "expiration": $(decode_log.cancelExpiration),
-                            "data": $(encode_data)
+                            "data": $(encode_data_drc)
                          }>
                         ]
 
@@ -65,5 +124,5 @@ observationSource = """
                          failOnRevert=true
                         ] // Replace (3 of 3) with Operator.sol address
 
-    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_tx -> submit_tx
+    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_data_drc -> encode_tx -> submit_tx
 """
