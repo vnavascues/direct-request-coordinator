@@ -1,0 +1,136 @@
+type = "directrequest"
+schemaVersion = 1
+# Replace (1 of 3) with DRCoordinator.sol address
+requesters = [
+    "0x0000000000000000000000000000000000000000"
+]
+minContractPaymentLinkJuels = "0"
+name = "CryptoCompare Get Prices DRCoordinator BTC | ETH | LINK - DRC"
+contractAddress = "0x0000000000000000000000000000000000000000" # Replace (2 of 3) with Operator.sol address
+maxTaskDuration = "0s"
+observationSource = """
+    decode_log          [
+                         type="ethabidecodelog"
+                         abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+                         data="$(jobRun.logData)"
+                         topics="$(jobRun.logTopics)"
+                        ]
+
+    decode_cbor         [type="cborparse" data="$(decode_log.data)"]
+
+    get_btc             [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"]
+    parse_btc           [type="jsonparse" path="USD" data="$(get_btc)"]
+    multiply_btc        [type="multiply" input="$(parse_btc)", times="1000000"]
+
+    get_eth             [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD"]
+    parse_eth           [type="jsonparse" path="USD" data="$(get_eth)"]
+    multiply_eth        [type="multiply" input="$(multiply_eth)", times="1000000"]
+
+    get_link            [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD"]
+    parse_link          [type="jsonparse" path="USD" data="$(get_link)"]
+    multiply_link       [type="multiply" input="$(parse_link)", times="1000000"]
+
+    encode_data         [
+                         type="ethabiencode2"
+                         abi=<{
+                            "inputs" [
+                              {
+                                 "name": "requestId",
+                                 "type": "bytes32"
+                              },
+                              {
+                                 "name": "btc",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "eth",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "link",
+                                 "type": "uint256"
+                              }
+                            ]
+                         }>
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "btc": $(multiply_btc),
+                            "eth": $(multiply_eth),
+                            "link": $(multiply_link)
+                         }>
+                        ]
+
+    encode_data_drc     [
+                         type="ethabiencode2"
+                         abi=<{
+                            "inputs" [
+                              {
+                                 "name": "requestId",
+                                 "type": "bytes32"
+                              },
+                              {
+                                 "name": "data",
+                                 "type": "bytes"
+                              }
+                            ]
+                         }>
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "data": $(encode_data)
+                         }>
+                        ]
+
+    encode_tx           [
+                         type="ethabiencode2"
+                         abi=<{
+                           "name": "fulfillOracleRequest2",
+                           "inputs": [
+                              {
+                                 "name": "requestId",
+                                 "type": "bytes32"
+                              },
+                              {
+                                 "name": "payment",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "callbackAddress",
+                                 "type": "address"
+                              },
+                              {
+                                 "name": "callbackFunctionId",
+                                 "type": "bytes4"
+                              },
+                              {
+                                 "name": "expiration",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "data",
+                                 "type": "bytes"
+                              }
+                           ]
+                         }>
+                         data=<{
+                            "requestId": $(decode_log.requestId),
+                            "payment": $(decode_log.payment),
+                            "callbackAddress": $(decode_log.callbackAddr),
+                            "callbackFunctionId": $(decode_log.callbackFunctionId),
+                            "expiration": $(decode_log.cancelExpiration),
+                            "data": $(encode_data_drc)
+                         }>
+                        ]
+
+    submit_tx           [
+                         type="ethtx" to="0x0000000000000000000000000000000000000000"
+                         data="$(encode_tx)"
+                         gasLimit="$(decode_cbor.gasLimit)"
+                         failOnRevert=true
+                        ] // Replace (3 of 3) with Operator.sol address
+
+    decode_log -> decode_cbor
+    decode_cbor -> get_btc -> parse_btc -> multiply_btc -> encode_data
+    decode_cbor -> get_eth -> parse_eth -> multiply_eth -> encode_data
+    decode_cbor -> get_link -> parse_link -> multiply_link -> encode_data
+    encode_data -> encode_data_drc -> encode_tx -> submit_tx
+"""
