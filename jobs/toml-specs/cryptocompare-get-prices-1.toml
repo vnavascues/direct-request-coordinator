@@ -5,8 +5,8 @@ requesters = [
     "0x0000000000000000000000000000000000000000"
 ]
 minContractPaymentLinkJuels = "0"
-name = "SDIO Sportsdataio Get Schedule v2.0.3 - DRC"
-contractAddress = "0x0000000000000000000000000000000000000000"  # Replace (2 of 3) with Operator.sol address
+name = "CryptoCompare Get Prices DRCoordinator LINK - DRC"
+contractAddress = "0x0000000000000000000000000000000000000000" # Replace (2 of 3) with Operator.sol address
 maxTaskDuration = "0s"
 observationSource = """
     decode_log          [
@@ -18,23 +18,9 @@ observationSource = """
 
     decode_cbor         [type="cborparse" data="$(decode_log.data)"]
 
-    merge_req_params    [type="merge" left=<{"gameIds": null}> right="$(decode_cbor)"]
-
-    sportsdataio_lp     [
-                         type="bridge"
-                         name="sportsdataio-lp"
-                         requestData=<{
-                            "data": {
-                                "endpoint": "schedule",
-                                "market": $(merge_req_params.market),
-                                "leagueId": $(merge_req_params.leagueId),
-                                "date": $(merge_req_params.date),
-                                "gameIds": $(merge_req_params.gameIds)
-                            }
-                         }>
-                        ]
-
-    parse_result        [type="jsonparse" data="$(sportsdataio_lp)" path="result"]
+    get_link            [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD"]
+    parse_link          [type="jsonparse" path="USD" data="$(get_link)"]
+    multiply_link       [type="multiply" input="$(parse_link)", times="1000000"]
 
     encode_data         [
                          type="ethabiencode2"
@@ -45,14 +31,14 @@ observationSource = """
                                  "type": "bytes32"
                               },
                               {
-                                 "name": "data",
-                                 "type": "bytes32[]"
+                                 "name": "link",
+                                 "type": "uint256"
                               }
                             ]
                          }>
                          data=<{
                             "requestId": $(decode_log.requestId),
-                            "data": $(parse_result)
+                            "link": $(multiply_link)
                          }>
                         ]
 
@@ -124,5 +110,7 @@ observationSource = """
                          failOnRevert=true
                         ] // Replace (3 of 3) with Operator.sol address
 
-    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_data_drc -> encode_tx -> submit_tx
+    decode_log -> decode_cbor
+    decode_cbor -> get_link -> parse_link -> multiply_link -> encode_data
+    encode_data -> encode_data_drc -> encode_tx -> submit_tx
 """

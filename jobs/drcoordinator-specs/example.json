@@ -5,7 +5,7 @@
       "chainId": 42,
       "jobId": 187,
       "jobName": "Coingecko Get Price",
-      "nodeId": "eth_kovan",
+      "nodeId": "eth_goerli",
       "notes": null
     },
     "configuration": {
@@ -28,7 +28,7 @@
       "chainId": 42,
       "jobId": 22,
       "jobName": "My Adapter Example Get Data v1.0.0",
-      "nodeId": "eth_kovan",
+      "nodeId": "eth_goerli",
       "notes": "Lorem Ipsum"
     },
     "configuration": {

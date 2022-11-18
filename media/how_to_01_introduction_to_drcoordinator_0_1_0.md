@@ -1,4 +1,4 @@
-## How To
+# How To: DRCoordinator Basic Tutorial
 
 Follow the steps below to make a Multi Word Response Direct Request to the CryptoCompare API via `DRCoordinator`. The goal is writing on-chain the current USD price of BTC, ETH, and LINK.
 

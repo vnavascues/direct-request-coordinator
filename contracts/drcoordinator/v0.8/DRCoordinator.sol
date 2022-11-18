@@ -26,11 +26,12 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
  * This is a high level overview of a DRCoordinator Direct Request:
  *
  * 1. Adding the job on the Chainlink node
- * ------------------------------------
+ * ---------------------------------------
  * NodeOps have to add a DRCoordinator-friendly TOML spec, which only requires to:
  * - Set the `minContractPaymentLinkJuels` field to 0 Juels. Make sure to set first the node env var
  * `MINIMUM_CONTRACT_PAYMENT_LINK_JUELS` to 0 as well.
  * - Add the DRCoordinator address in `requesters` to prevent the job being spammed (due to 0 Juels payment).
+ * - Add an extra encoding as `(bytes32 requestId, bytes data)` before encoding the `fulfillOracleRequest2` tx.
  *
  * 2. Making the job requestable
  * -----------------------------
@@ -168,6 +169,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
      *                      : improve contract inheritance, e.g. add IDRCoordinator, remove ChainlinkClient, etc.
      *                      : make simple cancelRequest by storing payment and expiration
      *                      : add permiryadFactor (allow setting fees greater than 100%)
+     *                      : remove the sha1 logic
      *                      : remove minConfirmations requirement
      *                      : add a public lock
      *                      : improve Consumer tools, e.g. DRCoordinatorClient, ChainlinkExternalFulfillmentCompatible

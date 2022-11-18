@@ -30,7 +30,7 @@ In the current model the LINK payment is statically defined in the TOML job spec
 - Consumers don't have access to the exact amount and NodeOps must let them know about any change on it.
 - Consumer transfers to Operator the LINK amount before the job runs and without knowing the outcome.
 - NodeOps must calculate the LINK payment amount factoring in at least:
-  - The gas units incurred by the fulfillment tx (result-size dependant).
+  - The gas units incurred by the fulfillment tx (result-size-dependant).
   - The gas price (in GASTKN) and the LINK price in the network.
 - However, there are other factors too, e.g. changes on the result-size, frequency of gas spikes/network usage, gas bumps done by the Chainlink Node to assure tx inclusion, the L1 tx fees on L2s, etc. It is reasonable then that NodeOps set the LINK payment amount high enough to offset any potential losses.
 - Adding a Direct Request job implies having to spend time calculating the LINK amount.
@@ -54,6 +54,8 @@ A framework composed of contracts (on-chain) and job spec management tools (off-
 
 This is a high level overview of the Direct Request Model with DRCoordinator:
 
+NB: the image below must be updated and put in context. For instance, it applies only for deployments on L1s in single Price Feed mode, DRCoordinator is not a `ChainlinkClient` anymore, etc.
+
 <img src="./media/images/architecture_flow.svg">
 
 ### 1. Deploying a DRCoordinator
@@ -67,16 +69,17 @@ NodeOps have to deploy and set up first a DRCoordinator:
 
 ### 2. Adding the job on the Chainlink node
 
-NodeOps have to add a DRCoordinator-friendly TOML job spec, which only requires to:
+NodeOps have to add a DRCoordinator-friendly TOML job spec (image no 1), which only requires to:
 
 - Set the `minContractPaymentLinkJuels` field to 0 Juels. Make sure to set first the node env var `MINIMUM_CONTRACT_PAYMENT_LINK_JUELS` to 0 as well.
 - Add the DRCoordinator address in `requesters` to prevent the job being spammed (due to 0 Juels payment).
+- Add an extra data encode as `(bytes32 requestId, bytes data)` (via `ethabiencode` or `ethabiencode2` tasks) before encoding the data for the `fulfillOracleRequest2` tx.
 
 ### 3. Making the job requestable
 
 NodeOps have to:
 
-1. Create the `Spec` (see `SpecLibrary.sol`) of the TOML spec added above and upload it in the DRCoordinator storage via `DRCoordinator.setSpec()`.
+1. Create the `Spec` (see `SpecLibrary.sol`) of the TOML spec added above (image no 2 & 3) and upload it in the DRCoordinator storage via `DRCoordinator.setSpec()` (image no 4).
 
 - NodeOps should create the equivalent JSON Spec and upload it using the `drcoordinator:import-file` Hardhat task.
 
@@ -87,8 +90,8 @@ NodeOps have to:
 
 Devs have to:
 
-- Make Consumer inherit from `DRCoordinatorClient.sol` (an equivalent of `ChainlinkClient.sol` for DRCoordinator requests). This library only builds the `Chainlink.Request` and then sends it to DRCoordinator (via `DRCoordinator.requestData()`), which is responsible for extending it and ultimately send it to Operator.
-- Request a `Spec` by passing the Operator address, the maximum amount of gas willing to spend, the maximum amount of LINK willing to pay and the `Chainlink.Request` (which includes the `Spec.specId` as `id` and the request parameters CBOR encoded).
+- Make Consumer inherit from `DRCoordinatorClient.sol` (an equivalent of `ChainlinkClient.sol` for DRCoordinator requests). This library only builds the `Chainlink.Request` and then sends it to DRCoordinator (via `DRCoordinator.requestData()`), which is responsible for extending it and ultimately sending it to Operator.
+- Request a `Spec` by passing the Operator address, the maximum amount of gas willing to spend, the maximum amount of LINK willing to pay and the `Chainlink.Request` (which includes the `Spec.specId` as `id` and the request parameters CBOR encoded) (image no 5).
 
 Devs can time the request with any of these strategies if gas prices are a concern:
 
@@ -100,32 +103,32 @@ Devs can time the request with any of these strategies if gas prices are a conce
 
 NB: Make sure Consumer has LINK balance in DRCoordinator.
 
-When Consumer calls `DRCoordinator.requestData()` DRCoordinator does:
+When Consumer calls `DRCoordinator.requestData()` DRCoordinator does (image no 5):
 
 1. Validates the arguments.
-2. Calculates MAX LINK payment amount, which is the amount of LINK Consumer would pay if all the `callbackGasLimit` was used fulfilling the request (tx `gasLimit`).
+2. Calculates MAX LINK payment amount, which is the amount of LINK Consumer would pay if all the `callbackGasLimit` was used fulfilling the request (tx `gasLimit`) (image no 6).
 3. Checks that the Consumer balance can afford MAX LINK payment and that Consumer is willing to pay the amount.
 4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be either a flat amount or a percentage (permiryad) of MAX LINK payment. The `paymentType` and `payment` are set in the `Spec` by NodeOp.
 5. Updates Consumer balancee.
 6. Stores essential data from Consumer, `Chainlink.Request` and `Spec` in a `FulfillConfig` (by request ID) struct to be used upon fulfillment.
-7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount), which emits the `OracleRequest` event.
+7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount) (image no 7), which emits the `OracleRequest` event (image no 8).
 
 ### 6. Requesting the Data Provider(s) API(s), processing the response(s) and submitting the result on-chain
 
-NB: all these steps are follow the standard Chainlink Direct Request Model.
+NB: all these steps follow the standard Chainlink Direct Request Model.
 
 1. The Chainlink node subscribed to the event triggers a `directrequest` job run.
-2. The `OracleRequest` event data is decoded and the log and request parameters are processed and used to request the Data Povider(s) API(s).
-3. The API(s) response(s) are processed and the result is submitted on-chain back to DRCoordinator via `Operator.fulfillOracleRequest2()`.
+2. The `OracleRequest` event data is decoded and the log and request parameters are processed and (9) used to request the Data Povider(s) API(s) (image no 9).
+3. The API(s) response(s) (image no 10) are processed and the result is submitted on-chain back to DRCoordinator via `Operator.fulfillOracleRequest2()` (image no 11 & 12).
 
 - NB: forwarding the response twice (i.e. Operator -> DRCoordinator -> Consumer) requires to encode the result as `bytes` twice (via `ethabiencode` or `ethabiencode2`)./
-- NB: the `gasLimit` parameter of the `ethtx` task has set the amount defined by Consumer when called `DRCoordinator.requestData()`.
+- NB: the `gasLimit` parameter of the `ethtx` task has set the amount defined by Consumer when called `DRCoordinator.requestData()` plus `GAS_AFTER_PAYMENT_CALCULATION` (`50_000` gas units).
 
 ### 7. Fulfilling the request
 
 1. Validates the request and its caller.
-2. Loads the request configuration (`FulfillConfig`) and attempts to fulfill the request by calling the Consumer callback method passing the response data.
-3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus the REQUEST LINK payment, plus the fulfillment fee. The fee can be either a flat amount of a percentage (permiryad) of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
+2. Loads the request configuration (`FulfillConfig`) and attempts to fulfill the request by calling the Consumer callback method passing the response data (image no 13 & 14).
+3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus the REQUEST LINK payment, plus the fulfillment fee (image no 15). The fee can be either a flat amount of a percentage (permiryad) of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
 4. Checks that the Consumer balance can afford SPOT LINK payment and that Consumer is willing to pay the amount. It is worth mentioning that DRCoordinator can refund Consumer if REQUEST LINK payment was greater than SPOT LINK payment and DRCoordinator's balance is greater or equal than SPOT payment. Tuning the `Spec.payment` and `Spec.fee` should make this particular case very rare.
 5. Updates Consumer and DRCoordinator balances.
 
@@ -153,9 +156,17 @@ NB: all these steps are follow the standard Chainlink Direct Request Model.
 
 - [JSON specs](./jobs/drcoordinator-specs/)
 
-## Usage
+## How To's & More
 
-TODO
+### DRCoordinatior 1.0.0
+
+- [How To 01: Introduction to DRCoordinator](./media/how_to_01_introduction_to_drcoordinator_1_0_0.md)
+
+### DRCoordinator 0.1.0 (deprecated)
+
+- [README.md](./media/README_drcoordinator_0_1_0.md)
+- [How To 01: Introduction to DRCoordinator](./media/how_to_01_introduction_to_drcoordinator_0_1_0.md)
+- [Chainlink Hackaton 2022 Spring submission](./media/README_CHAINLINK_HACKATON_2022_01_SPRING.md)
 
 ## Resources
 

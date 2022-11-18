@@ -5,8 +5,8 @@ requesters = [
     "0x0000000000000000000000000000000000000000"
 ]
 minContractPaymentLinkJuels = "0"
-name = "SDIO Sportsdataio Get Schedule v2.0.3 - DRC"
-contractAddress = "0x0000000000000000000000000000000000000000"  # Replace (2 of 3) with Operator.sol address
+name = "CryptoCompare Get Prices DRCoordinator BTC | ETH | LINK | MATIC | AAVE | SNX - DRC"
+contractAddress = "0x0000000000000000000000000000000000000000" # Replace (2 of 3) with Operator.sol address
 maxTaskDuration = "0s"
 observationSource = """
     decode_log          [
@@ -18,23 +18,29 @@ observationSource = """
 
     decode_cbor         [type="cborparse" data="$(decode_log.data)"]
 
-    merge_req_params    [type="merge" left=<{"gameIds": null}> right="$(decode_cbor)"]
+    get_btc             [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"]
+    parse_btc           [type="jsonparse" path="USD" data="$(get_btc)"]
+    multiply_btc        [type="multiply" input="$(parse_btc)", times="1000000"]
 
-    sportsdataio_lp     [
-                         type="bridge"
-                         name="sportsdataio-lp"
-                         requestData=<{
-                            "data": {
-                                "endpoint": "schedule",
-                                "market": $(merge_req_params.market),
-                                "leagueId": $(merge_req_params.leagueId),
-                                "date": $(merge_req_params.date),
-                                "gameIds": $(merge_req_params.gameIds)
-                            }
-                         }>
-                        ]
+    get_eth             [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD"]
+    parse_eth           [type="jsonparse" path="USD" data="$(get_eth)"]
+    multiply_eth        [type="multiply" input="$(parse_eth)", times="1000000"]
 
-    parse_result        [type="jsonparse" data="$(sportsdataio_lp)" path="result"]
+    get_link            [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=LINK&tsyms=USD"]
+    parse_link          [type="jsonparse" path="USD" data="$(get_link)"]
+    multiply_link       [type="multiply" input="$(parse_link)", times="1000000"]
+
+    get_matic           [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=MATIC&tsyms=USD"]
+    parse_matic         [type="jsonparse" path="USD" data="$(get_matic)"]
+    multiply_matic      [type="multiply" input="$(parse_matic)", times="1000000"]
+
+    get_aave            [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=AAVE&tsyms=USD"]
+    parse_aave          [type="jsonparse" path="USD" data="$(get_aave)"]
+    multiply_aave       [type="multiply" input="$(parse_aave)", times="1000000"]
+
+    get_snx            [type="http" method=GET url="https://min-api.cryptocompare.com/data/price?fsym=SNX&tsyms=USD"]
+    parse_snx          [type="jsonparse" path="USD" data="$(get_snx)"]
+    multiply_snx       [type="multiply" input="$(parse_snx)", times="1000000"]
 
     encode_data         [
                          type="ethabiencode2"
@@ -45,14 +51,39 @@ observationSource = """
                                  "type": "bytes32"
                               },
                               {
-                                 "name": "data",
-                                 "type": "bytes32[]"
+                                 "name": "btc",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "eth",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "link",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "matic",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "aave",
+                                 "type": "uint256"
+                              },
+                              {
+                                 "name": "snx",
+                                 "type": "uint256"
                               }
                             ]
                          }>
                          data=<{
                             "requestId": $(decode_log.requestId),
-                            "data": $(parse_result)
+                            "btc": $(multiply_btc),
+                            "eth": $(multiply_eth),
+                            "link": $(multiply_link),
+                            "matic": $(multiply_matic),
+                            "aave": $(multiply_aave),
+                            "snx": $(multiply_snx)
                          }>
                         ]
 
@@ -124,5 +155,12 @@ observationSource = """
                          failOnRevert=true
                         ] // Replace (3 of 3) with Operator.sol address
 
-    decode_log -> decode_cbor -> merge_req_params -> sportsdataio_lp -> parse_result -> encode_data -> encode_data_drc -> encode_tx -> submit_tx
+    decode_log -> decode_cbor
+    decode_cbor -> get_btc -> parse_btc -> multiply_btc -> encode_data
+    decode_cbor -> get_eth -> parse_eth -> multiply_eth -> encode_data
+    decode_cbor -> get_link -> parse_link -> multiply_link -> encode_data
+    decode_cbor -> get_matic -> parse_matic -> multiply_matic -> encode_data
+    decode_cbor -> get_aave -> parse_aave -> multiply_aave -> encode_data
+    decode_cbor -> get_snx -> parse_snx -> multiply_snx -> encode_data
+    encode_data -> encode_data_drc -> encode_tx -> submit_tx
 """

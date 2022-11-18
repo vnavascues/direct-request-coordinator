@@ -279,7 +279,6 @@ export async function deployDRCoordinator(
   let addressL2SequencerFeed: string;
   let l2SequencerGracePeriodSeconds: BigNumber;
   const chainId = hre.network.config.chainId as number;
-
   if (isMultiPriceFeedDependant) {
     addressPriceFeed1 = priceFeed1 as string;
     addressPriceFeed2 = priceFeed2 as string;
@@ -291,6 +290,7 @@ export async function deployDRCoordinator(
     addressPriceFeed2 = ethers.constants.AddressZero;
   }
   if (chainId === ChainId.HARDHAT) {
+    overrides = {};
     // NB: dry-run mode for the Hardhat network
     addressLink = await getNetworkLinkAddressDeployingOnHardhat(hre); // ethers.constants.AddressZero;
     await setAddressCode(hre, addressPriceFeed1, DUMMY_SET_CODE_BYTES); // NB: bypass constructor checks
@@ -313,8 +313,19 @@ export async function deployDRCoordinator(
     addressL2SequencerFeed = ethers.constants.AddressZero;
     l2SequencerGracePeriodSeconds = BigNumber.from("0");
   }
-
   // Deploy
+  const logObj = {
+    addressLink,
+    isMultiPriceFeedDependant,
+    addressPriceFeed1,
+    addressPriceFeed2,
+    description,
+    fallbackWeiPerUnitLink,
+    stalenessSeconds,
+    isL2SequencerDependant,
+    addressL2SequencerFeed,
+    l2SequencerGracePeriodSeconds,
+  };
   const drCoordinatorFactory = await hre.ethers.getContractFactory("DRCoordinator");
   const drCoordinator = (await drCoordinatorFactory
     .connect(signer)
@@ -331,7 +342,10 @@ export async function deployDRCoordinator(
       l2SequencerGracePeriodSeconds,
       overrides,
     )) as DRCoordinator;
-  logger.info(`DRCoordinator deployed to: ${drCoordinator.address} | Tx hash: ${drCoordinator.deployTransaction.hash}`);
+  logger.info(
+    logObj,
+    `DRCoordinator deployed to: ${drCoordinator.address} | Tx hash: ${drCoordinator.deployTransaction.hash}`,
+  );
   await drCoordinator
     .connect(signer)
     .deployTransaction.wait(getNumberOfConfirmations(hre.network.config.chainId, numberOfConfirmations));
@@ -534,6 +548,8 @@ export async function logDRCoordinatorDetail(
   logConfig: DRCoordinatorLogConfig,
   signer: ethers.Wallet | SignerWithAddress,
 ): Promise<void> {
+  const chainId = hre.network.config.chainId as number;
+  const isHardhatNetwork = chainId === ChainId.HARDHAT;
   if (logConfig.detail) {
     const address = drCoordinator.connect(signer).address;
     const typeAndVersion = await drCoordinator.connect(signer).typeAndVersion();
@@ -579,11 +595,15 @@ export async function logDRCoordinatorDetail(
         );
       }
     }
-    const descriptionPriceFeed1 = await priceFeed1.connect(signer).description();
-    const descriptionPriceFeed2 = isMultiPriceFeedDependant
+    const descriptionPriceFeed1 = isHardhatNetwork ? "N/A (Hardhat)" : await priceFeed1.connect(signer).description();
+    const descriptionPriceFeed2 = isHardhatNetwork
+      ? "N/A (Hardhat)"
+      : isMultiPriceFeedDependant
       ? await (priceFeed2 as ethers.Contract).connect(signer).description()
       : "N/A";
-    const descriptionL2SequencerFeed2 = isL2SequencerDependant
+    const descriptionL2SequencerFeed2 = isHardhatNetwork
+      ? "N/A (Hardhat)"
+      : isL2SequencerDependant
       ? await (l2SequencerFeed as ethers.Contract).connect(signer).description()
       : "N/A";
 
@@ -601,9 +621,7 @@ export async function logDRCoordinatorDetail(
         PRICE_FEED_1: `${addressPriceFeed1} (${descriptionPriceFeed1})`,
         PRICE_FEED_2: `${addressPriceFeed2} (${descriptionPriceFeed2})`,
         IS_L2_SEQUENCER_DEPENDANT: isL2SequencerDependant,
-        L2_SEQUENCER_FEEED: isL2SequencerDependant
-          ? `${addressL2SequencerFeed} (${descriptionL2SequencerFeed2})`
-          : `${addressL2SequencerFeed} (N/A)`,
+        L2_SEQUENCER_FEEED: `${addressL2SequencerFeed} (${descriptionL2SequencerFeed2})`,
         L2_SEQUENCER_GRACE_PERIOD_SECONDS: isL2SequencerDependant
           ? l2SequencerGracePeriodSeconds
           : `${l2SequencerGracePeriodSeconds} (N/A)`,
@@ -1001,7 +1019,6 @@ export async function setupDRCoordinatorBeforeTask(
   logger.info(`connecting to DRCoordinator at: ${taskArguments.address} ...`);
   const drCoordinator = await getDRCoordinator(hre, taskArguments.address, taskArguments.mode, signer, overrides);
   await logDRCoordinatorDetail(hre, drCoordinator, { detail: true }, signer);
-
   // Check signer's role
   return {
     drCoordinator,

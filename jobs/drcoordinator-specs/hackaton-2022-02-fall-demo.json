@@ -1,0 +1,62 @@
+[
+  {
+    "description": {
+      "adapter": null,
+      "chainId": 5,
+      "jobId": 350,
+      "jobName": "CryptoCompare Get Prices DRCoordinator LINK - DRC",
+      "nodeId": "eth_goerli",
+      "notes": "500k gasLimit, 1% of MAX LINK payment, 10% fee included in SPOT LINK payment"
+    },
+    "configuration": {
+      "externalJobId": "95337d47-257d-44df-af66-ad99e105dc52",
+      "fee": "1000",
+      "feeType": 1,
+      "gasLimit": 500000,
+      "operator": "0x40AD637F7a5ECF8E04cc288EfF5A4de358f13252",
+      "payment": "100",
+      "paymentType": 1
+    },
+    "consumers": ["0x0507C8f8E62dEf7132135D617D11d1C7Faa50D29"]
+  },
+  {
+    "description": {
+      "adapter": null,
+      "chainId": 5,
+      "jobId": 351,
+      "jobName": "CryptoCompare Get Prices DRCoordinator BTC | ETH | LINK - DRC",
+      "nodeId": "eth_goerli",
+      "notes": "750k gasLimit, 1% of MAX LINK payment, 10% fee included in SPOT LINK payment"
+    },
+    "configuration": {
+      "externalJobId": "cc4a83fb-bd1a-45a2-b8ba-f05b96f6a5ed",
+      "fee": "1000",
+      "feeType": 1,
+      "gasLimit": 750000,
+      "operator": "0x40AD637F7a5ECF8E04cc288EfF5A4de358f13252",
+      "payment": "100",
+      "paymentType": 1
+    },
+    "consumers": ["0x0507C8f8E62dEf7132135D617D11d1C7Faa50D29"]
+  },
+  {
+    "description": {
+      "adapter": null,
+      "chainId": 5,
+      "jobId": 352,
+      "jobName": "CryptoCompare Get Prices DRCoordinator BTC | ETH | LINK - DRC",
+      "nodeId": "eth_goerli",
+      "notes": "1mil gasLimit, 1% of MAX LINK payment, 10% fee included in SPOT LINK payment"
+    },
+    "configuration": {
+      "externalJobId": "bd8a6033-a34a-47dd-aff7-c64c7d604b3b",
+      "fee": "1000",
+      "feeType": 1,
+      "gasLimit": 1000000,
+      "operator": "0x40AD637F7a5ECF8E04cc288EfF5A4de358f13252",
+      "payment": "100",
+      "paymentType": 1
+    },
+    "consumers": ["0x0507C8f8E62dEf7132135D617D11d1C7Faa50D29"]
+  }
+]
