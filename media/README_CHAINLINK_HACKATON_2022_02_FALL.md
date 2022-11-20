@@ -2,6 +2,8 @@
 
 A framework that enables dynamic LINK payments on Direct Request (Any API), syncing the price with the network gas and token conditions. It targets node operators that seek being competitive on their Direct Request operations.
 
+[Video demo slide deck](https://docs.google.com/presentation/d/1nSMWzI_lfHa9cPBz0lPQ6jDwo-UWSzmTVCaIAvzkI_A/edit?usp=sharing)
+
 [See DRCoordinator 0.1.0 submission for the Chainlink Hackaton Spring 2022](https://devpost.com/software/direct-request-coordinator-drcoordinator)
 
 [Try it out with How To 01: DRCoordinator Basic Tutorial](https://github.com/vnavascues/direct-request-coordinator/blob/main/media/how_to_01_introduction_to_drcoordinator_1_0_0.md)
@@ -47,9 +49,7 @@ These are the new off-chain features (Hardhat repository):
 
 This is a high level overview of the Direct Request Model with DRCoordinator:
 
-<img src="./images/architecture_flow.svg">
-
-NB: the image above must be updated and put in context. For instance, it applies only for deployments on L1s in single Price Feed mode, DRCoordinator is not a `ChainlinkClient` anymore, etc.
+<img src="./images/drcoordinator_1_0_0_architecture_flow.png">
 
 ### 1. Deploying a DRCoordinator
 
@@ -101,7 +101,7 @@ When Consumer calls `DRCoordinator.requestData()` DRCoordinator does (image no 5
 1. Validates the arguments.
 2. Calculates MAX LINK payment amount, which is the amount of LINK Consumer would pay if all the `callbackGasLimit` was used fulfilling the request (tx `gasLimit`) (image no 6).
 3. Checks that the Consumer balance can afford MAX LINK payment and that Consumer is willing to pay the amount.
-4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be either a flat amount or a percentage (permiryad) of MAX LINK payment. The `paymentType` and `payment` are set in the `Spec` by NodeOp.
+4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be either a flat amount or a percentage (permyriad) of MAX LINK payment. The `paymentType` and `payment` are set in the `Spec` by NodeOp.
 5. Updates Consumer balancee.
 6. Stores essential data from Consumer, `Chainlink.Request` and `Spec` in a `FulfillConfig` (by request ID) struct to be used upon fulfillment.
 7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount) (image no 7), which emits the `OracleRequest` event (image no 8).

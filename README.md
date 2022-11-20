@@ -54,9 +54,7 @@ A framework composed of contracts (on-chain) and job spec management tools (off-
 
 This is a high level overview of the Direct Request Model with DRCoordinator:
 
-NB: the image below must be updated and put in context. For instance, it applies only for deployments on L1s in single Price Feed mode, DRCoordinator is not a `ChainlinkClient` anymore, etc.
-
-<img src="./media/images/architecture_flow.svg">
+<img src="./media/images/drcoordinator_1_0_0_architecture_flow.png">
 
 ### 1. Deploying a DRCoordinator
 
@@ -108,7 +106,7 @@ When Consumer calls `DRCoordinator.requestData()` DRCoordinator does (image no 5
 1. Validates the arguments.
 2. Calculates MAX LINK payment amount, which is the amount of LINK Consumer would pay if all the `callbackGasLimit` was used fulfilling the request (tx `gasLimit`) (image no 6).
 3. Checks that the Consumer balance can afford MAX LINK payment and that Consumer is willing to pay the amount.
-4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be either a flat amount or a percentage (permiryad) of MAX LINK payment. The `paymentType` and `payment` are set in the `Spec` by NodeOp.
+4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be either a flat amount or a percentage (permyriad) of MAX LINK payment. The `paymentType` and `payment` are set in the `Spec` by NodeOp.
 5. Updates Consumer balancee.
 6. Stores essential data from Consumer, `Chainlink.Request` and `Spec` in a `FulfillConfig` (by request ID) struct to be used upon fulfillment.
 7. Extends the Consumer `Chainlink.Request` and sends it to Operator (paying the REQUEST LINK amount) (image no 7), which emits the `OracleRequest` event (image no 8).
@@ -128,7 +126,7 @@ NB: all these steps follow the standard Chainlink Direct Request Model.
 
 1. Validates the request and its caller.
 2. Loads the request configuration (`FulfillConfig`) and attempts to fulfill the request by calling the Consumer callback method passing the response data (image no 13 & 14).
-3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus the REQUEST LINK payment, plus the fulfillment fee (image no 15). The fee can be either a flat amount of a percentage (permiryad) of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
+3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus the REQUEST LINK payment, plus the fulfillment fee (image no 15). The fee can be either a flat amount of a percentage (permyriad) of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
 4. Checks that the Consumer balance can afford SPOT LINK payment and that Consumer is willing to pay the amount. It is worth mentioning that DRCoordinator can refund Consumer if REQUEST LINK payment was greater than SPOT LINK payment and DRCoordinator's balance is greater or equal than SPOT payment. Tuning the `Spec.payment` and `Spec.fee` should make this particular case very rare.
 5. Updates Consumer and DRCoordinator balances.
 
@@ -161,6 +159,8 @@ NB: all these steps follow the standard Chainlink Direct Request Model.
 ### DRCoordinatior 1.0.0
 
 - [How To 01: Introduction to DRCoordinator](./media/how_to_01_introduction_to_drcoordinator_1_0_0.md)
+
+- [Slide deck](https://docs.google.com/presentation/d/1nSMWzI_lfHa9cPBz0lPQ6jDwo-UWSzmTVCaIAvzkI_A/edit?usp=sharing)
 
 ### DRCoordinator 0.1.0 (deprecated)
 
