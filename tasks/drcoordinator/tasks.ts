@@ -38,7 +38,7 @@ import {
   setDescription,
   setFallbackWeiPerUnitLink,
   setL2SequencerGracePeriodSeconds,
-  setPermiryadFeeFactor,
+  setPermyriadFeeFactor,
   setStalenessSeconds,
   setupDRCoordinatorAfterDeploy,
   setupDRCoordinatorBeforeTask,
@@ -63,7 +63,7 @@ task("drcoordinator:calculate-max-amount", "Calculates the max LINK amount for t
     "feetype",
     "The fee type",
     undefined,
-    typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMIRYAD.toString()]),
+    typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMYRIAD.toString()]),
   )
   .addParam("fee", "The fulfillment fee", undefined, typeBignumber)
   // Get wei per unit of gas from provider
@@ -109,7 +109,7 @@ task("drcoordinator:calculate-spot-amount", "Calculates the spot LINK amount for
     "feetype",
     "The fee type",
     undefined,
-    typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMIRYAD.toString()]),
+    typeOptionsArray([FeeType.FLAT.toString(), FeeType.PERMYRIAD.toString()]),
   )
   .addParam("fee", "The fulfillment fee", undefined, typeBignumber)
   // Get wei per unit of gas from provider
@@ -474,7 +474,7 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
   .addOptionalParam("owner", "The new 'owner'", undefined, typeAddress)
   .addOptionalParam("pause", "Pause or unpause the contract", undefined, types.boolean)
   .addOptionalParam("stalenessseconds", "The new 'stalenessSeconds'", undefined, typeBignumber)
-  .addOptionalParam("permiryadfeefactor", "The new 'permiryadFeeFactor'", undefined, types.int)
+  .addOptionalParam("permyriadfeefactor", "The new 'permyriadFeeFactor'", undefined, types.int)
   // Tx customisation (ethers.js Overrides)
   .addFlag("overrides", "Customise the tx overrides")
   .addOptionalParam("gaslimit", "The tx gasLimit", undefined, types.int)
@@ -514,9 +514,9 @@ task("drcoordinator:set-config", "Set all kind of variables in the contract")
       await pause(drCoordinator, signer, overrides);
     }
 
-    // Set permiryadFeeFactor
-    if (taskArguments.permiryadfeefactor) {
-      await setPermiryadFeeFactor(drCoordinator, signer, taskArguments.permiryadfeefactor, overrides);
+    // Set permyriadFeeFactor
+    if (taskArguments.permyriadfeefactor) {
+      await setPermyriadFeeFactor(drCoordinator, signer, taskArguments.permyriadfeefactor, overrides);
     }
 
     // Set stalenessSeconds

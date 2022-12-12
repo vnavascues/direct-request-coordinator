@@ -3,7 +3,7 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import * as path from "path";
 
-import { PERMIRYAD } from "../../../tasks/drcoordinator/constants";
+import { PERMYRIAD } from "../../../tasks/drcoordinator/constants";
 import { getSpecItemConvertedMap, parseSpecsFile } from "../../../tasks/drcoordinator/methods";
 import type { SpecItemConverted } from "../../../tasks/drcoordinator/types";
 import { convertFunctionNametoSignature } from "../../../utils/abi";
@@ -289,7 +289,7 @@ export function testCancelRequest(signers: Signers, context: Context): void {
     )
       .to.emit(context.drCoordinator, "ChainlinkCancelled")
       .withArgs(requestId);
-    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
+    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMYRIAD);
     expect(await context.linkToken.balanceOf(context.operator.address)).to.equal(
       operatorLinkBalanceBefore.sub(paymentInEscrow),
     );

@@ -71,37 +71,37 @@ export function testCalculateSpotPaymentAmount(signers: Signers, context: Contex
       },
     },
     {
-      name: "paymentNoFeeType.SPOT, FeeType.PERMIRYAD, and no payment in escrow (result is a positive LINK amount)",
+      name: "paymentNoFeeType.SPOT, FeeType.PERMYRIAD, and no payment in escrow (result is a positive LINK amount)",
       testData: {
         startGas: BigNumber.from("500000"),
         weiPerUnitGas: BigNumber.from("30000000000"),
         paymentInEscrow: BigNumber.from("0"), // 0 LINK
         fee: BigNumber.from("1225"), // 12.25%
-        feeType: FeeType.PERMIRYAD,
+        feeType: FeeType.PERMYRIAD,
         expectedAmount: BigNumber.from("357238980685651801"), // 0.36 LINK (to pay)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
     {
-      name: "paymentNoFeeType.SPOT, FeeType.PERMIRYAD, and a payment in escrow (result is a positive LINK amount)",
+      name: "paymentNoFeeType.SPOT, FeeType.PERMYRIAD, and a payment in escrow (result is a positive LINK amount)",
       testData: {
         startGas: BigNumber.from("500000"),
         weiPerUnitGas: BigNumber.from("30000000000"),
         paymentInEscrow: BigNumber.from("100000000000000000"), // 0.1 LINK
         fee: BigNumber.from("1225"), // 12.25%
-        feeType: FeeType.PERMIRYAD,
+        feeType: FeeType.PERMYRIAD,
         expectedAmount: BigNumber.from("257933697804530553"), // 0.26 LINK (to pay)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },
     },
     {
-      name: "paymentNoFeeType.SPOT, FeeType.PERMIRYAD, and a payment in escrow (result is a negative LINK amount)",
+      name: "paymentNoFeeType.SPOT, FeeType.PERMYRIAD, and a payment in escrow (result is a negative LINK amount)",
       testData: {
         startGas: BigNumber.from("500000"),
         weiPerUnitGas: BigNumber.from("30000000000"),
         paymentInEscrow: BigNumber.from("2000000000000000000"), // 2 LINK
         fee: BigNumber.from("1225"), // 12.25%
-        feeType: FeeType.PERMIRYAD,
+        feeType: FeeType.PERMYRIAD,
         expectedAmount: BigNumber.from("-1642066302195469447"), // -1.64 LINK (to refund)
         expectedDelta: BigNumber.from("0"), // 0 LINK
       },

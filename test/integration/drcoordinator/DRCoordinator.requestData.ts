@@ -3,7 +3,7 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import * as path from "path";
 
-import { PERMIRYAD, PaymentType } from "../../../tasks/drcoordinator/constants";
+import { PERMYRIAD, PaymentType } from "../../../tasks/drcoordinator/constants";
 import { generateSpecKey, getSpecItemConvertedMap, parseSpecsFile } from "../../../tasks/drcoordinator/methods";
 import type { SpecItemConverted } from "../../../tasks/drcoordinator/types";
 import { convertFunctionNametoSignature } from "../../../utils/abi";
@@ -397,7 +397,7 @@ export function testRequestData(signers: Signers, context: Context): void {
       specConverted.fee,
     );
     // 3. Set consumer's LINK balance
-    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
+    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMYRIAD);
     const consumerBalance = paymentInEscrow.sub("1");
     await context.linkToken.connect(signers.deployer).approve(context.drCoordinator.address, paymentInEscrow);
     await context.drCoordinator
@@ -440,16 +440,16 @@ export function testRequestData(signers: Signers, context: Context): void {
       },
     },
     {
-      name: "paymentType is PaymentType.PERMIRYAD, and payment is 0% (from Max LINK payment)",
+      name: "paymentType is PaymentType.PERMYRIAD, and payment is 0% (from Max LINK payment)",
       testData: {
-        paymentType: PaymentType.PERMIRYAD,
+        paymentType: PaymentType.PERMYRIAD,
         payment: BigNumber.from("0").toString(), // 0% of Max LINK payment
       },
     },
     {
-      name: "paymentType is PaymentType.PERMIRYAD, and payment is 10% (from Max LINK payment)",
+      name: "paymentType is PaymentType.PERMYRIAD, and payment is 10% (from Max LINK payment)",
       testData: {
-        paymentType: PaymentType.PERMIRYAD,
+        paymentType: PaymentType.PERMYRIAD,
         payment: BigNumber.from("1000").toString(), // 10% of Max LINK payment
       },
     },
@@ -516,8 +516,8 @@ export function testRequestData(signers: Signers, context: Context): void {
       let paymentInEscrow: BigNumber;
       if (specConverted.paymentType === PaymentType.FLAT) {
         paymentInEscrow = specConverted.payment;
-      } else if (specConverted.paymentType === PaymentType.PERMIRYAD) {
-        paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
+      } else if (specConverted.paymentType === PaymentType.PERMYRIAD) {
+        paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMYRIAD);
       } else {
         throw new Error(`Unsupported 'paymentType': ${specConverted.paymentType}`);
       }
@@ -607,7 +607,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     // NB: Waffle can't check bignumbers on arrays via .to.have.ordered.members([])
     const fulfillConfig = await context.drCoordinator.getFulfillConfig(expectedRequestId);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
+    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMYRIAD);
     expect(fulfillConfig.msgSender).to.equal(context.drCoordinatorConsumerTH.address);
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
     expect(fulfillConfig.callbackAddr).to.equal(context.drCoordinatorConsumerTH.address);
@@ -698,7 +698,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     // NB: Waffle can't check bignumbers on arrays via .to.have.ordered.members([])
     const fulfillConfig = await context.drCoordinator.getFulfillConfig(expectedRequestId);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
+    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMYRIAD);
     expect(fulfillConfig.msgSender).to.equal(context.drCoordinatorConsumerTH.address);
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
     expect(fulfillConfig.callbackAddr).to.equal(callbackAddr);
@@ -787,7 +787,7 @@ export function testRequestData(signers: Signers, context: Context): void {
     // NB: Waffle can't check bignumbers on arrays via .to.have.ordered.members([])
     const fulfillConfig = await context.drCoordinator.getFulfillConfig(expectedRequestId);
     const gasAfterPaymentCalculation = await context.drCoordinator.getGasAfterPaymentCalculation();
-    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMIRYAD);
+    const paymentInEscrow = maxPaymentAmount.mul(specConverted.payment).div(PERMYRIAD);
     expect(fulfillConfig.msgSender).to.equal(context.drCoordinatorConsumerTH.address);
     expect(fulfillConfig.payment).to.equal(paymentInEscrow);
     expect(fulfillConfig.callbackAddr).to.equal(context.drcGenericFulfillmentTH.address);

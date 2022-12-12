@@ -69,7 +69,7 @@ INFO: detail:
     L2_SEQUENCER_GRACE_PERIOD_SECONDS: "0 (N/A)"
     GAS_AFTER_PAYMENT_CALCULATION: "50000"
     fallbackWeiPerUnitLink: "5198745300000000"
-    permiryadFeeFactor: "1"
+    permyriadFeeFactor: "1"
     stalenessSeconds: "86400"
 ```
 
@@ -149,7 +149,7 @@ INFO: detail:
     L2_SEQUENCER_GRACE_PERIOD_SECONDS: "0 (N/A)"
     GAS_AFTER_PAYMENT_CALCULATION: "50000"
     fallbackWeiPerUnitLink: "5198745300000000"
-    permiryadFeeFactor: "1"
+    permyriadFeeFactor: "1"
     stalenessSeconds: "86400"
 ```
 
@@ -256,7 +256,7 @@ INFO: detail:
     L2_SEQUENCER_GRACE_PERIOD_SECONDS: "0 (N/A)"
     GAS_AFTER_PAYMENT_CALCULATION: "50000"
     fallbackWeiPerUnitLink: "5198745300000000"
-    permiryadFeeFactor: "1"
+    permyriadFeeFactor: "1"
     stalenessSeconds: "86400"
 INFO: keys:
     0: "0x1aba632881321bd33949c4e76fddf5ab11370018aa037288889bd7f434639861"

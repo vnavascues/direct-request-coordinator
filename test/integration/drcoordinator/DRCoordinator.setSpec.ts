@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 
-import { FeeType, MAX_PERMIRYAD_FEE, PERMIRYAD, PaymentType } from "../../../tasks/drcoordinator/constants";
+import { FeeType, MAX_PERMYRIAD_FEE, PERMYRIAD, PaymentType } from "../../../tasks/drcoordinator/constants";
 import { generateSpecKey, getSpecItemConvertedMap, parseSpecsFile } from "../../../tasks/drcoordinator/methods";
 import type { SpecItemConverted } from "../../../tasks/drcoordinator/types";
 import { convertJobIdToBytes32 } from "../../../utils/chainlink";
@@ -69,15 +69,15 @@ export function testSetSpec(signers: Signers, context: Context): void {
       testData: {
         paymentType: PaymentType.FLAT,
         payment: LINK_TOTAL_SUPPLY.add("1"),
-        customError: "DRCoordinator__SpecFieldPaymentIsGtPermiryad",
+        customError: "DRCoordinator__SpecFieldPaymentIsGtPermyriad",
       },
     },
     {
-      name: "payment is greater than PERMIRYAD (paymentType is PaymentType.PERMIRYAD)",
+      name: "payment is greater than PERMYRIAD (paymentType is PaymentType.PERMYRIAD)",
       testData: {
-        paymentType: PaymentType.PERMIRYAD,
-        payment: PERMIRYAD + 1,
-        customError: "DRCoordinator__SpecFieldPaymentIsGtPermiryad",
+        paymentType: PaymentType.PERMYRIAD,
+        payment: PERMYRIAD + 1,
+        customError: "DRCoordinator__SpecFieldPaymentIsGtPermyriad",
       },
     },
     {
@@ -96,11 +96,11 @@ export function testSetSpec(signers: Signers, context: Context): void {
       },
     },
     {
-      name: "fee is greater than maxPermiryadFee (feeType is FeeType.PERMIRYAD)",
+      name: "fee is greater than maxPermyriadFee (feeType is FeeType.PERMYRIAD)",
       testData: {
-        feeType: FeeType.PERMIRYAD,
-        fee: MAX_PERMIRYAD_FEE.mul("1").add("1"),
-        customError: "DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee",
+        feeType: FeeType.PERMYRIAD,
+        fee: MAX_PERMYRIAD_FEE.mul("1").add("1"),
+        customError: "DRCoordinator__SpecFieldFeeIsGtMaxPermyriadFee",
       },
     },
   ];
@@ -118,7 +118,7 @@ export function testSetSpec(signers: Signers, context: Context): void {
         gasLimit: testData.gasLimit ?? MIN_CONSUMER_GAS_LIMIT + 1,
         key: generateSpecKey(operatorAddr as string, specId),
         operator: operatorAddr as string,
-        paymentType: testData.paymentType || PaymentType.PERMIRYAD,
+        paymentType: testData.paymentType || PaymentType.PERMYRIAD,
         payment: testData.payment ?? BigNumber.from("1000"),
         specId,
       };
@@ -169,7 +169,7 @@ export function testSetSpec(signers: Signers, context: Context): void {
     await context.drCoordinator.connect(signers.owner).setSpec(key, specConverted);
     // 2. Define new values
     // NB: currently it allows to overwrite all fields, including operator and specId
-    specConverted.feeType = FeeType.PERMIRYAD;
+    specConverted.feeType = FeeType.PERMYRIAD;
     specConverted.fee = BigNumber.from("10000");
     specConverted.gasLimit = specConverted.gasLimit + 1;
     specConverted.operator = context.drCoordinatorConsumerTH.address;

@@ -17,14 +17,14 @@ The first version of DRCoordinator presented at the Spring 2022 hackaton was rus
 - Adopted `fulfillData()` as fulfillment method instead of `fallback()` (which has been removed).
 - Standardised and improved custom errors and removed unused ones.
 - Standardised and improved events.
-- Added `Spec.paymentType` which enables REQUEST LINK payment as a percentage (as permiryad), apart from the flat payment type already supported. A percentage REQUEST LINK payment is more beneficial from the Operator point of view and allows setting `minContractPaymentLinkJuels` as 0 Juels in all DRCoordinator TOML job specs (simplifying and standardising them all).
+- Added `Spec.paymentType` which enables REQUEST LINK payment as a percentage (as permyriad), apart from the flat payment type already supported. A percentage REQUEST LINK payment is more beneficial from the Operator point of view and allows setting `minContractPaymentLinkJuels` as 0 Juels in all DRCoordinator TOML job specs (simplifying and standardising them all).
 - Added support for whitelisting consumers on-chain per `Spec` (authorised consumers), as DRCoordinator TOML job specs must use the `requesters` field to protect themselves from spamming attacks (due to low `minContractPaymentLinkJuels`).
 - Added a refund mode. If SPOT LINK payment is less than REQUEST LINK payment DRCoordinator refunds Consumer the difference.
 - Added `consumerMaxPayment`, which allows Consumer to set a maximum LINK amount willing to pay per request.
 - Added multi Price Feed support (2-hop mode). DRCoordinator can calculate the wei units of GASTKN per unit of LINK (`weiPerUnitLink`) using two price feeds: GASTKN / TKN (`priceFeed1`) and LINK / TKN (`priceFeed2`). This mode allows to deploy DRCoordinator on networks where the LINK / GASTKN Price Feed is not available, e.g. Gnosis Chain, Moonriver, Moonbeam, Metis, etc.
 - Replaced the L2 Sequencer Offline Flag logic with [L2 Sequencer Uptime Status Feeds](https://docs.chain.link/data-feeds/l2-sequencer-feeds) to check L2 Sequencer availability on Arbitrum, Metis and Optimism.
 - Added public lock in `DRCoordinator.sol` as per [Read-only Reentrancy](https://www.youtube.com/watch?v=8D5ZJyU-dX0). It may be useful for Consumer devs as DRCoordinator has methods like `availableFunds` which result varies if read during `requestData()` and `fulfillData()` execution.
-- Added `permiryadFactor`, which allows tuning the fee percentage limits.
+- Added `permyriadFactor`, which allows tuning the fee percentage limits.
 - Improved interfaces and contracts inheritance.
 - Simplified `DRCoordinator.cancelRequest()` by loading `FulfillConfig.expiration` and `FulfillConfig.payment`.
 - Improved the Consumer libraries (contracts), e.g. `DRCoordinatorClient.sol`, `ChainlinkExternalFulfillmentCompatible.sol`.
@@ -121,7 +121,7 @@ NB: all these steps follow the standard Chainlink Direct Request Model.
 
 1. Validates the request and its caller.
 2. Loads the request configuration (`FulfillConfig`) and attempts to fulfill the request by calling the Consumer callback method passing the response data (image no 13 & 14).
-3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus the REQUEST LINK payment, plus the fulfillment fee (image no 15). The fee can be either a flat amount of a percentage (permiryad) of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
+3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus the REQUEST LINK payment, plus the fulfillment fee (image no 15). The fee can be either a flat amount of a percentage (permyriad) of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
 4. Checks that the Consumer balance can afford SPOT LINK payment and that Consumer is willing to pay the amount. It is worth mentioning that DRCoordinator can refund Consumer if REQUEST LINK payment was greater than SPOT LINK payment and DRCoordinator's balance is greater or equal than SPOT payment. Tuning the `Spec.payment` and `Spec.fee` should make this particular case very rare.
 5. Updates Consumer and DRCoordinator balances.
 

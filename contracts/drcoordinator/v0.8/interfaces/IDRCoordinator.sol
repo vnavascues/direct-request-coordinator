@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.0;
 
 import { IDRCoordinatorCallable } from "./IDRCoordinatorCallable.sol";
 import { FeeType, PaymentType, Spec } from "../libraries/internal/SpecLibrary.sol";
@@ -17,7 +17,7 @@ interface IDRCoordinator is IDRCoordinatorCallable {
     error DRCoordinator__PriceFeedIsNotContract(address priceFeedAddr);
     error DRCoordinator__SpecFieldFeeTypeIsUnsupported(bytes32 key, FeeType feeType);
     error DRCoordinator__SpecFieldFeeIsGtLinkTotalSupply(bytes32 key, uint96 fee, uint96 linkTotalSupply);
-    error DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee(bytes32 key, uint96 fee, uint256 maxPermiryadFee);
+    error DRCoordinator__SpecFieldFeeIsGtMaxPermyriadFee(bytes32 key, uint96 fee, uint256 maxPermyriadFee);
     error DRCoordinator__SpecFieldGasLimitIsLtMinRequestGasLimit(
         bytes32 key,
         uint32 gasLimit,
@@ -26,7 +26,7 @@ interface IDRCoordinator is IDRCoordinatorCallable {
     error DRCoordinator__SpecFieldOperatorIsDRCoordinator(bytes32 key, address operator);
     error DRCoordinator__SpecFieldOperatorIsNotContract(bytes32 key, address operator);
     error DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(bytes32 key, uint96 payment, uint96 linkTotalSupply);
-    error DRCoordinator__SpecFieldPaymentIsGtPermiryad(bytes32 key, uint96 payment, uint16 permiryad);
+    error DRCoordinator__SpecFieldPaymentIsGtPermyriad(bytes32 key, uint96 payment, uint16 permyriad);
     error DRCoordinator__SpecFieldPaymentTypeIsUnsupported(bytes32 key, PaymentType paymentType);
     error DRCoordinator__SpecFieldSpecIdIsZero(bytes32 key);
     error DRCoordinator__SpecIsNotInserted(bytes32 key);
@@ -100,11 +100,11 @@ interface IDRCoordinator is IDRCoordinatorCallable {
     function setL2SequencerGracePeriodSeconds(uint256 _l2SequencerGracePeriodSeconds) external;
 
     /**
-     * @notice Sets the permiryad factor (1 by default).
+     * @notice Sets the permyriad factor (1 by default).
      * @dev Allows to bump the fee percentage above 100%.
-     * @param _permiryadFactor The factor.
+     * @param _permyriadFactor The factor.
      */
-    function setPermiryadFeeFactor(uint8 _permiryadFactor) external;
+    function setPermyriadFeeFactor(uint8 _permyriadFactor) external;
 
     /**
      * @notice Sets a `Spec` by key.

@@ -28,8 +28,8 @@ import {
   DUMMY_SET_CODE_BYTES,
   ExternalAdapterId,
   FeeType,
-  MAX_PERMIRYAD_FEE,
-  PERMIRYAD,
+  MAX_PERMYRIAD_FEE,
+  PERMYRIAD,
   PaymentType,
   TaskExecutionMode,
   TaskName,
@@ -564,7 +564,7 @@ export async function logDRCoordinatorDetail(
     const addressL2SequencerFeed = await drCoordinator.connect(signer).getL2SequencerFeed();
     const gasAfterPaymentCalculation = await drCoordinator.connect(signer).getGasAfterPaymentCalculation();
     const fallbackWeiPerUnitLink = await drCoordinator.connect(signer).getFallbackWeiPerUnitLink();
-    const permiryadFeeFactor = await drCoordinator.connect(signer).getPermiryadFeeFactor();
+    const permyriadFeeFactor = await drCoordinator.connect(signer).getPermyriadFeeFactor();
     const stalenessSeconds = await drCoordinator.connect(signer).getStalenessSeconds();
     const l2SequencerGracePeriodSeconds = await drCoordinator.connect(signer).getL2SequencerGracePeriodSeconds();
     const linkBalance = await getLinkBalanceOf(hre, signer, drCoordinator.address, addressLink);
@@ -627,7 +627,7 @@ export async function logDRCoordinatorDetail(
           : `${l2SequencerGracePeriodSeconds} (N/A)`,
         GAS_AFTER_PAYMENT_CALCULATION: `${gasAfterPaymentCalculation}`,
         fallbackWeiPerUnitLink: `${fallbackWeiPerUnitLink}`,
-        permiryadFeeFactor: `${permiryadFeeFactor}`,
+        permyriadFeeFactor: `${permyriadFeeFactor}`,
         stalenessSeconds: `${stalenessSeconds}`,
       },
       "detail:",
@@ -870,20 +870,20 @@ export async function setL2SequencerGracePeriodSeconds(
   }
 }
 
-export async function setPermiryadFeeFactor(
+export async function setPermyriadFeeFactor(
   drCoordinator: DRCoordinator,
   signer: ethers.Wallet | SignerWithAddress,
-  permiryadFeeFactor: BigNumber,
+  permyriadFeeFactor: BigNumber,
   overrides: Overrides,
 ): Promise<void> {
-  const logObj = { permiryadFeeFactor };
+  const logObj = { permyriadFeeFactor };
   let tx: ContractTransaction;
   try {
-    tx = await drCoordinator.connect(signer).setPermiryadFeeFactor(permiryadFeeFactor, overrides);
-    logger.info(logObj, `setPermiryadFeeFactor() | Tx hash: ${tx.hash}`);
+    tx = await drCoordinator.connect(signer).setPermyriadFeeFactor(permyriadFeeFactor, overrides);
+    logger.info(logObj, `setPermyriadFeeFactor() | Tx hash: ${tx.hash}`);
     await tx.wait();
   } catch (error) {
-    logger.child(logObj).error(error, `setPermiryadFeeFactor() failed due to:`);
+    logger.child(logObj).error(error, `setPermyriadFeeFactor() failed due to:`);
     throw error;
   }
 }
@@ -1191,13 +1191,13 @@ export function validateConfigurationFee(feeType: FeeType, fee: string): void {
           `Expected an integer (as string) 0 <= fee <= ${LINK_TOTAL_SUPPLY.toNumber()} (LINK total supply). `,
       );
     }
-  } else if (feeType === FeeType.PERMIRYAD) {
-    // NB: MAX_PERMIRYAD_FEE can be tweaked
-    if (BigNumber.from(fee).gt(MAX_PERMIRYAD_FEE)) {
+  } else if (feeType === FeeType.PERMYRIAD) {
+    // NB: MAX_PERMYRIAD_FEE can be tweaked
+    if (BigNumber.from(fee).gt(MAX_PERMYRIAD_FEE)) {
       throw new Error(
-        `Invalid 'fee' for PERMIRYAD feeType: ${fee}. ` +
-          `Expected an integer (as string) 0 <= fee <= ${MAX_PERMIRYAD_FEE.toNumber()}. ` +
-          `Consider bumping MAX_PERMIRYAD_FEE in case of wanting a higher permyriad`,
+        `Invalid 'fee' for PERMYRIAD feeType: ${fee}. ` +
+          `Expected an integer (as string) 0 <= fee <= ${MAX_PERMYRIAD_FEE.toNumber()}. ` +
+          `Consider bumping MAX_PERMYRIAD_FEE in case of wanting a higher permyriad`,
       );
     }
   } else {
@@ -1239,10 +1239,10 @@ export function validateConfigurationPayment(paymentType: PaymentType, payment: 
           `Expected an integer (as string) 0 < payment <= ${LINK_TOTAL_SUPPLY.toNumber()} (LINK total supply). `,
       );
     }
-  } else if (paymentType === PaymentType.PERMIRYAD) {
-    if (BigNumber.from(payment).gt(PERMIRYAD)) {
+  } else if (paymentType === PaymentType.PERMYRIAD) {
+    if (BigNumber.from(payment).gt(PERMYRIAD)) {
       throw new Error(
-        `Invalid 'payment' for PERMIRYAD PaymentType: ${payment}. Expected an integer (as string) 0 < payment <= ${PERMIRYAD}`,
+        `Invalid 'payment' for PERMYRIAD PaymentType: ${payment}. Expected an integer (as string) 0 < payment <= ${PERMYRIAD}`,
       );
     }
   } else {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.0;
 
 import { Chainlink } from "@chainlink/contracts/src/v0.8/Chainlink.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -148,7 +148,7 @@ interface IDRCoordinatorCallable {
      * @dev This method has limitations. It does not take into account the gas incurrend by
      * `Operator.fulfillOracleRequest2()` nor `DRCoordinator.fulfillData()`. All of them are affected, among other
      * things, by the data size and the fulfillment method logic. Therefore it is needed to fine tune `startGas`.
-     * @param _weiPerUnitGas The amount of LINK per unit of GASTKN.
+     * @param _weiPerUnitGas The amount of GASTKN (in wei) per unit of gas.
      * @param _paymentInEscrow The REQUEST LINK payment amount (if exists) hold in escrow by Operator.
      * @param _feeType The requested `Spec.feeType`.
      * @param _fee The requested `Spec.fee`.
@@ -237,11 +237,11 @@ interface IDRCoordinatorCallable {
     function getNumberOfSpecs() external view returns (uint256);
 
     /**
-     * @notice Returns the current permiryad factor that determines the maximum fee on permiryiad fee types.
-     * @dev The number is multiplied by `PERMIRYAD` to calculate the `maxPeriryadFee`.
+     * @notice Returns the current permyriad factor that determines the maximum fee on permiryiad fee types.
+     * @dev The number is multiplied by `PERMYRIAD` to calculate the `maxPeriryadFee`.
      * @return The factor.
      */
-    function getPermiryadFeeFactor() external view returns (uint8);
+    function getPermyriadFeeFactor() external view returns (uint8);
 
     /**
      * @notice Returns the Price Feed 1 on the network.
