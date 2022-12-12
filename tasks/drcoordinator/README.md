@@ -12,7 +12,7 @@ Task parameters:
 |           | weiperunitgas |                The wei per unit of gas on the network                |    int    |            |                                                  |             |
 |    ✅     |    payment    | The initial LINK payment amount in Juels (in escrow in the Operator) | BigNumber |            |                                                  |             |
 |    ✅     |   gaslimit    |                   The transaction gasLimit in gwei                   |    int    |            |                                                  |  `400000`   |
-|    ✅     |    feetype    |                             The fee type                             | BigNumber |            |           `0` (flat), `1` (permiryad)            |             |
+|    ✅     |    feetype    |                             The fee type                             | BigNumber |            |           `0` (flat), `1` (permyriad)            |             |
 |    ✅     |      fee      |                         The fulfillment fee                          | BigNumber |            |                                                  |             |
 |           |   provider    |           Uses the providers `gasPrice` as `weiPerUnitGas`           |   Flag    |            |                                                  |   `false`   |
 |    ✅     |    network    |                       Hardhat `network` param                        |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
@@ -56,7 +56,7 @@ Task parameters:
 |    ✅     |   startgas    |                     The gasleft at the beginning                     |    int    |            |                                                  |  `400000`   |
 |           | weiperunitgas |                The wei per unit of gas on the network                |    int    |            |                                                  |             |
 |    ✅     |    payment    | The initial LINK payment amount in Juels (in escrow in the Operator) | BigNumber |            |                                                  |             |
-|    ✅     |    feetype    |                             The fee type                             | BigNumber |            |           `0` (flat), `1` (permiryad)            |             |
+|    ✅     |    feetype    |                             The fee type                             | BigNumber |            |           `0` (flat), `1` (permyriad)            |             |
 |    ✅     |      fee      |                         The fulfillment fee                          | BigNumber |            |                                                  |             |
 |           |   provider    |           Uses the providers `gasPrice` as `weiPerUnitGas`           |   Flag    |            |                                                  |   `false`   |
 |    ✅     |    network    |                       Hardhat `network` param                        |  string   |            | See `networkUserConfigs` in `/utils/networks.ts` |             |
@@ -343,7 +343,7 @@ Task parameters:
 |           | l2sequencergraceperiod | The new number of seconds after which the L2 Sequencer Uptime Status Feed answer is reliable | BigNumber |                      |                                                  |             |
 |           |         owner          |                          The new address to transfer the ownership                           |  address  |                      |                                                  |             |
 |           |         pause          |                                Pause or unpause the contract                                 |  boolean  |                      |                                                  |             |
-|           |   permiryadfeefactor   |                       The factor to be applied to the permiryad `fee`                        |  number   |                      |                                                  |             |
+|           |   permyriadfeefactor   |                       The factor to be applied to the permyriad `fee`                        |  number   |                      |                                                  |             |
 |           |    stalenessseconds    |          The new number of seconds after which the feed answer is considered stale           | BigNumber |                      |                                                  |             |
 |           |       overrides        |                  Allows customising the tx overrides (ethers.js Overrides)                   |   Flag    |                      |                                                  |   `false`   |
 |           |        gaslimit        |                                      The tx `gasLimit`                                       |    int    |     --overrides      |                                                  |             |

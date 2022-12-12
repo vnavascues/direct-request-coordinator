@@ -31,7 +31,7 @@ import { testRequestData } from "./DRCoordinator.requestData";
 import { testSetDescription } from "./DRCoordinator.setDescription";
 import { testSetFallbackWeiPerUnitLink } from "./DRCoordinator.setFallbackWeiPerUnitLink";
 import { testSetL2SequencerGracePeriodSeconds } from "./DRCoordinator.setL2SequencerGracePeriodSeconds";
-import { testSetPermiryadFeeFactor } from "./DRCoordinator.setPermiryadFeeFactor";
+import { testSetPermyriadFeeFactor } from "./DRCoordinator.setPermyriadFeeFactor";
 import { testSetSpec } from "./DRCoordinator.setSpec";
 import { testSetSpecs } from "./DRCoordinator.setSpecs";
 import { testSetStalenessSeconds } from "./DRCoordinator.setStalenessSeconds";
@@ -185,7 +185,7 @@ describe("DRCoordinator", () => {
   describe("testSetDescription()", () => testSetDescription(signers, context));
   describe("testSetFallbackWeiPerUnitLink()", () => testSetFallbackWeiPerUnitLink(signers, context));
   describe("testSetL2SequencerGracePeriodSeconds()", () => testSetL2SequencerGracePeriodSeconds(signers, context));
-  describe("testSetPermiryadFeeFactor()", () => testSetPermiryadFeeFactor(signers, context));
+  describe("testSetPermyriadFeeFactor()", () => testSetPermyriadFeeFactor(signers, context));
   describe("testSetSpec()", () => testSetSpec(signers, context));
   describe("testSetSpecs()", () => testSetSpecs(signers, context));
   describe("testSetStalenessSeconds()", () => testSetStalenessSeconds(signers, context));

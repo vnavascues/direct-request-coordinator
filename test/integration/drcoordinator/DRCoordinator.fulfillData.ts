@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import * as hardhat from "hardhat";
 import * as path from "path";
 
-import { PERMIRYAD, PaymentType } from "../../../tasks/drcoordinator/constants";
+import { PERMYRIAD, PaymentType } from "../../../tasks/drcoordinator/constants";
 import { getSpecItemConvertedMap, parseSpecsFile } from "../../../tasks/drcoordinator/methods";
 import type { SpecItemConverted } from "../../../tasks/drcoordinator/types";
 import { convertFunctionNametoSignature } from "../../../utils/abi";
@@ -331,7 +331,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     specs.forEach(spec => {
       spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
       spec.configuration.payment = "10000"; // NB: put 100% in escrow, forcing refund logic
-      spec.configuration.paymentType = PaymentType.PERMIRYAD;
+      spec.configuration.paymentType = PaymentType.PERMYRIAD;
     });
     const fileSpecMap = await getSpecItemConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -465,7 +465,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
     specs.forEach(spec => {
       spec.configuration.operator = context.operator.address; // NB: overwrite with the right contract address
       spec.configuration.payment = "10000"; // NB: put 100% in escrow, forcing refund logic
-      spec.configuration.paymentType = PaymentType.PERMIRYAD;
+      spec.configuration.paymentType = PaymentType.PERMYRIAD;
     });
     const fileSpecMap = await getSpecItemConvertedMap(specs);
     const [key] = [...fileSpecMap.keys()];
@@ -648,25 +648,25 @@ export function testFulfillData(signers: Signers, context: Context): void {
       },
     },
     {
-      name: "paymentType is PaymentType.PERMIRYAD, and payment is 0% (consumer pays)",
+      name: "paymentType is PaymentType.PERMYRIAD, and payment is 0% (consumer pays)",
       testData: {
-        paymentType: PaymentType.PERMIRYAD,
+        paymentType: PaymentType.PERMYRIAD,
         payment: BigNumber.from("0").toString(), // 0% of Max LINK payment
         isRefundCase: false,
       },
     },
     {
-      name: "paymentType is PaymentType.PERMIRYAD, and payment is 10% (consumer pays)",
+      name: "paymentType is PaymentType.PERMYRIAD, and payment is 10% (consumer pays)",
       testData: {
-        paymentType: PaymentType.PERMIRYAD,
+        paymentType: PaymentType.PERMYRIAD,
         payment: BigNumber.from("1000").toString(), // 10% of Max LINK payment
         isRefundCase: false,
       },
     },
     {
-      name: "paymentType is PaymentType.PERMIRYAD, and payment is 100% (DRCoordinator refunds)",
+      name: "paymentType is PaymentType.PERMYRIAD, and payment is 100% (DRCoordinator refunds)",
       testData: {
-        paymentType: PaymentType.PERMIRYAD,
+        paymentType: PaymentType.PERMYRIAD,
         payment: BigNumber.from("10000").toString(), // 100% of Max LINK payment
         isRefundCase: true,
       },
@@ -697,7 +697,7 @@ export function testFulfillData(signers: Signers, context: Context): void {
       let maxRequiredAmount: BigNumber;
       if (specConverted.paymentType === PaymentType.FLAT) {
         maxRequiredAmount = maxPaymentAmount.gte(specConverted.payment) ? maxPaymentAmount : specConverted.payment;
-      } else if (specConverted.paymentType === PaymentType.PERMIRYAD) {
+      } else if (specConverted.paymentType === PaymentType.PERMYRIAD) {
         maxRequiredAmount = maxPaymentAmount;
       } else {
         throw new Error(`Unsupported 'paymentType': ${specConverted.paymentType}`);
@@ -711,8 +711,8 @@ export function testFulfillData(signers: Signers, context: Context): void {
         let drCoordinatorRefundAmount: BigNumber;
         if (specConverted.paymentType === PaymentType.FLAT) {
           drCoordinatorRefundAmount = specConverted.payment;
-        } else if (specConverted.paymentType === PaymentType.PERMIRYAD) {
-          drCoordinatorRefundAmount = maxPaymentAmount.add(maxPaymentAmount.mul(specConverted.payment.div(PERMIRYAD)));
+        } else if (specConverted.paymentType === PaymentType.PERMYRIAD) {
+          drCoordinatorRefundAmount = maxPaymentAmount.add(maxPaymentAmount.mul(specConverted.payment.div(PERMYRIAD)));
         } else {
           throw new Error(`Unsupported 'paymentType': ${specConverted.paymentType}`);
         }

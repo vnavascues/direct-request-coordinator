@@ -65,7 +65,7 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
  * `callbackGasLimit` was used fulfilling the request (tx `gasLimit`).
  * 3. Checks that the Consumer balance can afford MAX LINK payment and that Consumer is willing to pay the amount.
  * 4. Calculates the LINK payment amount (REQUEST LINK payment) to be hold in escrow by Operator. The payment can be
- * either a flat amount or a percentage (permiryad) of MAX LINK payment. The `paymentType` and `payment` are set in the
+ * either a flat amount or a percentage (permyriad) of MAX LINK payment. The `paymentType` and `payment` are set in the
  * `Spec` by NodeOp.
  * 5. Updates Consumer balancee.
  * 6. Stores essential data from Consumer, `Chainlink.Request` and `Spec` in a `FulfillConfig` (by request ID) struct to
@@ -78,7 +78,7 @@ import { InsertedAddressLibrary as AuthorizedConsumerLibrary } from "./libraries
  * 2. Loads the request configuration (`FulfillConfig`) and attempts to fulfill the request by calling the Consumer
  * callback method passing the response data.
  * 3. Calculates SPOT LINK payment, which is the equivalent gas amount used fulfilling the request in LINK, minus
- * the REQUEST LINK payment, plus the fulfillment fee. The fee can be either a flat amount of a percentage (permiryad)
+ * the REQUEST LINK payment, plus the fulfillment fee. The fee can be either a flat amount of a percentage (permyriad)
  * of SPOT LINK payment. The `feeType` and `fee` are set in the `Spec` by NodeOp.
  * 4. Checks that the Consumer balance can afford SPOT LINK payment and that Consumer is willing to pay the amount.
  * It is worth mentioning that DRCoordinator can refund Consumer if REQUEST LINK payment was greater than SPOT LINK
@@ -127,7 +127,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
     uint64 private constant LINK_TO_JUELS_FACTOR = 1e18;
     bytes4 private constant OPERATOR_REQUEST_SELECTOR = OperatorInterface.operatorRequest.selector;
     bytes4 private constant FULFILL_DATA_SELECTOR = this.fulfillData.selector;
-    uint16 private constant PERMIRYAD = 10_000;
+    uint16 private constant PERMYRIAD = 10_000;
     uint32 private constant MIN_REQUEST_GAS_LIMIT = 400_000; // From Operator.sol MINIMUM_CONSUMER_GAS_LIMIT
     // NB: with the current balance model & actions after calculating the payment, it is safe setting the
     // GAS_AFTER_PAYMENT_CALCULATION to 50_000 as a constant. Exact amount used is 42945 gas
@@ -139,7 +139,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
     bool private immutable i_isMultiPriceFeedDependant;
     bool private immutable i_isL2SequencerDependant;
     bool private s_isReentrancyLocked;
-    uint8 private s_permiryadFeeFactor = 1;
+    uint8 private s_permyriadFeeFactor = 1;
     uint256 private s_requestCount = 1;
     uint256 private s_stalenessSeconds;
     uint256 private s_l2SequencerGracePeriodSeconds;
@@ -160,7 +160,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
      *                      : adopt fulfillData as fulfillment method and remove fallback
      *                      : standardise and improve custom errors and remove unused ones
      *                      : standardise and improve events
-     *                      : add paymentType (permiryad support on the requestData LINK payment)
+     *                      : add paymentType (permyriad support on the requestData LINK payment)
      *                      : allow whitelist consumers per Spec (authorized consumers)
      *                      : add refund mode (DRC refunds LINK if the requestData payment exceeds the fulfillData one)
      *                      : add consumerMaxPayment (requestData & fulfillData revert if LINK payment is greater than)
@@ -168,7 +168,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
      *                      : replace L2 Sequencer Flag with L2 Sequencer Uptime Status Feed
      *                      : improve contract inheritance, e.g. add IDRCoordinator, remove ChainlinkClient, etc.
      *                      : make simple cancelRequest by storing payment and expiration
-     *                      : add permiryadFactor (allow setting fees greater than 100%)
+     *                      : add permyriadFactor (allow setting fees greater than 100%)
      *                      : remove the sha1 logic
      *                      : remove minConfirmations requirement
      *                      : add a public lock
@@ -198,7 +198,7 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
     event FundsWithdrawn(address indexed from, address indexed to, uint96 amount);
     event GasAfterPaymentCalculationSet(uint32 gasAfterPaymentCalculation);
     event L2SequencerGracePeriodSecondsSet(uint256 l2SequencerGracePeriodSeconds);
-    event PermiryadFeeFactorSet(uint8 permiryadFactor);
+    event PermyriadFeeFactorSet(uint8 permyriadFactor);
     event SetExternalPendingRequestFailed(address indexed callbackAddr, bytes32 indexed requestId, bytes32 key);
     event SpecRemoved(bytes32 indexed key);
     event SpecSet(bytes32 indexed key, Spec spec);
@@ -520,9 +520,9 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
     }
 
     /// @inheritdoc IDRCoordinator
-    function setPermiryadFeeFactor(uint8 _permiryadFactor) external onlyOwner {
-        s_permiryadFeeFactor = _permiryadFactor;
-        emit PermiryadFeeFactorSet(_permiryadFactor);
+    function setPermyriadFeeFactor(uint8 _permyriadFactor) external onlyOwner {
+        s_permyriadFeeFactor = _permyriadFactor;
+        emit PermyriadFeeFactorSet(_permyriadFactor);
     }
 
     /// @inheritdoc IDRCoordinator
@@ -669,8 +669,8 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
     }
 
     /// @inheritdoc IDRCoordinatorCallable
-    function getPermiryadFeeFactor() external view returns (uint8) {
-        return s_permiryadFeeFactor;
+    function getPermyriadFeeFactor() external view returns (uint8) {
+        return s_permyriadFeeFactor;
     }
 
     /// @inheritdoc IDRCoordinatorCallable
@@ -836,8 +836,8 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
         uint256 paymentAfterFee;
         if (_feeType == FeeType.FLAT) {
             paymentAfterFee = paymentPreFee + _fee;
-        } else if (_feeType == FeeType.PERMIRYAD) {
-            paymentAfterFee = paymentPreFee + (paymentPreFee * _fee) / PERMIRYAD;
+        } else if (_feeType == FeeType.PERMYRIAD) {
+            paymentAfterFee = paymentPreFee + (paymentPreFee * _fee) / PERMYRIAD;
         } else {
             revert DRCoordinator__FeeTypeIsUnsupported(_feeType);
         }
@@ -924,10 +924,10 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             if (_fee > LINK_TOTAL_SUPPLY) {
                 revert DRCoordinator__SpecFieldFeeIsGtLinkTotalSupply(_key, _fee, LINK_TOTAL_SUPPLY);
             }
-        } else if (_feeType == FeeType.PERMIRYAD) {
-            uint256 maxPermiryadFee = PERMIRYAD * s_permiryadFeeFactor;
-            if (_fee > maxPermiryadFee) {
-                revert DRCoordinator__SpecFieldFeeIsGtMaxPermiryadFee(_key, _fee, maxPermiryadFee);
+        } else if (_feeType == FeeType.PERMYRIAD) {
+            uint256 maxPermyriadFee = PERMYRIAD * s_permyriadFeeFactor;
+            if (_fee > maxPermyriadFee) {
+                revert DRCoordinator__SpecFieldFeeIsGtMaxPermyriadFee(_key, _fee, maxPermyriadFee);
             }
         } else {
             revert DRCoordinator__SpecFieldFeeTypeIsUnsupported(_key, _feeType);
@@ -954,8 +954,8 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             // NB: `Spec.payment` could be greater than MAX LINK payment
             uint96 requiredConsumerLinkBalance = _maxPayment >= _payment ? _maxPayment : _payment;
             return (requiredConsumerLinkBalance, _payment);
-        } else if (_paymentType == PaymentType.PERMIRYAD) {
-            return (_maxPayment, (_maxPayment * _payment) / PERMIRYAD);
+        } else if (_paymentType == PaymentType.PERMYRIAD) {
+            return (_maxPayment, (_maxPayment * _payment) / PERMYRIAD);
         } else {
             revert DRCoordinator__PaymentTypeIsUnsupported(_paymentType);
         }
@@ -1074,9 +1074,9 @@ contract DRCoordinator is ConfirmedOwner, Pausable, TypeAndVersionInterface, IDR
             if (_payment > LINK_TOTAL_SUPPLY) {
                 revert DRCoordinator__SpecFieldPaymentIsGtLinkTotalSupply(_key, _payment, LINK_TOTAL_SUPPLY);
             }
-        } else if (_paymentType == PaymentType.PERMIRYAD) {
-            if (_payment > PERMIRYAD) {
-                revert DRCoordinator__SpecFieldPaymentIsGtPermiryad(_key, _payment, PERMIRYAD);
+        } else if (_paymentType == PaymentType.PERMYRIAD) {
+            if (_payment > PERMYRIAD) {
+                revert DRCoordinator__SpecFieldPaymentIsGtPermyriad(_key, _payment, PERMYRIAD);
             }
         } else {
             revert DRCoordinator__SpecFieldPaymentTypeIsUnsupported(_key, _paymentType);

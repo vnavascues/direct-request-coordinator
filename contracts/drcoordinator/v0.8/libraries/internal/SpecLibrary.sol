@@ -3,12 +3,12 @@ pragma solidity 0.8.17;
 
 enum FeeType {
     FLAT, // A fixed LINK amount
-    PERMIRYAD // A dynamic LINK amount (a percentage of the `paymentPreFee`)
+    PERMYRIAD // A dynamic LINK amount (a percentage of the `paymentPreFee`)
 }
 
 enum PaymentType {
     FLAT, // A fixed LINK amount
-    PERMIRYAD // A dynamic LINK amount (a percentage of the MAX LINK payment)
+    PERMYRIAD // A dynamic LINK amount (a percentage of the MAX LINK payment)
 }
 
 /**

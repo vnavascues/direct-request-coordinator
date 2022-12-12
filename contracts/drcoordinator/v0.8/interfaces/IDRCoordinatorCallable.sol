@@ -237,11 +237,11 @@ interface IDRCoordinatorCallable {
     function getNumberOfSpecs() external view returns (uint256);
 
     /**
-     * @notice Returns the current permiryad factor that determines the maximum fee on permiryiad fee types.
-     * @dev The number is multiplied by `PERMIRYAD` to calculate the `maxPeriryadFee`.
+     * @notice Returns the current permyriad factor that determines the maximum fee on permiryiad fee types.
+     * @dev The number is multiplied by `PERMYRIAD` to calculate the `maxPeriryadFee`.
      * @return The factor.
      */
-    function getPermiryadFeeFactor() external view returns (uint8);
+    function getPermyriadFeeFactor() external view returns (uint8);
 
     /**
      * @notice Returns the Price Feed 1 on the network.
