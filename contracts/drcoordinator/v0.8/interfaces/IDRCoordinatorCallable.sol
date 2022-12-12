@@ -148,7 +148,7 @@ interface IDRCoordinatorCallable {
      * @dev This method has limitations. It does not take into account the gas incurrend by
      * `Operator.fulfillOracleRequest2()` nor `DRCoordinator.fulfillData()`. All of them are affected, among other
      * things, by the data size and the fulfillment method logic. Therefore it is needed to fine tune `startGas`.
-     * @param _weiPerUnitGas The amount of LINK per unit of GASTKN.
+     * @param _weiPerUnitGas The amount of GASTKN (in wei) per unit of gas.
      * @param _paymentInEscrow The REQUEST LINK payment amount (if exists) hold in escrow by Operator.
      * @param _feeType The requested `Spec.feeType`.
      * @param _fee The requested `Spec.fee`.
